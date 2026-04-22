@@ -1,0 +1,333 @@
+exam:
+  name: "Implementing Cisco Service Provider Advanced Routing Solutions"
+  code: "300-510"
+  blueprint_version: "v1.1"
+  blueprint_source: "blueprint/300-510/blueprint.md"
+  total_objectives: 94
+  planned_date: "2026-04-22"
+
+topics:
+  - topic_id: ospf
+    topic_name: "OSPF Routing"
+    blueprint_refs:
+      - "1.1"
+      - "1.2"
+      - "1.2.a"
+      - "1.2.b"
+    estimated_labs: 6
+    scope_notes: >
+      Multiarea OSPFv2/v3, route advertisement and summarization, area types,
+      LSA behavior, troubleshooting. Bullet 1.1 (OSPF vs IS-IS comparison) is
+      anchored here; IS-IS topic carries a cross-reference.
+    dependencies: []
+    build_order: 1
+
+  - topic_id: isis
+    topic_name: "IS-IS Routing"
+    blueprint_refs:
+      - "1.3"
+      - "1.3.a"
+      - "1.3.b"
+    estimated_labs: 5
+    scope_notes: >
+      Multilevel IS-IS for IPv4 and IPv6, route advertisement, summarization,
+      L1/L2 boundaries. Comparison with OSPF (1.1) is covered under ospf.
+    dependencies: []
+    build_order: 2
+
+  - topic_id: bgp
+    topic_name: "BGP Scalability and Troubleshooting"
+    blueprint_refs:
+      - "1.4"
+      - "1.4.a"
+      - "1.4.b"
+      - "1.5"
+      - "1.5.a"
+      - "1.5.b"
+      - "1.5.c"
+      - "1.5.d"
+      - "1.5.e"
+      - "1.5.f"
+      - "1.5.g"
+      - "1.5.h"
+      - "1.5.i"
+      - "1.5.j"
+    estimated_labs: 9
+    scope_notes: >
+      Route reflectors, confederations, multihoming, TTL security, max-prefix,
+      dampening, dynamic neighbors, communities, FlowSpec. BGP PIC and
+      additional/backup paths (1.7.e/1.7.g) live under fast-convergence.
+    dependencies: []
+    build_order: 3
+
+  - topic_id: routing-policy
+    topic_name: "Routing Policy and Manipulation"
+    blueprint_refs:
+      - "3.1"
+      - "3.2"
+      - "3.2.a"
+      - "3.2.b"
+      - "3.2.c"
+      - "3.2.d"
+      - "3.2.e"
+      - "3.2.f"
+      - "3.2.g"
+      - "3.2.h"
+      - "3.2.i"
+      - "3.2.j"
+      - "3.3"
+      - "3.3.a"
+      - "3.3.b"
+      - "3.4"
+      - "3.4.a"
+      - "3.4.b"
+    estimated_labs: 7
+    scope_notes: >
+      RPL vs route-maps, conditional matching (regex, prefix sets, policy sets,
+      tags, ACLs, communities, hierarchical/parameterized policies), route
+      manipulation for IS-IS/OSPF and BGP (filtering, traffic steering).
+    dependencies:
+      - ospf
+      - isis
+      - bgp
+    build_order: 4
+
+  - topic_id: ipv6-transition
+    topic_name: "IPv6 Tunneling and Transition"
+    blueprint_refs:
+      - "1.6"
+      - "1.6.a"
+      - "1.6.b"
+      - "1.6.c"
+      - "1.6.d"
+      - "1.6.e"
+    estimated_labs: 5
+    scope_notes: >
+      Static IPv6-in-IPv4, dynamic 6to4, 6PE, IPv6 policy enforcement,
+      NAT64 and MAP-T.
+    dependencies:
+      - bgp
+    build_order: 5
+
+  - topic_id: fast-convergence
+    topic_name: "Fast Convergence"
+    blueprint_refs:
+      - "1.7"
+      - "1.7.a"
+      - "1.7.b"
+      - "1.7.c"
+      - "1.7.d"
+      - "1.7.e"
+      - "1.7.f"
+      - "1.7.g"
+    estimated_labs: 6
+    scope_notes: >
+      BFD, NSF, NSR, timer tuning, LFA/IP-FRR, BGP PIC (edge and core),
+      BGP additional/backup paths. Topic is organized around the convergence
+      mechanism, not the protocol carrying it.
+    dependencies:
+      - ospf
+      - isis
+      - bgp
+    build_order: 6
+
+  - topic_id: mpls
+    topic_name: "MPLS"
+    blueprint_refs:
+      - "4.1"
+      - "4.1.a"
+      - "4.1.b"
+      - "4.1.c"
+      - "4.1.d"
+      - "4.1.e"
+    estimated_labs: 6
+    scope_notes: >
+      LDP, LSP troubleshooting, unified BGP, BGP-free core, RSVP-TE tunnels.
+    dependencies:
+      - ospf
+      - isis
+      - bgp
+    build_order: 7
+
+  - topic_id: multicast
+    topic_name: "Multicast Routing"
+    blueprint_refs:
+      - "2.1"
+      - "2.1.a"
+      - "2.1.b"
+      - "2.1.c"
+      - "2.2"
+      - "2.2.a"
+      - "2.2.b"
+      - "2.2.c"
+      - "2.2.d"
+      - "2.2.e"
+      - "2.2.f"
+      - "2.3"
+      - "2.3.a"
+      - "2.3.b"
+      - "2.3.c"
+      - "2.3.d"
+      - "2.4"
+      - "2.4.a"
+      - "2.4.b"
+    estimated_labs: 8
+    scope_notes: >
+      Distribution trees, ASM/SSM, MBGP, PIM-SM (Auto-RP, BSR, anycast RP,
+      Phantom RP, BIDIR), MSDP, MLDP/P2MP (requires MPLS), IGMP/MLD,
+      intra- and inter-domain troubleshooting.
+    dependencies:
+      - bgp
+      - mpls
+    build_order: 8
+
+  - topic_id: segment-routing
+    topic_name: "Segment Routing and SR-TE"
+    blueprint_refs:
+      - "4.2"
+      - "4.2.a"
+      - "4.2.b"
+      - "4.2.c"
+      - "4.2.d"
+      - "4.3"
+      - "4.3.a"
+      - "4.3.b"
+      - "4.3.c"
+      - "4.3.d"
+      - "4.3.e"
+    estimated_labs: 7
+    scope_notes: >
+      SR extensions for BGP/OSPF/IS-IS, SRGB/SRLB, TI-LFA, migration
+      (SR prefer, mapping server), SR-TE automated steering and coloring,
+      policies, PCE-based path computation, SRLG, Tree SID.
+    dependencies:
+      - mpls
+      - routing-policy
+    build_order: 9
+
+  - topic_id: srv6
+    topic_name: "Segment Routing v6 (SRv6)"
+    blueprint_refs:
+      - "4.4"
+      - "4.4.a"
+      - "4.4.b"
+      - "4.4.c"
+      - "4.4.d"
+    estimated_labs: 5
+    scope_notes: >
+      SRv6 control-plane and data-plane operations, Flex-Algo, locator and
+      micro-segment encoding, encapsulation, interworking gateway.
+    dependencies:
+      - segment-routing
+    build_order: 10
+
+coverage_matrix:
+  "1.1": ospf
+  "1.2": ospf
+  "1.2.a": ospf
+  "1.2.b": ospf
+  "1.3": isis
+  "1.3.a": isis
+  "1.3.b": isis
+  "1.4": bgp
+  "1.4.a": bgp
+  "1.4.b": bgp
+  "1.5": bgp
+  "1.5.a": bgp
+  "1.5.b": bgp
+  "1.5.c": bgp
+  "1.5.d": bgp
+  "1.5.e": bgp
+  "1.5.f": bgp
+  "1.5.g": bgp
+  "1.5.h": bgp
+  "1.5.i": bgp
+  "1.5.j": bgp
+  "1.6": ipv6-transition
+  "1.6.a": ipv6-transition
+  "1.6.b": ipv6-transition
+  "1.6.c": ipv6-transition
+  "1.6.d": ipv6-transition
+  "1.6.e": ipv6-transition
+  "1.7": fast-convergence
+  "1.7.a": fast-convergence
+  "1.7.b": fast-convergence
+  "1.7.c": fast-convergence
+  "1.7.d": fast-convergence
+  "1.7.e": fast-convergence
+  "1.7.f": fast-convergence
+  "1.7.g": fast-convergence
+  "2.1": multicast
+  "2.1.a": multicast
+  "2.1.b": multicast
+  "2.1.c": multicast
+  "2.2": multicast
+  "2.2.a": multicast
+  "2.2.b": multicast
+  "2.2.c": multicast
+  "2.2.d": multicast
+  "2.2.e": multicast
+  "2.2.f": multicast
+  "2.3": multicast
+  "2.3.a": multicast
+  "2.3.b": multicast
+  "2.3.c": multicast
+  "2.3.d": multicast
+  "2.4": multicast
+  "2.4.a": multicast
+  "2.4.b": multicast
+  "3.1": routing-policy
+  "3.2": routing-policy
+  "3.2.a": routing-policy
+  "3.2.b": routing-policy
+  "3.2.c": routing-policy
+  "3.2.d": routing-policy
+  "3.2.e": routing-policy
+  "3.2.f": routing-policy
+  "3.2.g": routing-policy
+  "3.2.h": routing-policy
+  "3.2.i": routing-policy
+  "3.2.j": routing-policy
+  "3.3": routing-policy
+  "3.3.a": routing-policy
+  "3.3.b": routing-policy
+  "3.4": routing-policy
+  "3.4.a": routing-policy
+  "3.4.b": routing-policy
+  "4.1": mpls
+  "4.1.a": mpls
+  "4.1.b": mpls
+  "4.1.c": mpls
+  "4.1.d": mpls
+  "4.1.e": mpls
+  "4.2": segment-routing
+  "4.2.a": segment-routing
+  "4.2.b": segment-routing
+  "4.2.c": segment-routing
+  "4.2.d": segment-routing
+  "4.3": segment-routing
+  "4.3.a": segment-routing
+  "4.3.b": segment-routing
+  "4.3.c": segment-routing
+  "4.3.d": segment-routing
+  "4.3.e": segment-routing
+  "4.4": srv6
+  "4.4.a": srv6
+  "4.4.b": srv6
+  "4.4.c": srv6
+  "4.4.d": srv6
+
+summary:
+  total_topics: 10
+  total_estimated_labs: 64
+  build_order:
+    - ospf
+    - isis
+    - bgp
+    - routing-policy
+    - ipv6-transition
+    - fast-convergence
+    - mpls
+    - multicast
+    - segment-routing
+    - srv6

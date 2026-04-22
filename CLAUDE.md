@@ -1,4 +1,4 @@
-# CCNP SPRI (350-510) Lab Project
+# CCNP SPRI (300-510) Lab Project
 
 ## Shared Context (Skills + Standards)
 
@@ -6,8 +6,8 @@ See .agent/skills/memory/CLAUDE.md for the foundation skills repository context.
 
 ## This Certification
 
-- **Exam**: CCNP SPRI (350-510)
-- **Audience**: Network engineers preparing for the 350-510 exam
+- **Exam**: CCNP SPRI (300-510)
+- **Audience**: Network engineers preparing for the 300-510 exam
 - **Platform**: EVE-NG on Dell Latitude 5540 (Intel/Windows)
 
 ## Project Structure
@@ -22,7 +22,7 @@ See conductor/product.md and conductor/workflow.md for detailed documentation.
 
 ## Three-Phase Workflow
 
-1. Phase 1 - Plan: Upload blueprint to blueprint/350-510/blueprint.md, then run exam-planner
+1. Phase 1 - Plan: Upload blueprint to blueprint/300-510/blueprint.md, then run exam-planner
 2. Phase 2 - Spec: Run spec-creator per topic (review after each)
 3. Phase 3 - Build: Run lab-workbook-creator one lab at a time (review after each)
 
