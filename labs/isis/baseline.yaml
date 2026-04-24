@@ -1,0 +1,205 @@
+topic: isis
+topic_name: "IS-IS Routing"
+exam: "300-510"
+version: 1.0
+
+meta:
+  created:
+    date: "2026-04-22"
+    agent: claude-opus-4-7
+    skill: spec-creator
+    skill_version: "2026-04-22"
+  updated: []
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Core topology — same physical layout as the `ospf` topic. IP plan, interface
+# assignments, and link IDs match. Only IGP semantics change (NET, levels).
+# ──────────────────────────────────────────────────────────────────────────────
+core_topology:
+  devices:
+    - name: R1
+      platform: iosv
+      role: "L1 router inside area 49.0001"
+      net: "49.0001.0000.0000.0001.00"
+      is_type: level-1
+      loopback0: "10.0.0.1/32"
+      loopback0_v6: "2001:db8::1/128"
+      loopback1: "172.16.1.1/24"
+      loopback1_v6: "2001:db8:1::1/64"
+      console_port: null
+
+    - name: R2
+      platform: iosv
+      role: "L1/L2 router in area 49.0001; L2 peer of R3"
+      net: "49.0001.0000.0000.0002.00"
+      is_type: level-1-2
+      loopback0: "10.0.0.2/32"
+      loopback0_v6: "2001:db8::2/128"
+      console_port: null
+
+    - name: R3
+      platform: iosv
+      role: "L1/L2 router in area 49.0002; L2 peer of R2; ASBR from lab-02 via R6"
+      net: "49.0002.0000.0000.0003.00"
+      is_type: level-1-2
+      loopback0: "10.0.0.3/32"
+      loopback0_v6: "2001:db8::3/128"
+      console_port: null
+
+    - name: R4
+      platform: iosv
+      role: "L1 router inside area 49.0002"
+      net: "49.0002.0000.0000.0004.00"
+      is_type: level-1
+      loopback0: "10.0.0.4/32"
+      loopback0_v6: "2001:db8::4/128"
+      loopback1: "172.16.4.1/24"
+      loopback1_v6: "2001:db8:4::1/64"
+      console_port: null
+
+    - name: R5
+      platform: iosv
+      role: "L1 router inside area 49.0002"
+      net: "49.0002.0000.0000.0005.00"
+      is_type: level-1
+      loopback0: "10.0.0.5/32"
+      loopback0_v6: "2001:db8::5/128"
+      loopback1: "172.16.5.1/24"
+      loopback1_v6: "2001:db8:5::1/64"
+      console_port: null
+
+  links:
+    - id: L1
+      source: "R1:GigabitEthernet0/0"
+      target: "R2:GigabitEthernet0/0"
+      subnet: "10.1.12.0/24"
+      subnet_v6: "2001:db8:12::/64"
+      isis_level: level-1
+    - id: L2
+      source: "R2:GigabitEthernet0/1"
+      target: "R3:GigabitEthernet0/0"
+      subnet: "10.1.23.0/24"
+      subnet_v6: "2001:db8:23::/64"
+      isis_level: level-2                # Different IS-IS areas → L2-only adjacency
+    - id: L3
+      source: "R3:GigabitEthernet0/1"
+      target: "R4:GigabitEthernet0/0"
+      subnet: "10.1.34.0/24"
+      subnet_v6: "2001:db8:34::/64"
+      isis_level: level-1
+    - id: L4
+      source: "R3:GigabitEthernet0/2"
+      target: "R5:GigabitEthernet0/0"
+      subnet: "10.1.35.0/24"
+      subnet_v6: "2001:db8:35::/64"
+      isis_level: level-1
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Optional topology
+# ──────────────────────────────────────────────────────────────────────────────
+optional_devices:
+  - name: R6
+    platform: iosv
+    role: "External prefix source (not an IS-IS speaker); R3 redistributes into IS-IS"
+    loopback0: "10.0.0.6/32"
+    loopback0_v6: "2001:db8::6/128"
+    loopback1: "192.168.66.1/24"
+    loopback1_v6: "2001:db8:66::1/64"
+    console_port: null
+    available_from: lab-02-dual-stack-summarization
+    purpose: "Sources IPv4 and IPv6 external prefixes for redistribution and summary-address practice"
+
+optional_links:
+  - id: L5
+    source: "R3:GigabitEthernet0/3"
+    target: "R6:GigabitEthernet0/0"
+    subnet: "10.1.36.0/24"
+    subnet_v6: "2001:db8:36::/64"
+    isis_level: "none"
+    available_from: lab-02-dual-stack-summarization
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Labs
+# ──────────────────────────────────────────────────────────────────────────────
+labs:
+  - number: 0
+    folder: lab-00-single-level-isis
+    title: "Single-Level IS-IS Foundations"
+    difficulty: Foundation
+    type: progressive
+    time_minutes: 45
+    devices: [R1, R2, R3]
+    blueprint_refs: ["1.3"]
+    objectives:
+      - "Configure NET addressing and L1-only IS-IS across R1, R2, R3 (all in area 49.0001 temporarily — labs 01+ move R3 to 49.0002)"
+      - "Bring up IS-IS Hello mechanics (IIH), verify DIS election on broadcast links, and inspect the L1 LSP database"
+      - "Contrast LSP TLVs with OSPF LSA types (cross-reference to ospf topic lab-00)"
+      - "Tune hello-interval and hello-multiplier; observe adjacency reset"
+      - "Verify neighbor states (DOWN → INIT → UP)"
+
+  - number: 1
+    folder: lab-01-multilevel-isis
+    title: "Multilevel IS-IS and Route Advertisement"
+    difficulty: Intermediate
+    type: progressive
+    time_minutes: 75
+    devices: [R1, R2, R3, R4, R5]
+    extends: lab-00-single-level-isis
+    blueprint_refs: ["1.3", "1.3.a"]
+    objectives:
+      - "Promote R2 and R3 to L1/L2; move R3's NET to area 49.0002 so R2↔R3 forms an L2-only adjacency"
+      - "Add R4 and R5 as L1 routers in area 49.0002"
+      - "Verify the ATT bit on R2 and R3 LSPs and confirm the default route is installed on R1, R4, and R5"
+      - "Trace inter-area route advertisement: R1 Lo1 ↔ R4 Lo1 via the L2 backbone"
+      - "Troubleshoot a planted area-ID typo on one router (NET area mismatch breaks L1 adjacency)"
+
+  - number: 2
+    folder: lab-02-dual-stack-summarization
+    title: "Dual-Stack IS-IS with Summarization and Route Leaking"
+    difficulty: Intermediate
+    type: progressive
+    time_minutes: 90
+    devices: [R1, R2, R3, R4, R5, R6]
+    extends: lab-01-multilevel-isis
+    blueprint_refs: ["1.3", "1.3.a", "1.3.b"]
+    objectives:
+      - "Enable IPv6 unicast routing and IS-IS multi-topology (`metric-style wide`, `address-family ipv6 multi-topology`)"
+      - "Verify independent IPv4 and IPv6 SPFs; confirm Full adjacencies in both address families"
+      - "Activate R6 and the L5 link; redistribute R6's 192.168.66.0/24 and 2001:db8:66::/64 into IS-IS on R3"
+      - "Configure `summary-address 172.16.0.0 255.255.248.0` and its IPv6 equivalent on R3 at the L1/L2 boundary"
+      - "Apply `redistribute isis ip level-2 into level-1` with a distribute-list to leak specific L2-only prefixes into L1 on R2"
+      - "Troubleshoot a summary that creates a discard route shadowing a needed specific"
+
+  - number: 3
+    folder: lab-03-capstone-config
+    title: "IS-IS Full Protocol Mastery — Capstone I"
+    difficulty: Advanced
+    type: capstone_i
+    clean_slate: true
+    time_minutes: 120
+    devices: [R1, R2, R3, R4, R5, R6]
+    blueprint_refs: all
+    objectives:
+      - "From interfaces-only baseline, build the complete dual-stack multilevel IS-IS domain"
+      - "NETs: R1/R2 in 49.0001; R3/R4/R5 in 49.0002; R6 stays external"
+      - "Enable multi-topology IPv6, L1/L2 on R2 and R3, L1-only on R1/R4/R5"
+      - "Redistribute R6's external IPv4 and IPv6 into IS-IS via R3"
+      - "Apply summary-address at the L1/L2 boundary for IPv4 and IPv6"
+      - "Apply L2→L1 route leaking with a policy to let selected L2 prefixes into area 49.0001"
+      - "Enable IS-IS HMAC-MD5 authentication on all adjacencies"
+      - "Verify: full v4/v6 reachability, ATT bit correctness, summary collapse, leaked prefix presence on R1"
+
+  - number: 4
+    folder: lab-04-capstone-troubleshooting
+    title: "IS-IS Comprehensive Troubleshooting — Capstone II"
+    difficulty: Advanced
+    type: capstone_ii
+    clean_slate: true
+    time_minutes: 120
+    devices: [R1, R2, R3, R4, R5, R6]
+    blueprint_refs: all
+    objectives:
+      - "Diagnose and repair ≥5 concurrent planted faults across the dual-stack multilevel IS-IS topology"
+      - "Fault classes: (1) adjacency mismatch (area ID in NET, is-type, hello timers, authentication key, MTU); (2) route advertisement (metric-style narrow on one router breaks wide-metric exchange; ATT bit suppressed by `no set-attached-bit`); (3) summarization (summary-address mask wrong; discard-route shadows a specific); (4) IPv6 MT not enabled on one L1 router; (5) route leak distribute-list dropping the target prefix"
+      - "Restore end-to-end reachability: R1 Lo1 ↔ R4 Lo1, R1 ↔ R5 Lo1, and R1 ↔ 192.168.66.0/24 across both IPv4 and IPv6"
+      - "Document the diagnosis path and the show/debug commands that isolated each fault"

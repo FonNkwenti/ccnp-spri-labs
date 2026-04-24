@@ -1,0 +1,285 @@
+topic: bgp
+topic_name: "BGP Scalability and Troubleshooting"
+exam: "300-510"
+version: 1.0
+
+meta:
+  created:
+    date: "2026-04-23"
+    agent: claude-opus-4-7
+    skill: spec-creator
+    skill_version: "2026-04-22"
+  updated: []
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Core topology — three-AS provider setup. AS 65100 is the SP core (OSPF area 0
+# internal IGP; iBGP on loopbacks). AS 65001 is Customer A (dual-homed via R1).
+# AS 65002 is an external SP peer (R6). R5 is IOS-XE (CSR1000v) for flowspec.
+# ──────────────────────────────────────────────────────────────────────────────
+core_topology:
+  devices:
+    - name: R1
+      platform: iosv
+      role: "Customer A CE (AS 65001); dual-homed to R2 and R3"
+      asn: 65001
+      loopback0: "10.0.0.1/32"
+      loopback1: "172.16.1.1/24"          # Customer prefix advertised into AS 65100
+      console_port: null
+
+    - name: R2
+      platform: iosv
+      role: "PE East-1 (AS 65100); eBGP toward R1, iBGP/IGP to SP core"
+      asn: 65100
+      loopback0: "10.0.0.2/32"
+      console_port: null
+
+    - name: R3
+      platform: iosv
+      role: "PE East-2 (AS 65100); second eBGP path to R1 for multihoming"
+      asn: 65100
+      loopback0: "10.0.0.3/32"
+      console_port: null
+
+    - name: R4
+      platform: iosv
+      role: "P / Route Reflector from lab-01 (AS 65100)"
+      asn: 65100
+      loopback0: "10.0.0.4/32"
+      cluster_id: "10.0.0.4"              # Set when R4 becomes RR in lab-01
+      console_port: null
+
+    - name: R5
+      platform: csr1000v
+      role: "PE West (AS 65100) on IOS-XE for BGP FlowSpec SAFI support"
+      asn: 65100
+      loopback0: "10.0.0.5/32"
+      console_port: null
+
+    - name: R6
+      platform: iosv
+      role: "External SP peer (AS 65002); eBGP to R5"
+      asn: 65002
+      loopback0: "10.0.0.6/32"
+      loopback1: "172.16.6.1/24"          # External prefix advertised into AS 65100
+      console_port: null
+
+  links:
+    # ── Customer-to-SP eBGP links ────────────────────────────────────────────
+    - id: L1
+      source: "R1:GigabitEthernet0/0"
+      target: "R2:GigabitEthernet0/0"
+      subnet: "10.1.12.0/24"
+      purpose: "eBGP AS 65001 ↔ AS 65100 (primary)"
+    - id: L2
+      source: "R1:GigabitEthernet0/1"
+      target: "R3:GigabitEthernet0/0"
+      subnet: "10.1.13.0/24"
+      purpose: "eBGP AS 65001 ↔ AS 65100 (multihome backup)"
+
+    # ── SP core IGP + iBGP links (OSPF area 0) ───────────────────────────────
+    - id: L3
+      source: "R2:GigabitEthernet0/1"
+      target: "R4:GigabitEthernet0/0"
+      subnet: "10.1.24.0/24"
+      purpose: "IGP + iBGP R2↔R4"
+    - id: L4
+      source: "R3:GigabitEthernet0/1"
+      target: "R4:GigabitEthernet0/1"
+      subnet: "10.1.34.0/24"
+      purpose: "IGP + iBGP R3↔R4"
+    - id: L5
+      source: "R4:GigabitEthernet0/2"
+      target: "R5:GigabitEthernet2"
+      subnet: "10.1.45.0/24"
+      purpose: "IGP + iBGP R4↔R5"
+    - id: L6
+      source: "R2:GigabitEthernet0/2"
+      target: "R3:GigabitEthernet0/2"
+      subnet: "10.1.23.0/24"
+      purpose: "IGP only; provides a direct East-PE adjacency for resilience"
+
+    # ── External-SP eBGP link ────────────────────────────────────────────────
+    - id: L7
+      source: "R5:GigabitEthernet3"
+      target: "R6:GigabitEthernet0/0"
+      subnet: "10.1.56.0/24"
+      purpose: "eBGP AS 65100 ↔ AS 65002"
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Optional topology — activated only from lab-05 to demonstrate BGP FlowSpec
+# propagation between two IOS-XE peers and an eBGP-multihop community scenario.
+# ──────────────────────────────────────────────────────────────────────────────
+optional_devices:
+  - name: R7
+    platform: csr1000v
+    role: "External peer (AS 65003) on IOS-XE; FlowSpec originator + multihop test"
+    asn: 65003
+    loopback0: "10.0.0.7/32"
+    loopback1: "172.16.7.1/24"
+    console_port: null
+    available_from: lab-05-communities-flowspec
+    purpose: "Originates BGP FlowSpec NLRI for R5 to install; also used for eBGP multihop community exercises"
+
+optional_links:
+  - id: L8
+    source: "R5:GigabitEthernet4"
+    target: "R7:GigabitEthernet1"
+    subnet: "10.1.57.0/24"
+    purpose: "eBGP AS 65100 ↔ AS 65003; carries ipv4-unicast and ipv4-flowspec AFIs"
+    available_from: lab-05-communities-flowspec
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Labs
+# ──────────────────────────────────────────────────────────────────────────────
+labs:
+  - number: 0
+    folder: lab-00-ebgp-ibgp-foundations
+    title: "eBGP and iBGP Foundations"
+    difficulty: Foundation
+    type: progressive
+    time_minutes: 60
+    devices: [R1, R2, R3, R4, R5, R6]
+    blueprint_refs: ["1.4", "1.5", "1.5.a"]
+    objectives:
+      - "Configure OSPF area 0 across AS 65100 core (R2, R3, R4, R5) on all internal links and loopback0"
+      - "Bring up eBGP R1↔R2 (primary path) and R5↔R6 (external SP peer)"
+      - "Configure minimal iBGP: R2↔R5 direct on loopbacks (temporary baseline before RR in lab-01)"
+      - "Advertise R1 Lo1 (172.16.1.0/24) into BGP and verify it reaches R6 across the full eBGP→iBGP→eBGP path"
+      - "State the full-mesh scaling problem: N*(N-1)/2 iBGP sessions as PEs are added — motivates lab-01"
+      - "Verify route advertisement with `show ip bgp`, `show ip bgp neighbors <X> advertised-routes`, `show ip bgp <prefix>`"
+
+  - number: 1
+    folder: lab-01-route-reflectors
+    title: "iBGP Route Reflectors and Cluster IDs"
+    difficulty: Intermediate
+    type: progressive
+    time_minutes: 75
+    devices: [R1, R2, R3, R4, R5, R6]
+    extends: lab-00-ebgp-ibgp-foundations
+    blueprint_refs: ["1.4.b", "1.5.b"]
+    objectives:
+      - "Bring R3 and R4 into BGP. R4 becomes the Route Reflector for AS 65100"
+      - "Configure `neighbor X.X.X.X route-reflector-client` on R4 for R2, R3, and R5"
+      - "Observe ORIGINATOR_ID and CLUSTER_LIST attributes on reflected routes (`show ip bgp <prefix>`)"
+      - "Leave the legacy R2↔R5 direct iBGP in place (additive continuity); note in lab notes that production would remove it after RR stabilizes"
+      - "Troubleshoot a planted misconfig: R4 not configured as RR for R5 → R5 never learns R1's prefix"
+
+  - number: 2
+    folder: lab-02-ebgp-multihoming
+    title: "eBGP Multihoming and Traffic Engineering"
+    difficulty: Intermediate
+    type: progressive
+    time_minutes: 90
+    devices: [R1, R2, R3, R4, R5, R6]
+    extends: lab-01-route-reflectors
+    blueprint_refs: ["1.5.d"]
+    objectives:
+      - "Activate the second eBGP session R1↔R3 (L2 was IP-addressed but not BGP-enabled in labs 00–01)"
+      - "Configure LOCAL_PREF on R2 (inbound from R1) so Customer A is preferred via R2"
+      - "Configure AS-path prepending on R1 toward R3 so the backup path is longer"
+      - "Set MED outbound on R1 to influence AS 65100's return-path choice"
+      - "Verify primary/backup behavior: shutdown L1, confirm traffic flips to L2 via R3"
+      - "Troubleshoot a multihoming fault where both paths become active-active due to missing BGP best-path knobs"
+
+  - number: 3
+    folder: lab-03-interdomain-security
+    title: "Inter-Domain Security and Maximum-Prefix"
+    difficulty: Intermediate
+    type: progressive
+    time_minutes: 75
+    devices: [R1, R2, R3, R4, R5, R6]
+    extends: lab-02-ebgp-multihoming
+    blueprint_refs: ["1.5.e", "1.5.f"]
+    objectives:
+      - "Apply `neighbor X ttl-security hops 1` (GTSM) on eBGP R1↔R2, R1↔R3, and R5↔R6; verify with `show ip bgp neighbors`"
+      - "Configure MD5 authentication with `neighbor X password` on R5↔R6"
+      - "Apply `neighbor X maximum-prefix 100 75 warning-only` on R5↔R6; simulate exceeding the threshold and observe syslog behavior"
+      - "Add `maximum-prefix 100 restart 5` on R2↔R1 and observe session teardown and timed restart"
+      - "Troubleshoot: mismatched ttl-security hop-counts, mismatched MD5 passwords, and a silent max-prefix shutdown without `warning-only`"
+
+  - number: 4
+    folder: lab-04-dampening-dynamic
+    title: "Route Dampening and Dynamic Neighbors"
+    difficulty: Intermediate
+    type: progressive
+    time_minutes: 75
+    devices: [R1, R2, R3, R4, R5, R6]
+    extends: lab-03-interdomain-security
+    blueprint_refs: ["1.5.g", "1.5.h"]
+    objectives:
+      - "Enable `bgp dampening` on R5 for eBGP-learned prefixes from R6"
+      - "Flap R6's 172.16.6.0/24 five times; observe penalty accumulation with `show ip bgp dampening flap-statistics`"
+      - "Tune `bgp dampening 15 750 2000 60` and reset history"
+      - "Configure dynamic BGP neighbors on R2: `bgp listen range 10.99.0.0/24 peer-group DYN_CUST` and simulate a new customer from that range"
+      - "Verify dynamic session with `show ip bgp peer-group DYN_CUST` and `show ip bgp listen range`"
+      - "Troubleshoot: a dampened prefix that stays suppressed after the issue is fixed — `clear ip bgp dampening`"
+
+  - number: 5
+    folder: lab-05-communities-flowspec
+    title: "BGP Communities and FlowSpec"
+    difficulty: Advanced
+    type: progressive
+    time_minutes: 90
+    devices: [R1, R2, R3, R4, R5, R6, R7]
+    extends: lab-04-dampening-dynamic
+    blueprint_refs: ["1.5.i", "1.5.j"]
+    objectives:
+      - "Activate R7 (CSR1000v, AS 65003) and bring up eBGP R5↔R7 with `address-family ipv4 unicast` and `address-family ipv4 flowspec`"
+      - "On R2, tag inbound Customer A routes with community 65100:100 via route-map; filter with `ip community-list`"
+      - "Apply well-known communities: `no-export` on a prefix from R6, `no-advertise` on a prefix from R7; verify propagation stops at the correct boundary"
+      - "Configure an extended community SoO (Site-of-Origin) on R2 for dual-homed Customer A to prevent loops"
+      - "On R7, originate a BGP FlowSpec rule matching `destination 172.16.1.0/24 protocol tcp dest-port 22` with action `traffic-rate 0` (drop)"
+      - "Verify FlowSpec install on R5 via `show bgp ipv4 flowspec` and `show platform hardware qfp active feature bgp-flowspec`"
+      - "Troubleshoot: community not being set because `send-community` is missing on the neighbor; FlowSpec rule not installing because AFI not negotiated"
+
+  - number: 6
+    folder: lab-06-confederations
+    title: "BGP Confederations"
+    difficulty: Advanced
+    type: standalone
+    clean_slate: true
+    time_minutes: 90
+    devices: [R1, R2, R3, R4, R5, R6]
+    blueprint_refs: ["1.4.a", "1.5.c"]
+    objectives:
+      - "Start from clean-slate baseline topology (IP addressing + OSPF only; no BGP)"
+      - "Rebuild AS 65100 as a confederation: `bgp confederation identifier 65100`, sub-AS 65101 for R2/R3, sub-AS 65102 for R4/R5"
+      - "Intra-sub-AS: iBGP full mesh (2 peers per sub-AS)"
+      - "Inter-sub-AS: eBGP-like `bgp confederation peers 65102` on sub-AS 65101 and vice-versa; configure R2↔R4 and R3↔R4 as confederation peers"
+      - "Verify that external peers R1 and R6 still see AS 65100 in AS-path (sub-AS numbers are hidden)"
+      - "Inspect AS_CONFED_SEQUENCE with `show ip bgp` on confederation-internal routes"
+      - "Troubleshoot: R1 sees AS-path including 65101 → confederation-peers statement missing on R2"
+
+  - number: 7
+    folder: lab-07-capstone-config
+    title: "BGP Full Protocol Mastery — Capstone I"
+    difficulty: Advanced
+    type: capstone_i
+    clean_slate: true
+    time_minutes: 120
+    devices: [R1, R2, R3, R4, R5, R6, R7]
+    blueprint_refs: all
+    objectives:
+      - "From interfaces-only baseline, build the complete production BGP SP topology"
+      - "OSPF area 0 as IGP; R4 as Route Reflector with R2/R3/R5 as clients (no legacy full mesh)"
+      - "Customer A dual-homed (R2 primary via LOCAL_PREF, R3 backup via AS-path prepend)"
+      - "Inter-domain security: TTL-security (GTSM), MD5 auth, maximum-prefix with restart on all eBGP sessions"
+      - "Route dampening on R5's eBGP to R6 and R7; dynamic-neighbor listen range on R2 for a customer block"
+      - "Communities: customer-origin tagging (65100:100, 65100:200), no-export at AS boundary, SoO for the dual-homed customer"
+      - "FlowSpec: R7 originates a drop rule, R5 installs and applies it on the R5↔R6 boundary"
+      - "Verify: end-to-end reachability, correct path selection, community tags, FlowSpec install, and security enforcement"
+
+  - number: 8
+    folder: lab-08-capstone-troubleshooting
+    title: "BGP Comprehensive Troubleshooting — Capstone II"
+    difficulty: Advanced
+    type: capstone_ii
+    clean_slate: true
+    time_minutes: 120
+    devices: [R1, R2, R3, R4, R5, R6, R7]
+    blueprint_refs: all
+    objectives:
+      - "Diagnose and repair ≥5 concurrent planted faults in a pre-configured BGP SP topology"
+      - "Fault classes: (1) route-advertisement (missing `next-hop-self` on RR → iBGP clients have unreachable next-hop); (2) route-reflection (cluster-id misconfiguration causing loop); (3) multihoming (LOCAL_PREF applied outbound instead of inbound); (4) inter-domain security (ttl-security hop-count mismatch); (5) max-prefix silently shut down a session; (6) confederation peers statement missing (AS-path leaks sub-AS); (7) community stripped because `send-community both` not set; (8) FlowSpec AFI not negotiated"
+      - "Restore end-to-end reachability: R1 ↔ R6 ↔ R7 customer prefixes across all BGP features"
+      - "Document the diagnosis path and the show/debug commands that isolated each fault"

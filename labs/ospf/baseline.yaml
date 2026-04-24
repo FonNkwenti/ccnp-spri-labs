@@ -1,0 +1,207 @@
+topic: ospf
+topic_name: "OSPF Routing"
+exam: "300-510"
+version: 1.0
+
+meta:
+  created:
+    date: "2026-04-22"
+    agent: claude-opus-4-7
+    skill: spec-creator
+    skill_version: "2026-04-22"
+  updated: []
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Core topology — present in every lab of this topic. IPs never change.
+# ──────────────────────────────────────────────────────────────────────────────
+core_topology:
+  devices:
+    - name: R1
+      platform: iosv
+      role: "Area 1 internal router"
+      loopback0: "10.0.0.1/32"
+      loopback0_v6: "2001:db8::1/128"
+      loopback1: "172.16.1.1/24"          # Advertised stub network (Area 1)
+      loopback1_v6: "2001:db8:1::1/64"
+      console_port: null
+
+    - name: R2
+      platform: iosv
+      role: "ABR between Area 0 and Area 1"
+      loopback0: "10.0.0.2/32"
+      loopback0_v6: "2001:db8::2/128"
+      console_port: null
+
+    - name: R3
+      platform: iosv
+      role: "Triple ABR (Area 0 / Area 2 / Area 3); ASBR in lab-03+ via R6"
+      loopback0: "10.0.0.3/32"
+      loopback0_v6: "2001:db8::3/128"
+      console_port: null
+
+    - name: R4
+      platform: iosv
+      role: "Area 2 internal router"
+      loopback0: "10.0.0.4/32"
+      loopback0_v6: "2001:db8::4/128"
+      loopback1: "172.16.4.1/24"          # Advertised stub network (Area 2)
+      loopback1_v6: "2001:db8:4::1/64"
+      console_port: null
+
+    - name: R5
+      platform: iosv
+      role: "Area 3 internal router (NSSA member from lab-03)"
+      loopback0: "10.0.0.5/32"
+      loopback0_v6: "2001:db8::5/128"
+      loopback1: "172.16.5.1/24"          # Advertised stub network (Area 3)
+      loopback1_v6: "2001:db8:5::1/64"
+      console_port: null
+
+  links:
+    - id: L1
+      source: "R1:GigabitEthernet0/0"
+      target: "R2:GigabitEthernet0/0"
+      subnet: "10.1.12.0/24"
+      subnet_v6: "2001:db8:12::/64"
+      area: 1
+    - id: L2
+      source: "R2:GigabitEthernet0/1"
+      target: "R3:GigabitEthernet0/0"
+      subnet: "10.1.23.0/24"
+      subnet_v6: "2001:db8:23::/64"
+      area: 0
+    - id: L3
+      source: "R3:GigabitEthernet0/1"
+      target: "R4:GigabitEthernet0/0"
+      subnet: "10.1.34.0/24"
+      subnet_v6: "2001:db8:34::/64"
+      area: 2
+    - id: L4
+      source: "R3:GigabitEthernet0/2"
+      target: "R5:GigabitEthernet0/0"
+      subnet: "10.1.35.0/24"
+      subnet_v6: "2001:db8:35::/64"
+      area: 3
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Optional topology — pre-planned IPs, activated when referenced by a lab.
+# ──────────────────────────────────────────────────────────────────────────────
+optional_devices:
+  - name: R6
+    platform: iosv
+    role: "External AS router; becomes ASBR via redistribution on R3 from lab-03"
+    loopback0: "10.0.0.6/32"
+    loopback0_v6: "2001:db8::6/128"
+    loopback1: "192.168.66.1/24"          # External prefix injected into OSPF
+    loopback1_v6: "2001:db8:66::1/64"
+    console_port: null
+    available_from: lab-03-summarization-stub-nssa
+    purpose: "Advertises external IPv4/IPv6 prefixes used to demonstrate Type-5/Type-7 LSAs and summary-address"
+
+optional_links:
+  - id: L5
+    source: "R3:GigabitEthernet0/3"
+    target: "R6:GigabitEthernet0/0"
+    subnet: "10.1.36.0/24"
+    subnet_v6: "2001:db8:36::/64"
+    area: "redistributed"                 # Not in OSPF; carries redistribution source
+    available_from: lab-03-summarization-stub-nssa
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Labs
+# ──────────────────────────────────────────────────────────────────────────────
+labs:
+  - number: 0
+    folder: lab-00-single-area-ospfv2
+    title: "Single-Area OSPFv2 Foundations"
+    difficulty: Foundation
+    type: progressive
+    time_minutes: 45
+    devices: [R1, R2, R3]
+    blueprint_refs: ["1.1"]
+    objectives:
+      - "Bring up OSPFv2 adjacency between R1-R2 and R2-R3 in Area 0 (temporary — labs 01+ move R1↔R2 into Area 1)"
+      - "Identify LSA Types 1 and 2; read `show ip ospf database`"
+      - "Contrast OSPF's LSA/area model with IS-IS LSPs/levels conceptually (no IS-IS config)"
+      - "Tune hello/dead timers and observe adjacency reset"
+      - "Verify neighbor states (Init → 2-Way → ExStart → Exchange → Loading → Full)"
+
+  - number: 1
+    folder: lab-01-multiarea-ospfv2
+    title: "Multiarea OSPFv2 and LSA Propagation"
+    difficulty: Foundation
+    type: progressive
+    time_minutes: 60
+    devices: [R1, R2, R3, R4, R5]
+    extends: lab-00-single-area-ospfv2
+    blueprint_refs: ["1.2", "1.2.a"]
+    objectives:
+      - "Re-home R1↔R2 into Area 1, R3↔R4 into Area 2, and R3↔R5 into Area 3 (all non-backbone, normal areas)"
+      - "Configure R2 as ABR (Areas 0, 1) and R3 as ABR (Areas 0, 2, 3)"
+      - "Identify LSA Types 3 and 4 crossing ABRs; trace inter-area route advertisement"
+      - "Verify reachability from R1 loopback1 to R4 and R5 loopback1 via inter-area paths"
+      - "Troubleshoot a planted area-mismatch on one link (misconfigured `area` statement)"
+
+  - number: 2
+    folder: lab-02-ospfv3-dual-stack
+    title: "OSPFv3 Dual-Stack Multiarea"
+    difficulty: Intermediate
+    type: progressive
+    time_minutes: 75
+    devices: [R1, R2, R3, R4, R5]
+    extends: lab-01-multiarea-ospfv2
+    blueprint_refs: ["1.1", "1.2", "1.2.a"]
+    objectives:
+      - "Enable IPv6 unicast routing and bring up OSPFv3 in matching areas on every core link"
+      - "Contrast OSPFv3 LSA types (Link-LSA, Intra-Area Prefix-LSA) with OSPFv2 equivalents"
+      - "Verify dual-stack adjacency: OSPFv2 and OSPFv3 both Full on every link"
+      - "Compare v2/v3 operation side-by-side to IS-IS single-topology / multi-topology (reference only)"
+      - "Troubleshoot an IPv6-only adjacency failure (planted: missing `ipv6 ospf 1 area X` on one interface)"
+
+  - number: 3
+    folder: lab-03-summarization-stub-nssa
+    title: "Summarization, Stub, and NSSA"
+    difficulty: Intermediate
+    type: progressive
+    time_minutes: 90
+    devices: [R1, R2, R3, R4, R5, R6]
+    extends: lab-02-ospfv3-dual-stack
+    blueprint_refs: ["1.2.b"]
+    objectives:
+      - "Activate R6 and the L5 link; redistribute R6's 192.168.66.0/24 and 2001:db8:66::/64 into OSPF on R3 (R3 becomes ASBR)"
+      - "Configure inter-area summarization with `area 1 range 172.16.0.0 255.255.248.0` on R2 and observe LSA Type 3 collapse"
+      - "Configure external summarization with `summary-address 192.168.0.0 255.255.0.0` on R3"
+      - "Convert Area 2 to totally-stubby and Area 3 to NSSA; observe LSA Type 3/5/7 behavior"
+      - "Verify v6 parity: `area 3 nssa` under `ipv6 router ospf 1`"
+      - "Troubleshoot a summary that advertises a null0 discard route shadowing a specific prefix"
+
+  - number: 4
+    folder: lab-04-capstone-config
+    title: "OSPF Full Protocol Mastery — Capstone I"
+    difficulty: Advanced
+    type: capstone_i
+    clean_slate: true
+    time_minutes: 120
+    devices: [R1, R2, R3, R4, R5, R6]
+    blueprint_refs: all
+    objectives:
+      - "From interfaces-only baseline, build the complete dual-stack multiarea OSPF domain"
+      - "Place R1↔R2 in Area 1, R2↔R3 in Area 0, R3↔R4 in Area 2 (totally stubby), R3↔R5 in Area 3 (NSSA)"
+      - "Redistribute R6's external IPv4 and IPv6 prefixes via R3 as ASBR"
+      - "Apply inter-area summarization (Area 1 ranges) and external summarization (Type-5/Type-7)"
+      - "Verify full reachability across both families, correct LSA types, and summary collapse"
+
+  - number: 5
+    folder: lab-05-capstone-troubleshooting
+    title: "OSPF Comprehensive Troubleshooting — Capstone II"
+    difficulty: Advanced
+    type: capstone_ii
+    clean_slate: true
+    time_minutes: 120
+    devices: [R1, R2, R3, R4, R5, R6]
+    blueprint_refs: all
+    objectives:
+      - "Diagnose and repair ≥5 concurrent planted faults in a pre-configured dual-stack multiarea OSPF topology"
+      - "Fault classes: (1) adjacency mismatch (timers, MTU, area ID, authentication); (2) LSA propagation (totally-stubby blocking needed route, NSSA Type-7 translation disabled); (3) summarization (range misconfigured, discard route shadowing specific); (4) v6 parity gap (v2 works, v3 does not on one interface); (5) redistribution filter drop on R3"
+      - "Restore end-to-end reachability: R1 Lo1 ↔ R4 Lo1 ↔ R5 Lo1 and R1 ↔ 192.168.66.0/24 across IPv4 and IPv6"
+      - "Document the diagnosis path and the show/debug commands that isolated each fault"
