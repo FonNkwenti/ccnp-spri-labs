@@ -15,15 +15,15 @@ A comprehensive set of hands-on labs for the CCNP SPRI (300-510) exam: *Implemen
 - Total estimated labs: 64 (including capstones)
 - Coverage: 100% of exam objectives mapped
 
-### Phase 2: Specification Development 🔄 40% Complete (4/10 topics)
+### Phase 2: Specification Development 🔄 50% Complete (5/10 topics)
 **Completed:**
 - [x] ospf — OSPF Routing (spec + baseline)
 - [x] isis — IS-IS Routing (spec + baseline)  
 - [x] bgp — BGP Scalability and Troubleshooting (spec + baseline)
 - [x] routing-policy — Routing Policy and Manipulation (spec + baseline)
+- [x] ipv6-transition — IPv6 Tunneling and Transition (spec + baseline)
 
 **Remaining:**
-- [ ] ipv6-transition — IPv6 Tunneling and Transition
 - [ ] fast-convergence — Fast Convergence (BFD, NSF, NSR, LFA, etc.)
 - [ ] mpls — MPLS (LDP, LSP, RSVP-TE)
 - [ ] multicast — Multicast Routing (PIM-SM, MBGP, MSDP)
@@ -44,7 +44,7 @@ A comprehensive set of hands-on labs for the CCNP SPRI (300-510) exam: *Implemen
 | 2 | **isis** | Phase 2 ✓ | 5 | 1.3–1.3.b | Multilevel IS-IS, dual-stack, L1/L2 |
 | 3 | **bgp** | Phase 2 ✓ | 9 | 1.4–1.5.j | Scalability, communities, FlowSpec, dampening |
 | 4 | **routing-policy** | Phase 2 ✓ | 7 | 3.1–3.4.b | RPL vs route-maps, conditional matching, traffic steering |
-| 5 | **ipv6-transition** | Phase 2 ◻ | 5 | 1.6–1.6.e | 6PE, static tunnels, NAT64, MAP-T |
+| 5 | **ipv6-transition** | Phase 2 ✓ | 6 | 1.6–1.6.e | 6PE, static tunnels, NAT64, MAP-T |
 | 6 | **fast-convergence** | Phase 2 ◻ | 6 | 1.7–1.7.g | BFD, NSF, NSR, LFA/IP-FRR, BGP PIC |
 | 7 | **mpls** | Phase 2 ◻ | 6 | 4.1–4.1.e | LDP, LSP, RSVP-TE, BGP-free core |
 | 8 | **multicast** | Phase 2 ◻ | 8 | 2.1–2.4.b | PIM-SM, MBGP, MSDP, MLDP, IGMP/MLD |

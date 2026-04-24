@@ -1,0 +1,217 @@
+topic: ipv6-transition
+topic_name: "IPv6 Tunneling and Transition"
+exam: "300-510"
+version: 1.0
+
+meta:
+  created:
+    date: "2026-04-24"
+    agent: claude-opus-4-7
+    skill: spec-creator
+    skill_version: "2026-04-24"
+  updated: []
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Core topology — present in every lab of this topic. IPs never change.
+#   - R1, R4: dual-stack CE/PE routers at the edges
+#   - R2, R3: IPv4-only P routers — never receive an IPv6 address in this topic
+# ──────────────────────────────────────────────────────────────────────────────
+core_topology:
+  devices:
+    - name: R1
+      platform: iosv
+      role: "Dual-stack CE/PE west; tunnel endpoint (lab-00), 6PE PE (lab-01+), policy enforcement point (lab-02+)"
+      loopback0: "10.0.0.1/32"
+      loopback0_v6: "2001:db8::1/128"
+      loopback1: "10.1.1.1/24"              # Customer IPv4 prefix
+      loopback1_v6: "2001:db8:1::1/64"      # Customer IPv6 prefix
+      console_port: null
+
+    - name: R2
+      platform: iosv
+      role: "IPv4-only P router — no IPv6 address in any lab"
+      loopback0: "10.0.0.2/32"
+      console_port: null
+
+    - name: R3
+      platform: iosv
+      role: "IPv4-only P router; IPv4 uplink for NAT64 gateway from lab-03"
+      loopback0: "10.0.0.3/32"
+      console_port: null
+
+    - name: R4
+      platform: iosv
+      role: "Dual-stack CE/PE east; tunnel endpoint (lab-00), 6PE PE (lab-01+), policy enforcement point (lab-02+)"
+      loopback0: "10.0.0.4/32"
+      loopback0_v6: "2001:db8::4/128"
+      loopback1: "10.1.4.1/24"              # Customer IPv4 prefix
+      loopback1_v6: "2001:db8:4::1/64"      # Customer IPv6 prefix
+      console_port: null
+
+  links:
+    - id: L1
+      source: "R1:GigabitEthernet0/0"
+      target: "R2:GigabitEthernet0/0"
+      subnet: "10.1.12.0/24"
+      purpose: "IPv4 backbone link; OSPF area 0 from lab-01, LDP enabled from lab-01 for 6PE"
+    - id: L2
+      source: "R2:GigabitEthernet0/1"
+      target: "R3:GigabitEthernet0/0"
+      subnet: "10.1.23.0/24"
+      purpose: "IPv4 backbone link; OSPF area 0 from lab-01, LDP enabled from lab-01 for 6PE"
+    - id: L3
+      source: "R3:GigabitEthernet0/1"
+      target: "R4:GigabitEthernet0/0"
+      subnet: "10.1.34.0/24"
+      purpose: "IPv4 backbone link; OSPF area 0 from lab-01, LDP enabled from lab-01 for 6PE"
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Optional topology — pre-planned IPs, activated when referenced by a lab.
+#   - R5:    CSR1000v, NAT64/MAP-T gateway (IOS-XE required; IOSv does not
+#            support stateful NAT64 or MAP-T)
+#   - VPC1:  IPv6-only client endpoint for NAT64 translation demonstrations
+# ──────────────────────────────────────────────────────────────────────────────
+optional_devices:
+  - name: R5
+    platform: csr1000v
+    role: "NAT64 / MAP-T gateway (IOS-XE). Dual-homed: L4 into IPv4 core, L5 into IPv6-only client segment."
+    loopback0: "10.0.0.5/32"
+    loopback0_v6: "2001:db8::5/128"
+    console_port: null
+    available_from: lab-03-nat64-and-mapt
+    purpose: "Hosts stateful NAT64 translation (RFC 6146) and MAP-T BR (RFC 7599). IOS-XE 17.03.05 has full feature parity; IOSv 15.9 does not."
+
+optional_devices_endpoints:
+  - name: VPC1
+    type: vpc
+    role: "IPv6-only client host behind NAT64 gateway"
+    interface: "e0"
+    ipv6: "2001:db8:64::100/64"
+    ipv6_gateway: "2001:db8:64::1"
+    available_from: lab-03-nat64-and-mapt
+    purpose: "Sources IPv6 traffic toward 64:ff9b::/96 destinations; verifies NAT64 translation end-to-end."
+
+optional_links:
+  - id: L4
+    source: "R3:GigabitEthernet0/2"
+    target: "R5:GigabitEthernet1"
+    subnet: "10.1.35.0/24"
+    purpose: "IPv4 uplink from NAT64 gateway to the core; translated IPv4 traffic egresses here"
+    available_from: lab-03-nat64-and-mapt
+  - id: L5
+    source: "R5:GigabitEthernet2"
+    target: "VPC1:e0"
+    subnet_v6: "2001:db8:64::/64"
+    purpose: "IPv6-only client segment behind NAT64 gateway; no IPv4 address on either end"
+    available_from: lab-03-nat64-and-mapt
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Labs
+# ──────────────────────────────────────────────────────────────────────────────
+labs:
+  - number: 0
+    folder: lab-00-manual-and-6to4-tunnels
+    title: "Static IPv6-in-IPv4 and 6to4 Tunnels"
+    difficulty: Foundation
+    type: progressive
+    time_minutes: 60
+    devices: [R1, R2, R3, R4]
+    blueprint_refs: ["1.6", "1.6.a", "1.6.b"]
+    objectives:
+      - "Bring up IPv4 reachability across R1-R2-R3-R4 using static routes (no IGP yet — IGP arrives in lab-01 for 6PE)"
+      - "Enable `ipv6 unicast-routing` on R1 and R4 only; confirm R2 and R3 have no IPv6 address"
+      - "Build a static IPv6-in-IPv4 tunnel R1↔R4: `interface Tunnel0; tunnel mode ipv6ip; tunnel source Loopback0; tunnel destination <peer Lo0>; ipv6 address 2001:db8:14::X/64`"
+      - "Verify R1 Lo1v6 can reach R4 Lo1v6 via Tunnel0; trace confirms IPv6 hops are R1→Tunnel0→R4 (core invisible)"
+      - "Build a dynamic 6to4 tunnel on R1 and R4: `interface Tunnel1; tunnel mode ipv6ip 6to4; tunnel source Loopback0; ipv6 address 2002:0a00:0001::1/16` on R1 (derived from 10.0.0.1); `ipv6 route 2002::/16 Tunnel1`"
+      - "Verify 6to4 reachability between R1 Tunnel1 (2002:0a00:0001::1) and R4 Tunnel1 (2002:0a00:0004::1); contrast with static tunnel (destination computed from IPv6 header, not configured)"
+      - "Troubleshoot a planted mismatch in `tunnel source` that causes the static tunnel to come up but drop return traffic (asymmetric src/dst)"
+
+  - number: 1
+    folder: lab-01-6pe-over-mpls
+    title: "IPv6 Provider Edge (6PE) over MPLS"
+    difficulty: Intermediate
+    type: progressive
+    time_minutes: 90
+    devices: [R1, R2, R3, R4]
+    extends: lab-00-manual-and-6to4-tunnels
+    blueprint_refs: ["1.6.c"]
+    objectives:
+      - "Enable OSPFv4 area 0 on all core links (L1/L2/L3) and loopback0 interfaces; verify all four routers are Full neighbors"
+      - "Enable MPLS LDP on L1, L2, L3; verify `show mpls ldp neighbor` shows LDP sessions R1↔R2, R2↔R3, R3↔R4; confirm LIB entries for all /32 loopbacks"
+      - "Configure R1↔R4 iBGP session sourced from Loopback0 with `address-family ipv6` and `neighbor ... send-label`"
+      - "On R1 and R4, under `router bgp; address-family ipv6`, announce the IPv6 customer prefix (2001:db8:1::/64 from R1, 2001:db8:4::/64 from R4) and enable `neighbor X.X.X.X send-label`"
+      - "Verify the MP-BGP IPv6 labeled-unicast route on both PEs: `show bgp ipv6 unicast labels`; confirm a BGP-assigned label is stacked on top of the LDP transport label"
+      - "End-to-end test: from R1 Lo1v6, ping R4 Lo1v6; confirm the packet is encapsulated IPv6-over-MPLS (two labels) on L1/L2/L3 — not IPv6-in-IPv4 as in lab-00"
+      - "Contrast with lab-00 tunnels: 6PE sends exactly one label stack per packet instead of a full IPv4 GRE header, and scales with BGP labels rather than per-peer tunnel configs"
+      - "Troubleshoot a planted missing `send-label` on R4 that keeps the BGP session up but delivers unlabeled IPv6 routes (drops at P router)"
+
+  - number: 2
+    folder: lab-02-ipv6-policy-enforcement
+    title: "IPv6 Policy Enforcement with ACLs and PBR"
+    difficulty: Intermediate
+    type: progressive
+    time_minutes: 75
+    devices: [R1, R2, R3, R4]
+    extends: lab-01-6pe-over-mpls
+    blueprint_refs: ["1.6.d"]
+    objectives:
+      - "Write an IPv6 ACL on R1 denying TCP/445 and UDP/137-139 from 2001:db8:1::/64 to any; apply as `ipv6 traffic-filter` on the egress interface toward the core"
+      - "Write a second IPv6 ACL permitting ICMPv6 Neighbor Discovery (types 133-137) explicitly, with an implicit deny catch-all; apply inbound on R4's customer-facing loopback interface"
+      - "Configure IPv6 PBR on R4: `ipv6 access-list MATCH_PREMIUM permit ipv6 2001:db8:4:1::/64 any`; `route-map PBR_V6 permit 10; match ipv6 address MATCH_PREMIUM; set ipv6 next-hop <alt>`; apply on the customer-facing interface"
+      - "Use `ipv6 prefix-list` and an `ipv6 route-map` with `match ipv6 address prefix-list` and `set metric-type type-1` on redistribution into OSPFv3 (even though OSPFv3 is not active in the core — demonstrate the redistribution into a local process for testing)"
+      - "On R1's BGP IPv6 address-family, apply an outbound route-map that sets BGP community `65001:666` on 2001:db8:1:dead::/64 and filters it at R4 via inbound community-list"
+      - "Verify: traffic from the denied flow is dropped at ACL ingress; PBR-matched traffic takes the alternate next-hop visible via `show ipv6 route`; community-tagged prefix is blocked at R4 but visible in R4's BGP table in `denied` state"
+      - "Troubleshoot a planted ACL sequence that permits the catch-all before the specific deny, causing the deny to never match"
+
+  - number: 3
+    folder: lab-03-nat64-and-mapt
+    title: "NAT64 and MAP-T Translation"
+    difficulty: Intermediate
+    type: progressive
+    time_minutes: 90
+    devices: [R1, R2, R3, R4, R5, VPC1]
+    extends: lab-02-ipv6-policy-enforcement
+    blueprint_refs: ["1.6.e"]
+    objectives:
+      - "Activate R5 (CSR1000v) and VPC1 on L4 (IPv4 10.1.35.0/24) and L5 (IPv6 2001:db8:64::/64); add static IPv4 route on R3 toward R5 and redistribute into OSPFv4"
+      - "Configure stateful NAT64 on R5 with prefix `64:ff9b::/96` (well-known) and an IPv4 pool `10.35.100.0/24`: `nat64 prefix stateful 64:ff9b::/96`; `nat64 v4 pool P1 10.35.100.1 10.35.100.254`; `nat64 v6v4 list ACL_CLIENTS pool P1 overload`"
+      - "Enable NAT64 per-interface: `nat64 enable` on R5 Gi1 (v4-facing) and Gi2 (v6-facing); apply IPv6 ACL `ACL_CLIENTS` matching 2001:db8:64::/64"
+      - "From VPC1, ping `64:ff9b::a00:0001` (synthesized from R1 10.0.0.1); verify R5 `show nat64 translations` shows a dynamic entry mapping VPC1's IPv6 source to an IPv4 pool address"
+      - "Capture on L4 (R3↔R5) and confirm the post-NAT64 packet is IPv4 with source from the pool and destination 10.0.0.1"
+      - "Configure MAP-T on R5 as a Border Relay: define a MAP domain with BMR prefix 2001:db8:ma::/40, PSID offset 4, PSID length 8, IPv4 prefix 10.36.0.0/16; verify stateless translation of an IPv6 packet whose addresses encode a MAP-T mapping"
+      - "Contrast NAT64 (stateful, translation table, works for any IPv6 source) with MAP-T (stateless, address-encoded mapping, works only for MAP-CE-derived IPv6 sources)"
+      - "Troubleshoot a planted NAT64 ACL that references a typo'd IPv6 prefix — translations never populate; diagnose with `debug nat64 packet`"
+
+  - number: 4
+    folder: lab-04-capstone-config
+    title: "IPv6 Transition Full Mastery — Capstone I"
+    difficulty: Advanced
+    type: capstone_i
+    clean_slate: true
+    time_minutes: 120
+    devices: [R1, R2, R3, R4, R5, VPC1]
+    blueprint_refs: all
+    objectives:
+      - "Starting from interfaces-only baseline (IPv4 addresses on L1-L5, IPv6 addresses on L5 and customer loopbacks only), build the complete IPv6 transition stack"
+      - "Deliver IPv6 end-to-end reachability R1 Lo1v6 ↔ R4 Lo1v6 over the IPv4 core using 6PE (OSPFv4 + LDP + MP-BGP send-label) — not tunnels"
+      - "Deliver IPv6-to-IPv4 reachability VPC1 ↔ R1 Lo0 (10.0.0.1) using NAT64 on R5 with 64:ff9b::/96 prefix and an IPv4 pool"
+      - "Configure at least one static IPv6-in-IPv4 tunnel R1↔R4 as a backup path that activates if 6PE BGP is withdrawn (conditional via IP SLA or manual admin shut)"
+      - "Configure MAP-T on R5 for a small MAP domain; verify stateless translation with an operator-crafted IPv6 source address"
+      - "Apply IPv6 ACL policy on R4's customer interface denying TCP/445 from 2001:db8:4::/64; verify enforcement"
+      - "Verify: `show bgp ipv6 unicast labels`, `show mpls forwarding-table`, `show nat64 translations`, `show ipv6 access-list` all reflect the intended state"
+
+  - number: 5
+    folder: lab-05-capstone-troubleshooting
+    title: "IPv6 Transition Comprehensive Troubleshooting — Capstone II"
+    difficulty: Advanced
+    type: capstone_ii
+    clean_slate: true
+    time_minutes: 120
+    devices: [R1, R2, R3, R4, R5, VPC1]
+    blueprint_refs: all
+    objectives:
+      - "Diagnose and repair ≥5 concurrent planted faults in a pre-configured IPv6 transition deployment"
+      - "Fault classes: (1) static tunnel with asymmetric source/destination (up one way, drops return); (2) 6PE BGP session up but `send-label` missing on one PE (labels absent, drops at P router); (3) MPLS LDP disabled on one interface in the core (labeled packets drop mid-path); (4) IPv6 ACL sequence ordering hides a specific deny behind a permit catch-all; (5) NAT64 ACL with wrong IPv6 prefix (translations never populate); (6) MAP-T PSID offset mismatch between CE and BR (packets translate to wrong IPv4 address)"
+      - "Restore: VPC1 must reach R1 Lo0 via NAT64; R1 Lo1v6 must reach R4 Lo1v6 via 6PE (not tunnels); IPv6 ACL must deny exactly the two blocked flows and permit everything else"
+      - "Document the diagnosis path for each fault: symptom, isolating show/debug command, RIB/LIB/translation-table state before and after, the one-line fix"
+      - "Final verification: all capstone-I verifications pass; no tunnel in use for the primary path; NAT64 translation count matches expected flow count; MAP-T translates to the documented IPv4 destination"
