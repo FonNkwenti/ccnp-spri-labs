@@ -11,9 +11,9 @@ A comprehensive set of hands-on labs for the CCNP SPRI (350-510) exam.
 
 ## Lab Chapters
 
-| Chapter | Description |
-|---------|-------------|
-| (Add chapters as they are built) | |
+<!-- lab-index-start -->
+> Run `/plan-exam` first to populate this section with the topic list and lab checklist.
+<!-- lab-index-end -->
 
 ## Development
 
