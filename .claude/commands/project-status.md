@@ -1,6 +1,7 @@
 ---
 description: Report the current phase and lab completion status for this exam repo
 argument-hint: (no args)
+model: claude-haiku-4-5-20251001
 ---
 
 Summarise where this exam repo currently sits in the three-phase workflow. Be concise - a short table and a one-line recommendation for the next command.

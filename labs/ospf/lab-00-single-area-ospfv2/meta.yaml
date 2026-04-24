@@ -1,0 +1,49 @@
+# Auto-generated — do not edit manually. Use /tag-lab to stamp external agent runs.
+lab: lab-00-single-area-ospfv2
+chapter: ospf
+exam: 300-510
+devices:
+  - name: R1
+    platform: iosv
+    role: Area 0 router (future Area 1 internal)
+  - name: R2
+    platform: iosv
+    role: Future ABR (Areas 0 and 1 from lab-01)
+  - name: R3
+    platform: iosv
+    role: Future Triple-ABR (Areas 0, 2, 3 from lab-01)
+
+created:
+  date: "2026-04-24"
+  agent: claude-sonnet-4-6
+  skill: lab-assembler
+  skill_version: "2026-04-24"
+  files:
+    - workbook.md
+    - README.md
+    - setup_lab.py
+    - topology/topology.drawio
+    - topology/README.md
+    - initial-configs/R1.cfg
+    - initial-configs/R2.cfg
+    - initial-configs/R3.cfg
+    - solutions/R1.cfg
+    - solutions/R2.cfg
+    - solutions/R3.cfg
+    - scripts/fault-injection/inject_scenario_01.py
+    - scripts/fault-injection/inject_scenario_02.py
+    - scripts/fault-injection/inject_scenario_03.py
+    - scripts/fault-injection/apply_solution.py
+    - scripts/fault-injection/README.md
+
+updated:
+  - date: "2026-04-24"
+    agent: claude-sonnet-4-6
+    skill: fault-injector
+    skill_version: "2026-04-24"
+    files:
+      - scripts/fault-injection/inject_scenario_01.py
+      - scripts/fault-injection/inject_scenario_02.py
+      - scripts/fault-injection/inject_scenario_03.py
+      - scripts/fault-injection/apply_solution.py
+      - scripts/fault-injection/README.md

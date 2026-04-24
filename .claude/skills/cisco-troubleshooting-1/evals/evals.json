@@ -1,0 +1,76 @@
+[
+  {
+    "prompt": "Users in the Sales department (VLAN 20, subnet 192.168.20.0/24) suddenly cannot access the company intranet web server at 10.0.1.50. They report getting 'connection timed out' errors. The IT department (VLAN 10) can access the server fine. This started about 30 minutes ago. No scheduled maintenance was performed.",
+    "expectations": [
+      "Clearly defines the problem with specific symptoms, affected users, and timeline",
+      "Selects an appropriate troubleshooting methodology (likely Follow the Traffic Path or Divide and Conquer) and justifies the choice",
+      "Gathers diagnostic information systematically (routing tables, interface status, ACLs)",
+      "Forms and tests specific hypotheses about the root cause",
+      "Provides a detailed resolution report including incident summary, diagnostic log, root cause analysis, and verification steps",
+      "Suggests preventive measures or lessons learned"
+    ]
+  },
+  {
+    "prompt": "A newly installed router (Router-Branch-5) in a remote office has no connectivity to the headquarters network. The router was configured using the standard template. Physical connections show link lights are green on both ends. The router console is accessible. Previous router at this location worked fine until it was replaced this morning.",
+    "expectations": [
+      "Recognizes this as a new installation scenario and selects Bottom-Up methodology",
+      "Systematically checks physical layer, data link layer, then network layer",
+      "Verifies basic configurations: IP addressing, default routes, interface status",
+      "Compares configuration with the standard template and working routers",
+      "Documents the complete diagnostic process chronologically",
+      "Provides clear resolution steps and verification that connectivity is restored"
+    ]
+  },
+  {
+    "prompt": "The company email server (mail.company.com) is unreachable. Users report they can ping 10.5.5.10 (the email server's IP address) successfully with normal latency. However, Outlook shows 'Cannot connect to server' and webmail at https://mail.company.com also fails to load. The DNS server resolves mail.company.com to 10.5.5.10 correctly. This issue started after a firewall rule update this morning.",
+    "expectations": [
+      "Identifies this as an upper-layer issue and selects Top-Down methodology (since ping works)",
+      "Tests application layer services: SMTP (port 25), HTTPS (port 443), IMAP (port 993)",
+      "Checks the recent firewall rule changes for ACL blocks",
+      "Forms hypothesis about port blocking at firewall or security appliance",
+      "Documents which specific ports are being blocked",
+      "Provides resolution involving ACL modification or rollback",
+      "Verifies email functionality is restored by testing actual email send/receive"
+    ]
+  },
+  {
+    "prompt": "OSPF neighbor relationship between Router-Core-1 and Router-Dist-3 keeps flapping (going up and down repeatedly every few minutes). The link is a fiber connection that shows no errors. Other OSPF neighbors on both routers are stable. Users experience intermittent connectivity issues to resources behind Router-Dist-3.",
+    "expectations": [
+      "Defines the problem as OSPF adjacency instability with specific routers identified",
+      "Selects appropriate methodology (likely Compare Configurations or Divide and Conquer)",
+      "Checks OSPF-specific parameters: Hello/Dead timers, network types, authentication, MTU",
+      "Examines interface statistics for errors, CRC issues, or input queue drops",
+      "Forms hypotheses about potential causes (MTU mismatch, timer mismatch, flaky hardware)",
+      "Tests each hypothesis systematically",
+      "Provides root cause analysis explaining why the flapping occurs",
+      "Documents resolution with verification showing stable adjacency over time"
+    ]
+  },
+  {
+    "prompt": "Remote office in Denver can reach some headquarters resources but not others. Specifically: they can access the file server (10.10.10.5) but cannot access the HR database (10.10.20.8). Both servers are in the same datacenter. Traceroute to 10.10.10.5 shows normal path through WAN. Traceroute to 10.10.20.8 stops at the headquarters edge router.",
+    "expectations": [
+      "Recognizes this as a routing/path issue and selects Follow the Traffic Path methodology",
+      "Traces packet path hop-by-hop from Denver to HQ",
+      "Examines routing tables on each hop for routes to both 10.10.10.0/24 and 10.10.20.0/24",
+      "Checks for ACLs, route filters, or distribution list issues",
+      "Forms hypothesis about missing route or route filtering",
+      "Provides detailed diagnostic log showing investigation at each hop",
+      "Documents root cause (e.g., missing network statement in OSPF, route map filtering)",
+      "Verifies resolution by confirming Denver can now reach 10.10.20.8"
+    ]
+  },
+  {
+    "prompt": "After a power outage last night, one of three identical distribution switches (Dist-SW-2) is showing strange behavior. Users connected to this switch experience slow network performance and intermittent connectivity. The other two distribution switches (Dist-SW-1 and Dist-SW-3) are working normally. All three switches are supposed to be configured identically.",
+    "expectations": [
+      "Identifies this as a configuration comparison scenario",
+      "Selects Compare Configurations methodology using working switches as baseline",
+      "Compares running configurations between Dist-SW-2 and working switches",
+      "Checks for differences in: spanning-tree settings, port-channel configurations, VLAN assignments, QoS policies",
+      "Investigates potential startup-config vs running-config differences (power outage impact)",
+      "Documents specific configuration discrepancies found",
+      "Provides root cause analysis (e.g., switch reverted to old startup-config after power loss)",
+      "Includes resolution steps to synchronize configuration with other switches",
+      "Verifies performance returns to normal and users have stable connectivity"
+    ]
+  }
+]
