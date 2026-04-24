@@ -30,9 +30,9 @@ A comprehensive set of hands-on labs for the CCNP SPRI (300-510) exam: *Implemen
 - [ ] multicast — Multicast Routing (PIM-SM, MBGP, MSDP)
 - [ ] srv6 — Segment Routing v6
 
-### Phase 3: Lab Construction 🔄 In Progress (2 labs built)
+### Phase 3: Lab Construction 🔄 In Progress (1 lab built)
 - **ospf/lab-00-single-area-ospfv2** ✓ Built and approved
-- **ospf/lab-01-multiarea-ospfv2-haiku** ✓ Built by Haiku (awaiting review)
+- Three-model comparison (Haiku / Sonnet / Opus) of lab-01 completed and archived — see `labs/ospf/report.md`. Variant folders removed; canonical lab-01 will be built once the model-enforcement gate is live.
 - Remaining labs build on prior lab solutions — work sequentially
 
 ## Lab Chapters
@@ -41,7 +41,7 @@ A comprehensive set of hands-on labs for the CCNP SPRI (300-510) exam: *Implemen
 
 | # | Topic | Status | Labs Est. | Blueprint Bullets | Notes |
 |---|-------|--------|-----------|-------------------|-------|
-| 1 | **ospf** | Phase 3 (2/6) | 6 | 1.1–1.2.b | Multiarea OSPFv2/v3, summarization, LSA behavior |
+| 1 | **ospf** | Phase 3 (1/6) | 6 | 1.1–1.2.b | Multiarea OSPFv2/v3, summarization, LSA behavior |
 | 2 | **isis** | Phase 2 ✓ | 5 | 1.3–1.3.b | Multilevel IS-IS, dual-stack, L1/L2 |
 | 3 | **bgp** | Phase 2 ✓ | 9 | 1.4–1.5.j | Scalability, communities, FlowSpec, dampening |
 | 4 | **routing-policy** | Phase 2 ✓ | 7 | 3.1–3.4.b | RPL vs route-maps, conditional matching, traffic steering |
