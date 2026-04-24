@@ -15,7 +15,7 @@ A comprehensive set of hands-on labs for the CCNP SPRI (300-510) exam: *Implemen
 - Total estimated labs: 64 (including capstones)
 - Coverage: 100% of exam objectives mapped
 
-### Phase 2: Specification Development 🔄 80% Complete (8/10 topics)
+### Phase 2: Specification Development 🔄 90% Complete (9/10 topics)
 **Completed:**
 - [x] ospf — OSPF Routing (spec + baseline)
 - [x] isis — IS-IS Routing (spec + baseline)  
@@ -25,10 +25,10 @@ A comprehensive set of hands-on labs for the CCNP SPRI (300-510) exam: *Implemen
 - [x] fast-convergence — Fast Convergence (spec + baseline)
 - [x] mpls — MPLS (spec + baseline)
 - [x] segment-routing — Segment Routing and SR-TE (spec + baseline)
+- [x] srv6 — Segment Routing v6 (spec + baseline)
 
 **Remaining:**
 - [ ] multicast — Multicast Routing (PIM-SM, MBGP, MSDP)
-- [ ] srv6 — Segment Routing v6
 
 ### Phase 3: Lab Construction 🔄 In Progress (1 lab built)
 - **ospf/lab-00-single-area-ospfv2** ✓ Built and approved
@@ -50,7 +50,7 @@ A comprehensive set of hands-on labs for the CCNP SPRI (300-510) exam: *Implemen
 | 7 | **mpls** | Phase 2 ✓ | 6 | 4.1–4.1.e | LDP, LSP, RSVP-TE, BGP-free core |
 | 8 | **multicast** | Phase 2 ◻ | 8 | 2.1–2.4.b | PIM-SM, MBGP, MSDP, MLDP, IGMP/MLD |
 | 9 | **segment-routing** | Phase 2 ✓ | 8 | 4.2–4.3.e | SR-TE, TI-LFA, SR Prefer, PCE, SRLG, Tree SID |
-| 10 | **srv6** | Phase 2 ◻ | 5 | 4.4–4.4.d | SRv6 data-plane, Flex-Algo, interworking |
+| 10 | **srv6** | Phase 2 ✓ | 5 | 4.4–4.4.d | SRv6 data-plane, Flex-Algo, interworking |
 
 <!-- lab-index-end -->
 

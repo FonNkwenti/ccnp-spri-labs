@@ -1,0 +1,295 @@
+topic: srv6
+topic_name: "Segment Routing v6 (SRv6)"
+exam: "300-510"
+version: 1.0
+
+meta:
+  created:
+    date: "2026-04-24"
+    agent: claude-sonnet-4-6
+    skill: spec-creator
+    skill_version: "2026-04-24"
+  updated: []
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Core topology — present in every lab of this topic. IPs never change.
+#   Ring: P1-P2-P3-P4 with diagonal P1↔P3.
+#   - P1, P2, P3, P4: transit nodes, IS-IS L2 dual-stack, SRv6 locators only.
+#     No BGP on P nodes (BGP-free core principle from mpls topic).
+#   - PE1, PE2: edge nodes, iBGP AS 65000, BGP SRv6 L3VPN from lab-02.
+#   - CE1 (AS 65101), CE2 (AS 65102): IOSv customer edges, optional from lab-02.
+# SRv6 locator block: fc00:0::/32
+#   P1=fc00:0:1::/48  P2=fc00:0:2::/48  P3=fc00:0:3::/48  P4=fc00:0:4::/48
+#   PE1=fc00:0:11::/48  PE2=fc00:0:12::/48
+# ──────────────────────────────────────────────────────────────────────────────
+core_topology:
+  devices:
+    - name: P1
+      platform: xrv9k
+      role: "P core (BGP-free); IS-IS L2 dual-stack; SRv6 locator fc00:0:1::/48; hub node (ring + diagonal + PE1 attachment); all 4 interfaces used"
+      loopback0: "10.0.0.1/32"
+      loopback0_ipv6: "fc00:0:1::1/128"
+      bgp_as: null                             # P nodes have no BGP — invariant
+      isis_net: "49.0001.0000.0000.0001.00"
+      srv6_locator: "fc00:0:1::/48"
+      console_port: null
+
+    - name: P2
+      platform: xrv9k
+      role: "P core (BGP-free); IS-IS L2 dual-stack; SRv6 locator fc00:0:2::/48; apex node (ring only, 2 interfaces)"
+      loopback0: "10.0.0.2/32"
+      loopback0_ipv6: "fc00:0:2::1/128"
+      bgp_as: null
+      isis_net: "49.0001.0000.0000.0002.00"
+      srv6_locator: "fc00:0:2::/48"
+      console_port: null
+
+    - name: P3
+      platform: xrv9k
+      role: "P core (BGP-free); IS-IS L2 dual-stack; SRv6 locator fc00:0:3::/48; hub node (ring + diagonal + PE2 attachment); all 4 interfaces used"
+      loopback0: "10.0.0.3/32"
+      loopback0_ipv6: "fc00:0:3::1/128"
+      bgp_as: null
+      isis_net: "49.0001.0000.0000.0003.00"
+      srv6_locator: "fc00:0:3::/48"
+      console_port: null
+
+    - name: P4
+      platform: xrv9k
+      role: "P core (BGP-free); IS-IS L2 dual-stack; SRv6 locator fc00:0:4::/48; apex node (ring only, 2 interfaces)"
+      loopback0: "10.0.0.4/32"
+      loopback0_ipv6: "fc00:0:4::1/128"
+      bgp_as: null
+      isis_net: "49.0001.0000.0000.0004.00"
+      srv6_locator: "fc00:0:4::/48"
+      console_port: null
+
+    - name: PE1
+      platform: xrv9k
+      role: "SP edge; iBGP AS 65000; BGP SRv6 L3VPN (End.DT4) from lab-02; IS-IS L2; SRv6 locator fc00:0:11::/48; SRv6↔SR-MPLS interworking gateway from lab-02"
+      loopback0: "10.0.0.11/32"
+      loopback0_ipv6: "fc00:0:11::1/128"
+      bgp_as: 65000
+      isis_net: "49.0001.0000.0000.0011.00"
+      srv6_locator: "fc00:0:11::/48"
+      console_port: null
+
+    - name: PE2
+      platform: xrv9k
+      role: "SP edge; iBGP AS 65000; BGP SRv6 L3VPN (End.DT4) from lab-02; IS-IS L2; SRv6 locator fc00:0:12::/48"
+      loopback0: "10.0.0.12/32"
+      loopback0_ipv6: "fc00:0:12::1/128"
+      bgp_as: 65000
+      isis_net: "49.0001.0000.0000.0012.00"
+      srv6_locator: "fc00:0:12::/48"
+      console_port: null
+
+  links:
+    - id: L1
+      source: "P1:GigabitEthernet0/0/0/0"
+      target: "P2:GigabitEthernet0/0/0/0"
+      subnet: "10.10.1.0/30"
+      ipv6_subnet: "fc00:10:1::/64"
+      purpose: "Ring leg P1↔P2 (top); IS-IS L2 adjacency; End.X SID; Flex-Algo via-P2 path leg 1"
+
+    - id: L2
+      source: "P2:GigabitEthernet0/0/0/1"
+      target: "P3:GigabitEthernet0/0/0/0"
+      subnet: "10.10.2.0/30"
+      ipv6_subnet: "fc00:10:2::/64"
+      purpose: "Ring leg P2↔P3 (right); IS-IS L2 adjacency; End.X SID; Flex-Algo via-P2 path leg 2"
+
+    - id: L3
+      source: "P3:GigabitEthernet0/0/0/1"
+      target: "P4:GigabitEthernet0/0/0/0"
+      subnet: "10.10.3.0/30"
+      ipv6_subnet: "fc00:10:3::/64"
+      purpose: "Ring leg P3↔P4 (bottom); IS-IS L2 adjacency; End.X SID; Flex-Algo via-P4 path leg 1"
+
+    - id: L4
+      source: "P4:GigabitEthernet0/0/0/1"
+      target: "P1:GigabitEthernet0/0/0/1"
+      subnet: "10.10.4.0/30"
+      ipv6_subnet: "fc00:10:4::/64"
+      purpose: "Ring leg P4↔P1 (left); IS-IS L2 adjacency; End.X SID; Flex-Algo via-P4 path leg 2"
+
+    - id: L5
+      source: "P1:GigabitEthernet0/0/0/2"
+      target: "P3:GigabitEthernet0/0/0/2"
+      subnet: "10.10.5.0/30"
+      ipv6_subnet: "fc00:10:5::/64"
+      purpose: "P1↔P3 diagonal; shortest IGP-metric path PE1↔PE2 (2 hops); Flex-Algo 128 preferred path; higher TE metric forces Algo-129 traffic via ring"
+
+    - id: L6
+      source: "PE1:GigabitEthernet0/0/0/0"
+      target: "P1:GigabitEthernet0/0/0/3"
+      subnet: "10.10.6.0/30"
+      ipv6_subnet: "fc00:10:6::/64"
+      purpose: "PE1 access link to P1; IS-IS L2 adjacency; SRv6 L3VPN ingress from lab-02"
+
+    - id: L7
+      source: "PE2:GigabitEthernet0/0/0/0"
+      target: "P3:GigabitEthernet0/0/0/3"
+      subnet: "10.10.7.0/30"
+      ipv6_subnet: "fc00:10:7::/64"
+      purpose: "PE2 access link to P3; IS-IS L2 adjacency; SRv6 L3VPN egress from lab-02"
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Optional devices — IPs pre-reserved; activated at the lab noted below.
+# ──────────────────────────────────────────────────────────────────────────────
+optional_devices:
+  - name: CE1
+    platform: iosv
+    role: "Customer edge; eBGP AS 65101 to PE1; sources VRF customer-a prefix 192.0.2.0/24"
+    loopback0: "192.0.2.1/32"
+    bgp_as: 65101
+    console_port: null
+    available_from: "lab-02-flex-algo-and-l3vpn"
+    purpose: "Required for BGP SRv6 L3VPN (4.4.a, 4.4.d) and Flex-Algo service steering"
+
+  - name: CE2
+    platform: iosv
+    role: "Customer edge; eBGP AS 65102 to PE2; sources VRF customer-a prefix 198.51.100.0/24"
+    loopback0: "198.51.100.1/32"
+    bgp_as: 65102
+    console_port: null
+    available_from: "lab-02-flex-algo-and-l3vpn"
+    purpose: "Required for BGP SRv6 L3VPN (4.4.a, 4.4.d) and end-to-end VPN path verification"
+
+optional_links:
+  - id: L8
+    source: "CE1:GigabitEthernet0/0"
+    target: "PE1:GigabitEthernet0/0/0/1"
+    subnet: "192.0.2.0/30"
+    available_from: "lab-02-flex-algo-and-l3vpn"
+
+  - id: L9
+    source: "CE2:GigabitEthernet0/0"
+    target: "PE2:GigabitEthernet0/0/0/1"
+    subnet: "198.51.100.0/30"
+    available_from: "lab-02-flex-algo-and-l3vpn"
+
+# ──────────────────────────────────────────────────────────────────────────────
+# SRv6 address plan reference
+#   Locator block: fc00:0::/32
+#   Node locators (/48): fc00:0:<node-id>::/48
+#     P1=1, P2=2, P3=3, P4=4, PE1=0xb(11), PE2=0xc(12)
+#   SID function assignments (per node):
+#     ::1::/64 = End (node SID)
+#     ::2::/64 through ::6::/64 = End.X (one per adjacency; L1-L5 for P1/P3)
+#     ::d4::/64 = End.DT4 (IPv4 VRF, PE only)
+#     ::d6::/64 = End.DT6 (IPv6 VRF, PE only)
+#   Example: PE1 End.DT4 for VRF customer-a = fc00:0:b:d4::
+#   uSID locator (lab-02): same fc00:0:X::/48 block configured with
+#     micro-segment format; 16-bit node-IDs packed into /128 container
+# ──────────────────────────────────────────────────────────────────────────────
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Flex-Algo plan (from lab-02)
+#   Algo 128: min IGP metric (IS-IS default metric = 10 per link)
+#             → uses diagonal L5 (cost 10, 2 hops PE1→PE2)
+#   Algo 129: min TE metric; L5 TE metric set to 100; L1+L2 TE metrics = 10 each
+#             → steers PE1→PE2 via-P2 (L1+L2, total TE cost 20) rather than diagonal
+# ──────────────────────────────────────────────────────────────────────────────
+
+labs:
+  - number: 0
+    folder: lab-00-srv6-control-plane
+    title: "SRv6 IS-IS Control Plane"
+    difficulty: Foundation
+    type: progressive
+    time_minutes: 60
+    devices: [P1, P2, P3, P4, PE1, PE2]
+    blueprint_refs: ["4.4", "4.4.a", "4.4.d"]
+    objectives:
+      - Configure IS-IS L2 dual-stack on all six XRv9k nodes (IPv4 + IPv6 address-families)
+      - Enable SRv6 globally and configure per-node locator (fc00:0:X::/48) with function-space
+      - Enable SRv6 under IS-IS and advertise locators into the IS-IS L2 topology
+      - Verify locator prefix table on all nodes: show segment-routing srv6 locator
+      - Verify IS-IS SRv6 SID table and End SID allocation: show isis segment-routing srv6
+      - Verify IPv6 locator routes in the RIB and locator ownership in SID manager
+      - Inspect End SID function entries: show segment-routing srv6 sid
+      - Troubleshoot misconfigured locator (wrong prefix length or function-space overlap)
+
+  - number: 1
+    folder: lab-01-srv6-data-plane
+    title: "SRv6 Data Plane and Encapsulation"
+    difficulty: Intermediate
+    type: progressive
+    time_minutes: 75
+    devices: [P1, P2, P3, P4, PE1, PE2]
+    extends: lab-00-srv6-control-plane
+    blueprint_refs: ["4.4.b", "4.4.d"]
+    objectives:
+      - Configure End.X SIDs on all seven IS-IS adjacency links (L1-L7)
+      - Verify End.X SID allocation: show segment-routing srv6 sid detail | include End.X
+      - Trace an explicit SRH path PE1 → P1 → P2 → P3 → PE2 using End.X SIDs (via-P2)
+      - Trace an alternate explicit SRH path PE1 → P1 → P3 → PE2 (diagonal, via L5)
+      - Verify transit node behavior — Segment-Left decrement, SRH intact until SL=0
+      - Verify PSP (Penultimate Segment Pop) behavior at the penultimate hop
+      - Configure H.Encaps encapsulation source address (loopback0_ipv6) on PE1 and PE2
+      - Send test traffic PE1 → PE2 and verify SRH encapsulation via embedded traceroute
+      - Troubleshoot missing End.X SID (wrong function-ID allocation or missing locator)
+
+  - number: 2
+    folder: lab-02-flex-algo-and-l3vpn
+    title: "Flex-Algo, BGP SRv6 L3VPN, and Interworking"
+    difficulty: Intermediate
+    type: progressive
+    time_minutes: 90
+    devices: [P1, P2, P3, P4, PE1, PE2, CE1, CE2]
+    extends: lab-01-srv6-data-plane
+    blueprint_refs: ["4.4.a", "4.4.c", "4.4.d"]
+    objectives:
+      - Define Flex-Algo 128 (min IGP metric) on all six XRv9k nodes
+      - Define Flex-Algo 129 (min TE metric); set TE metric 100 on L5, TE metric 10 on L1 and L2
+      - Verify per-algo SID allocation and topology: show segment-routing srv6 sid | include Algo
+      - Verify Flex-Algo 128 uses diagonal L5; Flex-Algo 129 steers PE1↔PE2 via-P2 (L1+L2)
+      - Activate CE1 and CE2; configure VRF customer-a on PE1 and PE2 (IPv4 unicast)
+      - Configure BGP SRv6 L3VPN: address-family vpnv4 with per-VRF End.DT4 service SID
+      - Verify End.DT4 SID allocation on PE1 and PE2: show segment-routing srv6 sid | include DT4
+      - Verify CE1 ↔ CE2 reachability end-to-end via BGP SRv6 VPN
+      - Steer VPN traffic for VRF customer-a onto Flex-Algo 129 path (via-P2)
+      - Configure uSID micro-segment locator format and inspect SID table entries
+      - Configure PE1 as SRv6↔SR-MPLS interworking gateway using binding-SID mapping entry
+      - Troubleshoot VPN prefix missing End.DT4 SID or BGP SRv6 NH unreachable
+
+  - number: 3
+    folder: lab-03-capstone-config
+    title: "SRv6 Full Deployment — Capstone I"
+    difficulty: Advanced
+    type: capstone_i
+    clean_slate: true
+    time_minutes: 120
+    devices: [P1, P2, P3, P4, PE1, PE2, CE1, CE2]
+    blueprint_refs: ["4.4", "4.4.a", "4.4.b", "4.4.c", "4.4.d"]
+    objectives:
+      - From IP-only baseline bring up IS-IS L2 dual-stack on all six XRv9k nodes
+      - Enable SRv6 globally; configure locators fc00:0:1::/48 through fc00:0:12::/48
+      - Advertise locators into IS-IS; verify full SID table on each node
+      - Configure End.X SIDs on all seven adjacency links; verify SRH transit behavior
+      - Define Flex-Algo 128 and 129; configure TE metrics; verify per-algo SID allocation
+      - Verify Flex-Algo path differences: Algo 128 diagonal vs Algo 129 via-P2
+      - Configure VRF customer-a on PE1 and PE2; bring up eBGP to CE1 and CE2
+      - Configure BGP SRv6 L3VPN with End.DT4 service SIDs; verify CE1↔CE2 reachability
+      - Configure H.Encaps encapsulation source; steer VPN flow on Flex-Algo 129 path
+      - Configure uSID micro-segment locator format and PE1 interworking binding-SID entry
+      - Verify all objectives: locator table, SID table, VPN table, Flex-Algo paths, CE reachability
+
+  - number: 4
+    folder: lab-04-capstone-troubleshooting
+    title: "SRv6 Comprehensive Troubleshooting — Capstone II"
+    difficulty: Advanced
+    type: capstone_ii
+    clean_slate: true
+    time_minutes: 120
+    devices: [P1, P2, P3, P4, PE1, PE2, CE1, CE2]
+    blueprint_refs: ["4.4", "4.4.a", "4.4.b", "4.4.c", "4.4.d"]
+    objectives:
+      - Fault 1 (4.4.a): IS-IS SRv6 TLV not advertised on P2 — locator fc00:0:2::/48 absent from topology; diagnose missing "segment-routing srv6" under IS-IS address-family on P2
+      - Fault 2 (4.4.b): End.X SID function-ID collision on P1 — L1 and L5 adjacencies share the same function code; End.X SID table shows duplicate; identify and correct function allocation
+      - Fault 3 (4.4.b): H.Encaps source address on PE1 points to wrong IPv6 address — SRH outer SA does not match PE1 End SID; traceroute shows asymmetric return; fix encapsulation source
+      - Fault 4 (4.4.c): Flex-Algo 129 prefix-SID absent on P4 — TE metric not configured on L4 (P4↔P1); Algo-129 topology incomplete; identify missing link metric
+      - Fault 5 (4.4.d): BGP SRv6 L3VPN End.DT4 SID not signaled from PE2 — address-family vpnv4 missing "encapsulation srv6" or allocate-mode; VPN routes present but without SRv6 NH attribute
+      - Fault 6 (4.4.d): Interworking gateway binding-SID on PE1 resolves to wrong SR-MPLS prefix-SID — traffic black-holes at PE1; verify binding-SID target and correct SR-MPLS label
+      - Synthesize all fixes and restore full CE1↔CE2 reachability via BGP SRv6 L3VPN on Flex-Algo 129 via-P2 path
