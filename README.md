@@ -32,7 +32,7 @@ A comprehensive set of hands-on labs for the CCNP SPRI (300-510) exam: *Implemen
 
 ### Phase 3: Lab Construction 🔄 In Progress (2 labs built)
 - **ospf/lab-00-single-area-ospfv2** ✓ Built and approved
-- **ospf/lab-01-multiarea-ospfv2** ✓ Built by Haiku (awaiting review)
+- **ospf/lab-01-multiarea-ospfv2-haiku** ✓ Built by Haiku (awaiting review)
 - Remaining labs build on prior lab solutions — work sequentially
 
 ## Lab Chapters

@@ -1,5 +1,5 @@
 # Auto-generated — do not edit manually. Use /tag-lab to stamp external agent runs.
-lab: lab-01-multiarea-ospfv2
+lab: lab-01-multiarea-ospfv2-haiku
 chapter: ospf
 exam: "300-510"
 devices:
