@@ -1,0 +1,300 @@
+topic: segment-routing
+topic_name: "Segment Routing and SR-TE"
+exam: "300-510"
+version: 1.0
+
+meta:
+  created:
+    date: "2026-04-24"
+    agent: claude-opus-4-7
+    skill: spec-creator
+    skill_version: "2026-04-24"
+  updated: []
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Core topology — present in every lab of this topic. IPs never change.
+#   - R1, R2, R3, R4: AS 65100 SP core, IOS-XRv 9000, IS-IS L2 + SR-MPLS.
+#     SRGB 16000-23999 (Cisco default); prefix SIDs 16001-16004.
+#   - CE1 (AS 65101, iosv), CE2 (AS 65102, iosv): optional, boot at lab-03.
+#   - PCE: IOS-XRv 9000 PCE controller, optional, boots at lab-04.
+# ──────────────────────────────────────────────────────────────────────────────
+core_topology:
+  devices:
+    - name: R1
+      platform: xrv9k
+      role: "SP edge / SR ingress (CE1-facing from lab-03); IS-IS L2; SR-MPLS; TI-LFA; mapping server from lab-02"
+      loopback0: "10.0.0.1/32"
+      bgp_as: 65100
+      isis_net: "49.0001.0000.0000.0001.00"
+      sr_prefix_sid: 16001
+      console_port: null
+
+    - name: R2
+      platform: xrv9k
+      role: "SP core / BGP-LS producer to PCE from lab-04; IS-IS L2; SR-MPLS; TI-LFA"
+      loopback0: "10.0.0.2/32"
+      bgp_as: 65100
+      isis_net: "49.0001.0000.0000.0002.00"
+      sr_prefix_sid: 16002
+      console_port: null
+
+    - name: R3
+      platform: xrv9k
+      role: "SP edge / SR egress (CE2-facing from lab-03); IS-IS L2; SR-MPLS; TI-LFA"
+      loopback0: "10.0.0.3/32"
+      bgp_as: 65100
+      isis_net: "49.0001.0000.0000.0003.00"
+      sr_prefix_sid: 16003
+      console_port: null
+
+    - name: R4
+      platform: xrv9k
+      role: "SP core / provides second disjoint IGP path for TI-LFA and SR-TE alternates; IS-IS L2; SR-MPLS"
+      loopback0: "10.0.0.4/32"
+      bgp_as: 65100
+      isis_net: "49.0001.0000.0000.0004.00"
+      sr_prefix_sid: 16004
+      console_port: null
+
+  links:
+    - id: L1
+      source: "R1:GigabitEthernet0/0/0/0"
+      target: "R2:GigabitEthernet0/0/0/0"
+      subnet: "10.1.12.0/24"
+      purpose: "SP core link (IS-IS L2, SR-MPLS from lab-00, LDP from lab-02)"
+    - id: L2
+      source: "R2:GigabitEthernet0/0/0/1"
+      target: "R3:GigabitEthernet0/0/0/0"
+      subnet: "10.1.23.0/24"
+      purpose: "SP core link (IS-IS L2, SR-MPLS from lab-00, LDP from lab-02)"
+    - id: L3
+      source: "R3:GigabitEthernet0/0/0/1"
+      target: "R4:GigabitEthernet0/0/0/0"
+      subnet: "10.1.34.0/24"
+      purpose: "SP core link (IS-IS L2, SR-MPLS from lab-00, LDP from lab-02)"
+    - id: L4
+      source: "R1:GigabitEthernet0/0/0/1"
+      target: "R4:GigabitEthernet0/0/0/1"
+      subnet: "10.1.14.0/24"
+      purpose: "SP core ring closer (IS-IS L2, SR-MPLS, LDP); primary TI-LFA alternate for many pairs"
+    - id: L5
+      source: "R1:GigabitEthernet0/0/0/2"
+      target: "R3:GigabitEthernet0/0/0/2"
+      subnet: "10.1.13.0/24"
+      purpose: "SP core diagonal (IS-IS L2, SR-MPLS, LDP); TI-LFA PQ-node anchor for cross-core protection"
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Optional topology
+#   - CE1/CE2: booted at lab-03 when SR-TE needs customer prefixes to steer
+#   - PCE: booted at lab-04 for PCEP path computation, SRLG, Tree SID
+# ──────────────────────────────────────────────────────────────────────────────
+optional_devices:
+  - name: CE1
+    platform: iosv
+    role: "External customer edge in AS 65101; eBGP to R1 via L7; announces 192.0.2.0/24"
+    loopback0: "10.0.0.11/32"
+    loopback1: "192.0.2.1/24"                  # Customer prefix steered by SR-TE
+    bgp_as: 65101
+    console_port: null
+    available_from: lab-03-sr-te-policies-and-steering
+    purpose: "Source of customer prefixes used for color-based automated steering tests"
+
+  - name: CE2
+    platform: iosv
+    role: "External customer edge in AS 65102; eBGP to R3 via L8; announces 198.51.100.0/24"
+    loopback0: "10.0.0.12/32"
+    loopback1: "198.51.100.1/24"
+    bgp_as: 65102
+    console_port: null
+    available_from: lab-03-sr-te-policies-and-steering
+    purpose: "Sink for SR-TE end-to-end steering tests (CE1 → color policy → CE2)"
+
+  - name: PCE
+    platform: xrv9k
+    role: "SR PCE controller; BGP-LS peer of R2; PCEP server for R1/R3 PCCs; P2MP tree computation"
+    loopback0: "10.0.0.99/32"
+    bgp_as: 65100                              # iBGP with R2 for BGP-LS (not for user prefixes)
+    sr_prefix_sid: 16099
+    console_port: null
+    available_from: lab-04-pce-srlg-tree-sid
+    purpose: "Central path computation entity — learns topology via BGP-LS from R2, delivers paths via PCEP"
+
+optional_links:
+  - id: L6
+    source: "R2:GigabitEthernet0/0/0/2"
+    target: "PCE:GigabitEthernet0/0/0/0"
+    subnet: "10.1.29.0/24"
+    available_from: lab-04-pce-srlg-tree-sid
+    purpose: "BGP-LS session R2 ↔ PCE (topology distribution) + PCEP session R2-sourced"
+
+  - id: L7
+    source: "R1:GigabitEthernet0/0/0/3"
+    target: "CE1:GigabitEthernet0/0"
+    subnet: "10.1.11.0/24"
+    available_from: lab-03-sr-te-policies-and-steering
+    purpose: "eBGP session R1 (AS 65100) ↔ CE1 (AS 65101); customer prefix ingress"
+
+  - id: L8
+    source: "R3:GigabitEthernet0/0/0/3"
+    target: "CE2:GigabitEthernet0/0"
+    subnet: "10.1.33.0/24"
+    available_from: lab-03-sr-te-policies-and-steering
+    purpose: "eBGP session R3 (AS 65100) ↔ CE2 (AS 65102); customer prefix egress"
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Labs
+# ──────────────────────────────────────────────────────────────────────────────
+labs:
+  - number: 0
+    folder: lab-00-sr-foundations-and-srgb
+    title: "SR-MPLS Foundations, SRGB, and Prefix SIDs"
+    difficulty: Foundation
+    type: progressive
+    time_minutes: 90
+    devices: [R1, R2, R3, R4]
+    blueprint_refs: ["4.2", "4.2.a", "4.2.b"]
+    objectives:
+      - "Bring up IS-IS L2 on R1-R4 (loopback0 + core interfaces L1, L2, L3, L4, L5) in IOS-XR syntax: `router isis CORE / net 49.0001.0000.0000.000X.00 / is-type level-2-only`; verify with `show isis adjacency` that every core link has a UP neighbor"
+      - "Configure the global SRGB (`segment-routing global-block 16000 23999`) and SRLB (default 15000-15999) on all four core routers. Verify with `show mpls label range` and `show segment-routing mpls connected-prefix-sid-map ipv4` (IOS-XR equivalents)"
+      - "Allocate per-node prefix SIDs under IS-IS: `address-family ipv4 unicast / segment-routing mpls` and per-interface `prefix-sid index <N>` on loopback0 (index 1 on R1 → absolute label 16001, index 2 on R2 → 16002, etc.). Verify with `show isis segment-routing prefix-sid-map active-policy` and `show mpls forwarding labels 16001 16004`"
+      - "Understand the SID arithmetic: advertised SID is always an *index* into the remote SRGB. R1 advertises prefix-sid index 1; R2 computes 16000 + 1 = 16001 using R1's SRGB base. Change R1's SRGB to 16500-23999 temporarily and observe that R2 now computes 16501 — then restore. This is the Global Block lesson"
+      - "Walk the LFIB: from R2, run `show mpls forwarding` and locate the outgoing label for R3's loopback (should be 16003 with swap operation, since R2 is not penultimate). From R4, run the same command — R4 is penultimate to R3 on the L3 path, so the entry shows pop (implicit-null advertised by R3)"
+      - "End-to-end SR test: from R1, `traceroute mpls ipv4 10.0.0.3/32` and confirm the hop-by-hop SR label stack (one label, swapped at each transit LSR). Compare to traditional LDP traces — same concept, different control plane"
+      - "OSPF-SR syntax reference (no deployment): inspect the workbook sidebar showing the equivalent IOS-XR config: `router ospf 1 / segment-routing mpls / area 0 / interface LoopbackN / prefix-sid index N`. Students verify they could migrate the SR-learning IGP from IS-IS to OSPF if the SP's IGP ever changed"
+      - "Troubleshoot a planted fault where R3 has `prefix-sid index 3` configured but the IS-IS address-family is `ipv4 unicast` with `segment-routing mpls` missing — advertisement is silently dropped. Student diagnoses via `show isis database detail` (no SR sub-TLV present) and fixes"
+
+  - number: 1
+    folder: lab-01-ti-lfa
+    title: "Topology-Independent Loop-Free Alternate (TI-LFA)"
+    difficulty: Intermediate
+    type: progressive
+    time_minutes: 75
+    devices: [R1, R2, R3, R4]
+    extends: lab-00-sr-foundations-and-srgb
+    blueprint_refs: ["4.2.c"]
+    objectives:
+      - "Enable TI-LFA per-interface under IS-IS on R1-R4: `router isis CORE / interface GigabitEthernet0/0/0/X / address-family ipv4 unicast / fast-reroute per-prefix / fast-reroute per-prefix ti-lfa`. Verify with `show isis fast-reroute summary` that per-prefix TI-LFA is enabled"
+      - "Inspect the TI-LFA backup paths: `show isis fast-reroute topology ipv4 unicast` on R2 lists every destination and its primary next-hop, backup next-hop, and repair path (the post-convergence path as an SR label stack). Note how the backup uses an SR label stack (1 or more labels) to enforce a loop-free post-convergence route — the 'topology-independent' guarantee"
+      - "Pick a specific destination (R3's loopback from R2's perspective) and walk the repair path: primary = via L2, backup = via L1→R1→L5→R3 (the diagonal). Confirm `show isis fast-reroute ipv4 10.0.0.3/32` shows the repair label stack {16001, 16003} (steer to R1, then to R3)"
+      - "Demonstrate the sub-50ms failover: install a BFD session on L2 (R2↔R3) with 50ms interval, start a sustained 10-packet-per-second ping from R2 loopback to R3 loopback, then shut L2 on R3. Capture the packet loss count — TI-LFA should lose at most one packet (the one in flight at failure moment) because the FRR engine has the repair path pre-programmed in hardware FIB"
+      - "Compare TI-LFA to plain per-prefix LFA: disable `fast-reroute per-prefix ti-lfa` and fall back to just `fast-reroute per-prefix` on one interface. Observe that for some destinations, a loop-free alternate doesn't exist at all (LFA coverage < 100%); TI-LFA gives 100% coverage because it can build a repair label stack traversing arbitrary routers"
+      - "Explore the PQ-node concept: for the R2→R3 failure scenario over L2, R1 is the P-node (reachable from R2 without crossing the failed link) and the repair end-point. Verify on R2 that the repair next-hop is R1's interface address. Explain how TI-LFA picks a P or PQ node from the post-convergence graph"
+      - "Troubleshoot a planted fault where L5 (the diagonal R1↔R3) is shut — TI-LFA now has fewer alternate paths, and for some destinations the repair path is longer (more labels). Student inspects `show isis fast-reroute topology` before and after L5 shut, explains the coverage impact, then restores L5"
+
+  - number: 2
+    folder: lab-02-sr-migration-ldp-coexistence
+    title: "SR Migration — LDP Coexistence, Mapping Server, SR-Prefer"
+    difficulty: Intermediate
+    type: progressive
+    time_minutes: 90
+    devices: [R1, R2, R3, R4]
+    extends: lab-01-ti-lfa
+    blueprint_refs: ["4.2.d"]
+    objectives:
+      - "Enable LDP on all core links of R1-R4 in parallel with SR: `mpls ldp / interface GigabitEthernet0/0/0/X` on every core interface. Verify two label sources now exist per prefix: SR label (from IS-IS SR sub-TLV) and LDP label (from LDP bindings). Compare with `show mpls forwarding labels` and `show mpls ldp bindings`"
+      - "Observe the default label-source preference: by default, IOS-XR prefers the SR label for SR-enabled prefixes and the LDP label for everything else. Check `show mpls forwarding 10.0.0.3/32 detail` — the outgoing label should be 16003 (SR), not the LDP-assigned label. LDP bindings still exist but are not programmed into FIB"
+      - "Configure R1 as an SR mapping server to advertise SIDs for non-SR-native prefix ranges: `segment-routing mapping-server / prefix-sid-map / address-family ipv4 / 192.0.2.0/24 50 100` allocates SIDs 16050-16149 for the /24 range. Verify with `show segment-routing mapping-server prefix-sid-map ipv4 summary`. Advertise the mapping under IS-IS with `router isis CORE / address-family ipv4 unicast / segment-routing prefix-sid-map advertise-local`"
+      - "Verify that R2/R3/R4 receive the mapping-server advertisement: `show isis database detail | include SR Mapping` on R2 shows the SID/Label Binding TLV originated by R1. This simulates the real-world migration case where a non-SR PE needs SIDs advertised on its behalf by an SR-capable router"
+      - "Demonstrate `sr-prefer`: for a prefix with BOTH LDP and SR labels advertised (e.g. R3's loopback 10.0.0.3/32), measure the current forwarding label on R2 — should be SR (16003). Now configure `router isis CORE / address-family ipv4 unicast / segment-routing mpls sr-prefer` on R2 — confirm no change (SR already preferred). The interesting case: apply a mapping-server entry that only some nodes support, then use `sr-prefer` or its negation to flip the preference per router. Students document the config knob and when it matters"
+      - "Force an anti-pattern and recover: on R4, disable SR (remove `segment-routing` under isis address-family). Observe from R1 that R4 is now only LDP-reachable — packets to 10.0.0.4/32 use LDP label, not SR. Re-enable SR on R4 and confirm forwarding returns to SR. This is the post-migration cleanup scenario"
+      - "Troubleshoot a planted fault where R1's mapping server advertises SIDs starting at index 50 for 192.0.2.0/24 but R3's SRGB is 16000-16049 (smaller than required for index 50). Result: R3 cannot install the label 16050. Diagnose with `show isis segment-routing prefix-sid-map active-policy` (shows conflict) and fix by extending R3's SRGB"
+
+  - number: 3
+    folder: lab-03-sr-te-policies-and-steering
+    title: "SR-TE Policies, Constraints, and Automated Steering"
+    difficulty: Intermediate
+    type: progressive
+    time_minutes: 105
+    devices: [R1, R2, R3, R4, CE1, CE2]
+    extends: lab-02-sr-migration-ldp-coexistence
+    blueprint_refs: ["4.3.a", "4.3.b"]
+    objectives:
+      - "Boot CE1 (AS 65101) and CE2 (AS 65102); bring up L7 (R1↔CE1) and L8 (R3↔CE2); configure eBGP PE-CE sessions; CE1 announces 192.0.2.0/24 and CE2 announces 198.51.100.0/24; iBGP is established between R1 and R3 (loopback-sourced) in AS 65100"
+      - "Build a baseline SR-TE policy on R1 with dynamic path computation (local CSPF): `segment-routing traffic-eng / policy POLICY_TO_R3 / color 10 end-point ipv4 10.0.0.3 / candidate-paths / preference 100 / dynamic metric type igp`. Verify with `show segment-routing traffic-eng policy color 10` — the policy comes up with an explicit SID list computed locally"
+      - "Build a second SR-TE policy with an *explicit* SID list that forces a specific transit path: `preference 200 / explicit segment-list NAME1` where NAME1 is `segment-list NAME1 / index 10 address ipv4 10.0.0.4 / index 20 address ipv4 10.0.0.3` — this forces the path R1→R4→R3. Compare both policies; note that the higher preference wins when active"
+      - "Configure constrained dynamic paths with affinity: tag L3 R3↔R4 with `affinity-map name RED bit-position 0` and tag L2 R2↔R3 with `affinity-map name BLUE bit-position 1`. Create a new policy with color 20 that excludes RED: `dynamic constraints affinity exclude-any name RED`. Verify the SID list avoids L3 even though it is the IGP shortest path"
+      - "Explore policy metrics: add a policy with color 30 using `dynamic metric type te` (minimize TE metric sum) and compare the chosen SID list to the color-10 policy (IGP metric). Change the TE metric on L1 via `mpls traffic-eng / interface GigabitEthernet0/0/0/0 / administrative-weight 1000` and observe the color-30 policy re-optimize"
+      - "Enable color-based automated steering: BGP customer prefix 198.51.100.0/24 learned from CE2 is advertised to R1 with a color extended community `color:10`. On R1, configure an inbound route-policy that matches color 10 and sets the SR-TE policy with color 10 as the egress binding (on-demand next-hop, ODN). Verify traffic from CE1 to 198.51.100.1 enters the SR-TE color-10 policy tunnel — traceroute from CE1 shows the R1→(SR-TE stack)→R3→CE2 path chosen by the policy"
+      - "Introduce dual preferences for resilience: the color-10 policy has preference 100 (dynamic) and preference 50 (disjoint explicit backup). Shut the primary path's first link and observe the policy fail over to the backup candidate-path within ~50ms. Re-enable the primary and verify reoptimization"
+      - "Troubleshoot a planted fault where the color extended community is attached by CE2 but stripped by an inbound route-policy on R1 (`delete extcommunity-set match all` or similar). Result: traffic to 198.51.100.0/24 follows the default IGP shortest path, not the SR-TE policy. Diagnose with `show bgp 198.51.100.0/24 detail` (no color community) and fix the route-policy"
+
+  - number: 4
+    folder: lab-04-pce-srlg-tree-sid
+    title: "PCE Path Computation, SRLG, and Tree SID"
+    difficulty: Advanced
+    type: progressive
+    time_minutes: 105
+    devices: [R1, R2, R3, R4, CE1, CE2, PCE]
+    extends: lab-03-sr-te-policies-and-steering
+    blueprint_refs: ["4.3.c", "4.3.d", "4.3.e"]
+    objectives:
+      - "Boot the PCE node (10.0.0.99) and bring up L6 (R2↔PCE). Configure iBGP BGP-LS between R2 and PCE: `router bgp 65100 / address-family link-state link-state / neighbor 10.0.0.99 / address-family link-state link-state` on R2, mirror on PCE. R2 originates IS-IS topology into BGP-LS; PCE learns the full core topology without joining IS-IS"
+      - "Verify PCE topology ingestion: `show bgp link-state link-state` on PCE lists every IS-IS node and link from the core. Compare to `show isis database` on R1 — same topology, different distribution protocol. This is the BGP protocol extension promised in 4.2.a"
+      - "Enable the PCEP server process on PCE: `pce / address ipv4 10.0.0.99 / segment-routing traffic-eng`. Configure R1 and R3 as PCEP clients (PCCs): `segment-routing traffic-eng / pcc / pce address ipv4 10.0.0.99`. Verify with `show pce session` on PCE (clients UP) and `show segment-routing traffic-eng pcc ipv4 peer` on R1/R3"
+      - "Delegate an SR-TE policy to the PCE for computation: on R1, modify the color-10 policy to use `dynamic pcep` instead of local computation. The PCE now computes the SID list centrally and pushes it to R1. Verify the SID list matches what the PCE's `show pce lsp` output shows — they are the same path computed by the same algorithm on the same topology, just now centrally"
+      - "Configure SRLG on the core: `srlg / interface GigabitEthernet0/0/0/0 / group R1-R2-L1` on R1 and R2 (both endpoints of L1 share SRLG R1-R2-L1). Similarly group L4 and L5 into a second SRLG if they shared a conduit. Distribute SRLG via IS-IS sub-TLVs; verify PCE learns them via BGP-LS (`show bgp link-state link-state detail | include SRLG`)"
+      - "Create an SR-TE policy with SRLG-disjoint constraint for primary + backup: `dynamic pcep / constraints disjoint-path group-id 1 type link-or-srlg / preference 100` for primary and preference 50 for backup (same group-id, disjoint). The PCE computes a primary+backup pair that share no links or SRLGs. Verify via `show pce lsp detail` that the two computed paths satisfy the disjointness constraint"
+      - "Configure Tree SID for SR-MPLS P2MP: on PCE, `pce / segment-routing traffic-eng p2mp / policy TREE_1 / root-ipv4 10.0.0.1 / leaf-ipv4 10.0.0.3 / leaf-ipv4 10.0.0.4 / color 100`. This defines a P2MP tree rooted at R1 with leaves at R3 and R4. Configure R1 as the root PCC and R3/R4 as leaf PCCs. Verify control-plane state with `show segment-routing traffic-eng p2mp policy` on R1 and leaves"
+      - "Document the Tree SID behavioral caveat: IOS-XRv 9000 7.1.1 configures Tree SID cleanly and establishes PCEP-delegated P2MP control-plane state, but full ASIC-level P2MP data-plane replication (the actual packet duplication per branch) is a hardware feature the QEMU emulator does not fully model. Students write a short summary of what an ASR 9000 MPC would do with the computed tree SID — branch the label stack at each replication point, forward native multicast toward leaves — and why production deployments require line-card ASIC support"
+      - "Troubleshoot a planted fault where PCE learns BGP-LS from R2 but R2's IS-IS has a TE extension missing (`metric-style wide` not configured) — PCE's topology is incomplete, missing link attributes. Result: PCE cannot compute TE-metric-constrained paths. Diagnose with `show bgp link-state link-state detail` (missing TE attrs) and fix via `metric-style wide` under `router isis`"
+
+  - number: 5
+    folder: lab-05-ospf-sr-standalone
+    title: "OSPF Segment Routing Extensions (standalone)"
+    difficulty: Intermediate
+    type: standalone
+    clean_slate: true
+    time_minutes: 60
+    devices: [R1, R2, R3, R4]
+    blueprint_refs: ["4.2.a"]
+    objectives:
+      - "Starting from the interfaces-only baseline (no IS-IS, no LDP, no SR configured — just IP addressing and loopbacks), bring up OSPFv2 area 0 on R1-R4 over core links L1-L5 and loopback0; verify full neighborships with `show ospf neighbor`"
+      - "Enable SR under OSPF on all four routers: `router ospf 1 / segment-routing mpls` (IOS-XR syntax). Configure the same SRGB range 16000-23999 as in the IS-IS labs; verify with `show ospf segment-routing` that SR is active under OSPF"
+      - "Allocate per-node prefix SIDs under OSPF: `interface Loopback0 / prefix-sid index N` under `router ospf 1 / area 0` (index 1 on R1 → 16001, index 2 on R2 → 16002, index 3 on R3 → 16003, index 4 on R4 → 16004). The same SID scheme as lab-00's IS-IS config, but distributed by OSPF Opaque LSAs instead of IS-IS sub-TLVs"
+      - "Inspect the OSPF LSA carrying SR information: `show ospf database opaque-area` on any router — look for Opaque LSA type 7 (OSPFv2 Extended Prefix LSA) and type 8 (Extended Link LSA). Compare to lab-00's IS-IS `show isis database detail` (sub-TLV 135 Extended IP Reachability with SID/Label sub-sub-TLV). Same payload, different protocol"
+      - "Verify SR forwarding works identically: from R1, `traceroute mpls ipv4 10.0.0.3/32` — the label stack and hop-by-hop behavior should mirror the IS-IS version of the same test in lab-00. The PE just sees 'SR label 16003, pop at penultimate, native IP to R3' — it doesn't care whether the SID came from IS-IS or OSPF"
+      - "Contrast IGP-extension timing: capture how long an SR sub-TLV propagates in IS-IS (LSPs flood in seconds) vs OSPF (Opaque LSAs similarly). Measure on a `no prefix-sid` → `prefix-sid index N` flip and compare `show ospf database opaque-area` vs `show isis database` timestamps from lab-00 notes"
+      - "Teach the 'pick one IGP' rule: production SR networks run either IS-IS or OSPF, not both, because dual IGPs cause next-hop churn and administrative-distance fights. This lab exists to prove 4.2.a's OSPF extension bullet is functionally equivalent to IS-IS's — not to recommend dual-IGP as a deployment pattern"
+      - "Troubleshoot a planted fault where R3's OSPF area is configured as area 1 (instead of area 0) — R3 becomes an ABR with no type-9/10 Opaque LSA leakage across the area boundary, so R1/R2/R4 do not learn R3's prefix SID. Diagnose with `show ospf database opaque-area` (no LSA from R3) and fix by aligning R3 into area 0"
+
+  - number: 6
+    folder: lab-06-capstone-config
+    title: "SR Full Mastery — Capstone I"
+    type: capstone_i
+    clean_slate: true
+    difficulty: Advanced
+    time_minutes: 120
+    blueprint_refs: all
+    devices: [R1, R2, R3, R4, CE1, CE2, PCE]
+    objectives:
+      - "Starting from an interfaces-only baseline (all IP addresses and loopbacks pre-assigned, no protocols running), build the complete SR + SR-TE stack end-to-end within 120 minutes"
+      - "IGP: IS-IS L2 on R1-R4 with `metric-style wide` and `mpls traffic-eng level-2`; verify full adjacency on L1-L5"
+      - "SR-MPLS: SRGB 16000-23999, per-node prefix SIDs 16001-16004 under IS-IS ipv4 unicast address-family; verify end-to-end label forwarding via `traceroute mpls`"
+      - "TI-LFA: `fast-reroute per-prefix ti-lfa` on every core interface; verify 100% coverage and sub-50ms failover on L2 shut with a sustained ping"
+      - "LDP coexistence: LDP on every core interface in parallel with SR; R1 configured as SR mapping server for 192.0.2.0/24"
+      - "Customer edges: eBGP R1↔CE1 (AS 65101) and R3↔CE2 (AS 65102); iBGP R1↔R3 loopback-sourced in AS 65100; customer prefixes 192.0.2.0/24 and 198.51.100.0/24 reachable end-to-end"
+      - "SR-TE policies on R1: color 10 (dynamic local CSPF), color 20 (explicit SID list forcing R4 transit), color 30 (dynamic PCEP via PCE) — each verified UP with the expected SID list"
+      - "PCE: BGP-LS session R2↔PCE; PCEP sessions R1↔PCE and R3↔PCE; delegated color-30 policy computed centrally"
+      - "SRLG configured on L1 and L4 pairs; PCE-computed disjoint primary+backup pair for a test policy satisfying SRLG-disjoint constraint"
+      - "Tree SID: PCE-computed P2MP tree rooted at R1 with leaves R3 and R4, color 100; control-plane state verified on all three PCCs"
+      - "Acceptance criteria: CE1→CE2 ping succeeds via SR-TE policy; TI-LFA coverage = 100%; `show pce lsp` on PCE reports all delegated LSPs UP; `show segment-routing traffic-eng p2mp policy` on R1 shows Tree SID UP; LDP and SR labels coexist with SR preferred for IGP prefixes"
+
+  - number: 7
+    folder: lab-07-capstone-troubleshooting
+    title: "SR Comprehensive Troubleshooting — Capstone II"
+    type: capstone_ii
+    clean_slate: true
+    difficulty: Advanced
+    time_minutes: 120
+    blueprint_refs: all
+    devices: [R1, R2, R3, R4, CE1, CE2, PCE]
+    objectives:
+      - "Starting from a fully configured SR stack matching lab-06's acceptance criteria, diagnose and repair 6+ concurrent planted faults spanning every blueprint bullet"
+      - "Fault 1 (4.2.a IS-IS SR): R3's IS-IS ipv4 unicast address-family missing `segment-routing mpls` — R3's prefix SID is not advertised, so peers cannot reach 10.0.0.3/32 via SR label. Symptom: `show isis database detail` on R2 shows no SR sub-TLV from R3; SR forwarding to R3 falls back to LDP. Fix: add `segment-routing mpls` under R3's isis af"
+      - "Fault 2 (4.2.b SRGB): R4 has SRGB 16000-16050 (too small for the mapping server's 16050-16149 allocation). Symptom: mapping server entries rejected on R4 with SRGB-conflict log. Fix: extend R4's SRGB to 16000-23999"
+      - "Fault 3 (4.2.c TI-LFA): L5 (R1↔R3 diagonal) has `fast-reroute per-prefix ti-lfa` on R1 side but not R3 side — asymmetric protection. Symptom: `show isis fast-reroute summary` on R1 shows L5 covered; on R3 L5 is unprotected. Fix: add TI-LFA config on R3's L5 interface"
+      - "Fault 4 (4.2.d migration): SR-prefer configured on R1 and R2 but missing on R3 and R4 — when LDP and SR labels both exist for the mapping-server range, R3/R4 still forward on LDP. Symptom: `show mpls forwarding` on R4 shows LDP label for 192.0.2.0/24 instead of mapping-server SR label. Fix: apply the SR preference under isis af on R3 and R4"
+      - "Fault 5 (4.3.a steering): the inbound route-policy on R1 for BGP prefix 198.51.100.0/24 strips the color extended community. Symptom: the SR-TE color-10 policy is UP on R1, but `show bgp 198.51.100.0/24 detail` shows no color community, so no automated steering. Fix: correct the route-policy to pass the color community"
+      - "Fault 6 (4.3.c PCE): R2's BGP-LS address-family on the PCE neighbor is missing `soft-reconfiguration inbound` and one of the node advertisements is partial. PCE's topology is inconsistent with IS-IS, and PCEP LSP computation for R1 fails with 'no path'. Symptom: `show pce ipv4 topology summary` on PCE shows fewer nodes than `show isis database`. Fix: clear the BGP session and verify PCE relearns the full topology"
+      - "Fault 7 (4.3.d SRLG): the disjoint-path policy requests SRLG-disjoint primary+backup but all core links accidentally share the same SRLG group-id (copy-paste error). PCE fails to compute a disjoint pair. Symptom: `show pce lsp detail` shows the policy in 'down' state with reason 'no disjoint path'. Fix: assign distinct SRLG group-ids to each link pair"
+      - "Acceptance criteria: CE1→CE2 traffic flows on the correct SR-TE policy with color-based steering; TI-LFA coverage = 100% on every core interface; SR labels preferred over LDP for all IGP prefixes and mapping-server ranges; PCE's BGP-LS topology matches IS-IS database; all SR-TE policies (color 10/20/30) UP; Tree SID control-plane state UP on R1, R3, R4; at most one failing `show` command remains by the end of the 120 minutes"
