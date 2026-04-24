@@ -1,0 +1,214 @@
+topic: fast-convergence
+topic_name: "Fast Convergence"
+exam: "300-510"
+version: 1.0
+
+meta:
+  created:
+    date: "2026-04-24"
+    agent: claude-opus-4-7
+    skill: spec-creator
+    skill_version: "2026-04-24"
+  updated: []
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Core topology — present in every lab of this topic. IPs never change.
+#   - R1, R2, R3, R4: AS 65100 (SP core), IS-IS L2, iBGP full mesh
+#   - R5: AS 65200 (external), dual-homed eBGP (R1 via L6, R3 via L7) from lab-00
+# ──────────────────────────────────────────────────────────────────────────────
+core_topology:
+  devices:
+    - name: R1
+      platform: iosv
+      role: "SP edge / eBGP to AS 65200; iBGP in AS 65100; IS-IS L2"
+      loopback0: "10.0.0.1/32"
+      bgp_as: 65100
+      isis_net: "49.0001.0000.0000.0001.00"
+      console_port: null
+
+    - name: R2
+      platform: iosv
+      role: "SP core; iBGP in AS 65100; IS-IS L2"
+      loopback0: "10.0.0.2/32"
+      bgp_as: 65100
+      isis_net: "49.0001.0000.0000.0002.00"
+      console_port: null
+
+    - name: R3
+      platform: iosv
+      role: "SP edge / second eBGP to AS 65200; iBGP in AS 65100; IS-IS L2"
+      loopback0: "10.0.0.3/32"
+      bgp_as: 65100
+      isis_net: "49.0001.0000.0000.0003.00"
+      console_port: null
+
+    - name: R4
+      platform: iosv
+      role: "SP core; provides redundant path for LFA; iBGP in AS 65100; IS-IS L2"
+      loopback0: "10.0.0.4/32"
+      bgp_as: 65100
+      isis_net: "49.0001.0000.0000.0004.00"
+      console_port: null
+
+    - name: R5
+      platform: iosv
+      role: "External customer edge in AS 65200; dual-homed eBGP to R1 (L6) and R3 (L7)"
+      loopback0: "10.0.0.5/32"
+      loopback1: "192.0.2.1/24"              # External prefix announced into AS 65100
+      bgp_as: 65200
+      console_port: null
+
+  links:
+    - id: L1
+      source: "R1:GigabitEthernet0/0"
+      target: "R2:GigabitEthernet0/0"
+      subnet: "10.1.12.0/24"
+      purpose: "SP core link (IS-IS L2, iBGP transport); BFD single-hop from lab-00"
+    - id: L2
+      source: "R2:GigabitEthernet0/1"
+      target: "R3:GigabitEthernet0/0"
+      subnet: "10.1.23.0/24"
+      purpose: "SP core link (IS-IS L2, iBGP transport); BFD single-hop from lab-00"
+    - id: L3
+      source: "R3:GigabitEthernet0/1"
+      target: "R4:GigabitEthernet0/0"
+      subnet: "10.1.34.0/24"
+      purpose: "SP core link (IS-IS L2, iBGP transport); BFD single-hop from lab-00"
+    - id: L4
+      source: "R1:GigabitEthernet0/1"
+      target: "R4:GigabitEthernet0/1"
+      subnet: "10.1.14.0/24"
+      purpose: "SP core ring closer (IS-IS L2, iBGP transport); provides LFA alternate for R1↔R4 destinations"
+    - id: L5
+      source: "R1:GigabitEthernet0/2"
+      target: "R3:GigabitEthernet0/2"
+      subnet: "10.1.13.0/24"
+      purpose: "SP core diagonal (IS-IS L2, iBGP transport); primary short path R1↔R3 and R-LFA PQ-node anchor"
+    - id: L6
+      source: "R1:GigabitEthernet0/3"
+      target: "R5:GigabitEthernet0/0"
+      subnet: "10.1.15.0/24"
+      purpose: "eBGP session R1 (AS 65100) ↔ R5 (AS 65200); BFD multi-hop from lab-00"
+    - id: L7
+      source: "R3:GigabitEthernet0/3"
+      target: "R5:GigabitEthernet0/1"
+      subnet: "10.1.35.0/24"
+      purpose: "Second eBGP session R3 (AS 65100) ↔ R5 (AS 65200); BFD multi-hop from lab-00; primes BGP PIC Edge multi-path"
+
+# ──────────────────────────────────────────────────────────────────────────────
+# No optional topology — R5 is dual-homed from lab-00.
+# ──────────────────────────────────────────────────────────────────────────────
+optional_devices: []
+optional_links: []
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Labs
+# ──────────────────────────────────────────────────────────────────────────────
+labs:
+  - number: 0
+    folder: lab-00-bfd-and-fast-timers
+    title: "BFD and Fast Timer Tuning"
+    difficulty: Foundation
+    type: progressive
+    time_minutes: 75
+    devices: [R1, R2, R3, R4, R5]
+    blueprint_refs: ["1.7", "1.7.a", "1.7.d"]
+    objectives:
+      - "Bring up IS-IS L2 on all IS-IS-enabled interfaces of R1-R4 (L1, L2, L3, L4, L5 and loopback0); verify `show clns neighbors` shows all 5 adjacencies"
+      - "Bring up iBGP full mesh in AS 65100 (R1, R2, R3, R4) sourced from loopback0; bring up both eBGP sessions to R5 (AS 65200) — R1↔R5 via L6 and R3↔R5 via L7. Verify R5 announces 192.0.2.0/24 to both R1 and R3, and that each iBGP speaker sees at least one path"
+      - "Measure default IS-IS hello/hold convergence: shut L2 and time how long until R1 removes R3 from RIB (~30 s default hold)"
+      - "Tune IS-IS hellos on all core links: `isis hello-interval 1` / `isis hello-multiplier 3` (3 s hold); repeat the measurement (~3 s)"
+      - "Enable BFD single-hop on all core IS-IS interfaces: `bfd interval 150 min_rx 150 multiplier 3` and `isis bfd` under each interface; verify `show bfd neighbors` shows UP sessions"
+      - "Repeat the failure: shut L2 and time IS-IS convergence with BFD (~450 ms)"
+      - "Enable BFD multi-hop on both eBGP sessions (R1↔R5 and R3↔R5): `neighbor 10.0.0.5 fall-over bfd multi-hop` (plus matching template on R5); verify both multi-hop sessions UP"
+      - "Tune IS-IS SPF throttle (`spf-interval 5 50 200`) and PRC throttle; tune BGP keepalive/hold from default 60/180 to 5/15 on both eBGP sessions"
+      - "Troubleshoot a planted asymmetric BFD config where R2 has `bfd interval 50 min_rx 50` but R1 has `bfd interval 500 min_rx 500` — session negotiates to 500 but a misconfigured multiplier keeps it Down"
+
+  - number: 1
+    folder: lab-01-nsf-and-nsr
+    title: "Nonstop Forwarding (NSF) and Nonstop Routing (NSR)"
+    difficulty: Intermediate
+    type: progressive
+    time_minutes: 75
+    devices: [R1, R2, R3, R4, R5]
+    extends: lab-00-bfd-and-fast-timers
+    blueprint_refs: ["1.7.b", "1.7.c"]
+    objectives:
+      - "Enable IS-IS Graceful Restart (NSF) on R1-R4: `nsf ietf` under `router isis`; verify with `show isis neighbors detail` that restart capability is advertised"
+      - "Enable BGP Graceful Restart on all BGP speakers: `bgp graceful-restart` under `router bgp 65100`; verify the GR capability is exchanged with peers (`show ip bgp neighbors` → `Graceful Restart Capability: advertised and received`)"
+      - "Test NSF end-to-end: from R5, start a sustained ping to R2 loopback (10.0.0.2). Reload R2 and observe that the forwarding plane on R1/R3 keeps the R2 adjacency in a `GR` state for its stale timer. Packets continue flowing through R2's hardware path while its control plane restarts"
+      - "Contrast: disable BGP GR and repeat. Observe that BGP withdrawals now happen immediately on neighbor reload, causing a full reconvergence ripple"
+      - "Configure NSR intent on R1: `nsr` under `router isis` and `bgp nsr` under `router bgp 65100`. Verify configuration is accepted"
+      - "Document the NSR behavioral gap: IOSv has one route processor. On a dual-RP platform, NSR would allow R1's standby RP to maintain all protocol state so that adjacencies never drop during a switchover. On IOSv, this cannot be physically demonstrated — the configuration is present, but the failure test requires hardware not available in this lab"
+      - "Compare NSF vs NSR in a written summary: NSF is cooperative (requires GR-helper peer), NSR is local (neighbor-agnostic); NSF depends on neighbor forgiveness, NSR depends on own HA hardware"
+      - "Troubleshoot a planted NSF configuration where R2 has GR enabled but R1 does not — reload R2 and observe that R1 does not help R2 recover (R1 withdraws routes normally because it is not a GR helper)"
+
+  - number: 2
+    folder: lab-02-lfa-ip-fast-reroute
+    title: "IS-IS LFA and IP Fast Reroute"
+    difficulty: Intermediate
+    type: progressive
+    time_minutes: 90
+    devices: [R1, R2, R3, R4, R5]
+    extends: lab-01-nsf-and-nsr
+    blueprint_refs: ["1.7.f"]
+    objectives:
+      - "Enable per-prefix LFA on R1 and R3: `fast-reroute per-prefix level-2 all` under `router isis`; verify `show isis fast-reroute summary` shows LFA coverage"
+      - "Examine `show isis fast-reroute 10.0.0.4/32 detail` on R1 — confirm that R1 has a precomputed backup via L4 (R1↔R4 direct) for destinations currently reached via L1-L2-L3"
+      - "Failure test: with a sustained ping R5→10.0.0.4 running through R1, shut L1 on R2. Measure convergence time — should be sub-second (~50-150 ms) as R1's FIB already has the LFA backup installed"
+      - "Identify an LFA coverage gap: find at least one /32 on R1 for which no per-prefix LFA exists. Explain why (the only alternate path is through the link that is failing)"
+      - "Configure Remote LFA (R-LFA) on R1: `fast-reroute per-prefix remote-lfa level-2 tunnel mpls-ldp`. First, enable MPLS LDP on all core IS-IS interfaces. Verify that R-LFA extends LFA coverage — prefixes without a direct LFA now have an R-LFA via a PQ node"
+      - "Examine the R-LFA tunnel: `show isis fast-reroute remote-lfa tunnels`. Identify the PQ node for a previously-uncovered prefix and explain why it qualifies (it is in both the P-space of the source and the Q-space of the destination)"
+      - "Repeat the failure with R-LFA active; confirm the previously-uncovered prefix now has sub-second convergence"
+      - "Troubleshoot a planted `fast-reroute per-prefix level-2` clause that references a non-existent prefix-list filter, causing the feature to compute zero backups"
+
+  - number: 3
+    folder: lab-03-bgp-pic-and-addpaths
+    title: "BGP PIC Edge/Core and Additional Paths"
+    difficulty: Intermediate
+    type: progressive
+    time_minutes: 90
+    devices: [R1, R2, R3, R4, R5]
+    extends: lab-02-lfa-ip-fast-reroute
+    blueprint_refs: ["1.7.e", "1.7.g"]
+    objectives:
+      - "Pre-check: both eBGP sessions (R1↔R5, R3↔R5) have been UP since lab-00. Confirm each iBGP speaker sees at most one path to 192.0.2.0/24 today (best-path only) despite the external multi-homing — this is the problem BGP PIC and add-paths solve"
+      - "Enable BGP PIC Edge on all iBGP speakers: `bgp additional-paths install` under `router bgp 65100`; this installs the second-best path as backup in the FIB"
+      - "Verify the backup is in the FIB with `show ip cef 192.0.2.0 detail` — expect both a primary and a repair/backup next-hop. Compare with the default behavior before the knob was enabled (only primary next-hop in FIB)"
+      - "Test PIC Edge: start sustained ping R2→192.0.2.1. Shut L6 (R1↔R5) and measure convergence — should be sub-second because R2's FIB already has the backup path via R3 pre-installed"
+      - "Enable BGP Additional Paths send/receive between all iBGP peers: `bgp additional-paths select backup`, `neighbor X additional-paths send`, `neighbor X additional-paths receive`; verify with `show ip bgp 192.0.2.0/24` that each iBGP speaker now receives both paths (not just the best)"
+      - "Configure BGP PIC Core on all iBGP speakers (same `install` knob drives both edge and core behavior in practice; document the intent). Verify core-path-failure convergence by shutting L5 and measuring"
+      - "Troubleshoot a planted `bgp additional-paths install` that is applied only to IPv6 address-family instead of IPv4 unicast — resulting in no backup path in the IPv4 FIB despite PIC Edge appearing configured"
+
+  - number: 4
+    folder: lab-04-capstone-config
+    title: "Fast Convergence Full Mastery — Capstone I"
+    difficulty: Advanced
+    type: capstone_i
+    clean_slate: true
+    time_minutes: 120
+    devices: [R1, R2, R3, R4, R5]
+    blueprint_refs: all
+    objectives:
+      - "Starting from interfaces-only baseline (all IP addresses assigned, no protocols running, L7 active), build the complete fast-convergence stack"
+      - "IS-IS L2 on all core interfaces with BFD single-hop (150 ms × 3); iBGP full mesh with BFD multi-hop; eBGP R1↔R5 and R3↔R5 with BFD multi-hop"
+      - "Graceful Restart enabled for both IS-IS and BGP on all speakers; NSR configured on R1 and R3 (with the known IOSv behavioral limitation documented)"
+      - "Per-prefix LFA enabled on R1-R4 plus Remote LFA via MPLS LDP tunnels; verify every internal /32 has either LFA or R-LFA backup"
+      - "BGP PIC Edge and Core enabled domain-wide; additional-paths send/receive configured for 192.0.2.0/24"
+      - "Convergence measurement table: with a sustained ping R2→192.0.2.1 running, time convergence for (1) L1 shut, (2) L6 shut, (3) R2 reload with NSF. Record measured values in the workbook"
+
+  - number: 5
+    folder: lab-05-capstone-troubleshooting
+    title: "Fast Convergence Comprehensive Troubleshooting — Capstone II"
+    difficulty: Advanced
+    type: capstone_ii
+    clean_slate: true
+    time_minutes: 120
+    devices: [R1, R2, R3, R4, R5]
+    blueprint_refs: all
+    objectives:
+      - "Diagnose and repair ≥5 concurrent planted faults in a pre-configured fast-convergence deployment. The topology looks correct at first glance — adjacencies are up, routes are present — but convergence times are far worse than advertised"
+      - "Fault classes: (1) BFD asymmetric timers keeping a session Down despite BFD appearing configured; (2) IS-IS GR one-sided (R2 is restart-capable but R1 is not a GR helper, causing disruption on R2 reload); (3) LFA coverage gap caused by a missing `fast-reroute` clause on one router; (4) R-LFA tunnel misconfigured (tunnel mpls-ldp but MPLS LDP not enabled on a path-critical link); (5) BGP additional-paths applied in wrong address family (IPv6 instead of IPv4), so PIC Edge silently has no backup; (6) BGP GR disabled on one speaker despite being enabled on its peers"
+      - "For each fault: identify symptom (expected sub-second convergence, observed multi-second), isolate with `show bfd neighbors`, `show isis fast-reroute`, `show ip cef detail`, `show ip bgp neighbors`, and apply the one-line fix"
+      - "Restore target convergence: (1) IS-IS with BFD: < 200 ms on link failure; (2) BGP PIC Edge: < 500 ms on eBGP peer loss; (3) NSF with GR both sides: no forwarding impact on R2 reload"
+      - "Final verification: all capstone-I convergence measurements pass; no session is UP with suboptimal timers; every /32 has LFA or R-LFA backup"
