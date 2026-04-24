@@ -584,14 +584,17 @@ R1 can ping R2 and reach the Area-0 link, but cannot reach R4's loopback1 (172.1
 <details>
 <summary>Click to view Fix</summary>
 
-The issue is that R2's OSPF process did not receive or advertise the Type-3 for 172.16.4.0/24 from R3. Force R2 to refresh its OSPF process:
+The issue is that R2 has an outbound Type-3 filter on Area 1 that blocks advertisement of 172.16.4.0/24. Remove the filter and prefix-list:
 
 ```bash
-R2# clear ip ospf process
-Reset ALL OSPF processes? [no]: yes
+R2# configure terminal
+R2(config)# router ospf 1
+R2(config-router)# no area 1 filter-list prefix BLOCK_R4_LOOP out
+R2(config-router)# no ip prefix-list BLOCK_R4_LOOP
+R2(config-router)# end
 ```
 
-Alternatively, verify R2's OSPF configuration includes all necessary area statements. After clearing, R2 will re-flood Type-3 LSAs into Area 1, and R1 will receive them.
+R2 will immediately begin advertising the Type-3 Summary LSA for 172.16.4.0/24 into Area 1. R1 will receive it and install the route:
 
 ```bash
 R1# show ip route 172.16.4.0
@@ -600,6 +603,8 @@ R1# ping 172.16.4.1
 !!!!
 Success rate is 100 percent
 ```
+
+**Diagnosis tip:** Use `show ip ospf database summary | include "172.16"` on R2 and R3 to compare which Type-3 LSAs each router is advertising. If R3 advertises 172.16.4.0/24 into Area 0 but R2 does not advertise it into Area 1, suspect an ABR outbound filter.
 
 </details>
 

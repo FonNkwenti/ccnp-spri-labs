@@ -36,7 +36,7 @@ SOLUTIONS_DIR = SCRIPT_DIR.parents[1] / "solutions"
 
 # Path to the EXISTING, ALREADY-IMPORTED lab in EVE-NG — used only for port
 # discovery via the REST API. This does NOT create or modify the .unl file.
-DEFAULT_LAB_PATH = "ospf/lab-01-multiarea-ospfv2.unl"
+DEFAULT_LAB_PATH = "ospf/lab-01-multiarea-ospfv2-haiku.unl"
 
 # All devices affected by the troubleshooting scenarios — restored in order.
 # Scenario 01: R3 (area mismatch on Gi0/1)

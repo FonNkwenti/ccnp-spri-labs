@@ -28,7 +28,7 @@ from eve_ng import EveNgError, connect_node, discover_ports, require_host  # noq
 
 # Path to the EXISTING, ALREADY-IMPORTED lab in EVE-NG — used only for port
 # discovery via the REST API. This does NOT create or modify the .unl file.
-DEFAULT_LAB_PATH = "ospf/lab-01-multiarea-ospfv2.unl"
+DEFAULT_LAB_PATH = "ospf/lab-01-multiarea-ospfv2-haiku.unl"
 
 DEVICE_NAME = "R3"
 FAULT_COMMANDS = [
