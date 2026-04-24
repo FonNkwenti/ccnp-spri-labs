@@ -1,13 +1,68 @@
 ---
 description: Phase 3 - Build one lab (workbook, configs, topology, scripts) from its spec
-argument-hint: <topic-slug>/<lab-id>
+argument-hint: <topic-slug>/<lab-id> [--force-model]
 ---
 
 You are running Phase 3 of the three-phase lab workflow: **lab build** for `$ARGUMENTS`.
 
-If `$ARGUMENTS` is empty or not of the form `<topic-slug>/<lab-id>`, ask the user for the full path and stop until they answer.
+## Argument parsing
 
-Advisory prerequisite checks (warn, do not block):
+1. If `$ARGUMENTS` is empty, ask the user for the full path and STOP until they answer.
+2. Parse `$ARGUMENTS`. The first token must be of the form `<topic-slug>/<lab-id>`.
+   If it is not, ask the user for the full path and STOP.
+3. Detect the `--force-model` flag anywhere in `$ARGUMENTS`. Set `force_model = true` if present.
+   Strip the flag before using `$ARGUMENTS` as a path.
+
+## HARD PRE-FLIGHT GATE — model enforcement (BLOCKING)
+
+This gate runs BEFORE any skill read, BEFORE any file write, BEFORE any subagent dispatch.
+You MUST complete this gate before proceeding. Do not skip it.
+
+1. **Read policy:** Read `.agent/skills/model-policy.yaml`.
+2. **Read lab difficulty:** Read `labs/<topic-slug>/baseline.yaml` and find the entry
+   under `labs:` whose `folder` matches `<lab-id>` (strip any `-haiku` / `-sonnet` / `-opus` /
+   `-medium` / `-force` model-variant suffix for the lookup — variant suffixes are
+   build-tags, not distinct labs). Extract `difficulty` from that entry.
+   - If `baseline.yaml` is missing OR the lab entry is not found OR `difficulty` is
+     unset: WARN and ask whether to proceed as `Intermediate` (fallback default).
+3. **Look up allowed models:** From `model-policy.yaml`, find `tiers[<difficulty>].allowed_models`.
+4. **Self-identify:** Your own exact model ID is declared in your system prompt under
+   "The exact model ID is …". Extract that value literally — do not guess or substitute.
+5. **Compare:**
+   - If your model ID IS in `allowed_models` → gate PASSES. Proceed.
+   - If your model ID is NOT in `allowed_models` AND `force_model == false` → gate FAILS.
+     You MUST STOP now. Output exactly this message and then stop without invoking any tool:
+
+     ```
+     [GATE FAILED] Model mismatch for <topic-slug>/<lab-id>
+       Lab difficulty : <difficulty>
+       Allowed models : <comma-separated list from policy>
+       Your model     : <your exact model ID>
+       Recommended    : <tiers[difficulty].recommended>
+
+     To proceed anyway, re-run: /build-lab <topic-slug>/<lab-id> --force-model
+     To use the recommended model, exit and restart Claude Code with the correct model,
+     then re-run this command.
+     ```
+
+   - If your model ID is NOT in `allowed_models` AND `force_model == true` → gate OVERRIDDEN.
+     Log this prominently: "[GATE OVERRIDDEN] Building <lab-id> on <your model> for <difficulty>
+     tier (allowed: <list>) via --force-model. Provenance will be stamped in decisions.md."
+     Proceed.
+
+6. **Record the gate outcome** — after the build completes, append to `labs/<topic-slug>/<lab-id>/decisions.md`:
+
+   ```markdown
+   ## Model gate — <YYYY-MM-DD>
+   - Difficulty: <difficulty>
+   - Running model: <your exact model ID>
+   - Allowed models: <list>
+   - Outcome: <PASS | OVERRIDDEN via --force-model>
+   ```
+
+   If `decisions.md` does not exist, create it with this entry as Section 1.
+
+## Advisory prerequisite checks (warn, do not block):
 1. If `labs/$ARGUMENTS/` does not exist, warn that the lab folder is missing and ask whether to create it.
 2. If `labs/$ARGUMENTS/spec.md` does not exist, warn that Phase 2 has not run for this lab and suggest `/create-spec <topic-slug>`. Ask whether to proceed anyway.
 3. If `labs/$ARGUMENTS/baseline.yaml` is missing, warn before proceeding.
