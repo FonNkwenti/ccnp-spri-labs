@@ -15,14 +15,14 @@ A comprehensive set of hands-on labs for the CCNP SPRI (300-510) exam: *Implemen
 - Total estimated labs: 64 (including capstones)
 - Coverage: 100% of exam objectives mapped
 
-### Phase 2: Specification Development 🔄 30% Complete (3/10 topics)
+### Phase 2: Specification Development 🔄 40% Complete (4/10 topics)
 **Completed:**
 - [x] ospf — OSPF Routing (spec + baseline)
 - [x] isis — IS-IS Routing (spec + baseline)  
 - [x] bgp — BGP Scalability and Troubleshooting (spec + baseline)
+- [x] routing-policy — Routing Policy and Manipulation (spec + baseline)
 
 **Remaining:**
-- [ ] routing-policy — Routing Policy and Manipulation
 - [ ] ipv6-transition — IPv6 Tunneling and Transition
 - [ ] fast-convergence — Fast Convergence (BFD, NSF, NSR, LFA, etc.)
 - [ ] mpls — MPLS (LDP, LSP, RSVP-TE)
@@ -30,9 +30,9 @@ A comprehensive set of hands-on labs for the CCNP SPRI (300-510) exam: *Implemen
 - [ ] segment-routing — Segment Routing and SR-TE
 - [ ] srv6 — Segment Routing v6
 
-### Phase 3: Lab Construction 🔲 Not Started
-- Lab content generation pending completion of Phase 2 specs
-- Build order follows topic dependencies
+### Phase 3: Lab Construction 🔄 In Progress (1 lab built)
+- **ospf/lab-00-single-area-ospfv2** ✓ Built and approved
+- Remaining labs build on prior lab solutions — work sequentially
 
 ## Lab Chapters
 
@@ -40,10 +40,10 @@ A comprehensive set of hands-on labs for the CCNP SPRI (300-510) exam: *Implemen
 
 | # | Topic | Status | Labs Est. | Blueprint Bullets | Notes |
 |---|-------|--------|-----------|-------------------|-------|
-| 1 | **ospf** | Phase 2 ✓ | 6 | 1.1–1.2.b | Multiarea OSPFv2/v3, summarization, LSA behavior |
+| 1 | **ospf** | Phase 3 (1/6) | 6 | 1.1–1.2.b | Multiarea OSPFv2/v3, summarization, LSA behavior |
 | 2 | **isis** | Phase 2 ✓ | 5 | 1.3–1.3.b | Multilevel IS-IS, dual-stack, L1/L2 |
 | 3 | **bgp** | Phase 2 ✓ | 9 | 1.4–1.5.j | Scalability, communities, FlowSpec, dampening |
-| 4 | **routing-policy** | Phase 2 ◻ | 7 | 3.1–3.4.b | RPL vs route-maps, conditional matching, traffic steering |
+| 4 | **routing-policy** | Phase 2 ✓ | 7 | 3.1–3.4.b | RPL vs route-maps, conditional matching, traffic steering |
 | 5 | **ipv6-transition** | Phase 2 ◻ | 5 | 1.6–1.6.e | 6PE, static tunnels, NAT64, MAP-T |
 | 6 | **fast-convergence** | Phase 2 ◻ | 6 | 1.7–1.7.g | BFD, NSF, NSR, LFA/IP-FRR, BGP PIC |
 | 7 | **mpls** | Phase 2 ◻ | 6 | 4.1–4.1.e | LDP, LSP, RSVP-TE, BGP-free core |

@@ -1,0 +1,246 @@
+topic: routing-policy
+topic_name: "Routing Policy and Manipulation"
+exam: "300-510"
+version: 1.0
+
+meta:
+  created:
+    date: "2026-04-24"
+    agent: claude-opus-4-7
+    skill: spec-creator
+    skill_version: "2026-04-24"
+  updated: []
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Core topology — present in every lab of this topic. IPs never change.
+#   - R1, R2, R3:  AS 65100 (SP core), iBGP full mesh, OSPF area 0, IS-IS L2
+#   - R4:          AS 65200 (external), eBGP to R1 (L4) and R3 (L3)
+# ──────────────────────────────────────────────────────────────────────────────
+core_topology:
+  devices:
+    - name: R1
+      platform: iosv
+      role: "SP core / eBGP edge to AS 65200 (AS 65100)"
+      loopback0: "10.0.0.1/32"
+      loopback1: "172.16.1.1/24"          # Customer prefix advertised into BGP/IGP
+      bgp_as: 65100
+      console_port: null
+
+    - name: R2
+      platform: iosv
+      role: "SP core; transit between R1 and R3 (AS 65100)"
+      loopback0: "10.0.0.2/32"
+      bgp_as: 65100
+      console_port: null
+
+    - name: R3
+      platform: iosv
+      role: "SP core / eBGP edge to AS 65200; IS-IS gateway to optional XR (AS 65100)"
+      loopback0: "10.0.0.3/32"
+      bgp_as: 65100
+      console_port: null
+
+    - name: R4
+      platform: iosv
+      role: "External AS edge (AS 65200); dual eBGP to R1 and R3 for multihoming"
+      loopback0: "10.0.0.4/32"
+      loopback1: "172.20.4.1/24"          # External prefix advertised into AS 65100
+      loopback2: "172.20.5.1/24"          # Second external prefix (filter/steer target)
+      bgp_as: 65200
+      console_port: null
+
+  links:
+    - id: L1
+      source: "R1:GigabitEthernet0/0"
+      target: "R2:GigabitEthernet0/0"
+      subnet: "10.1.12.0/24"
+      purpose: "SP core link (OSPF area 0, IS-IS L2, iBGP transport)"
+    - id: L2
+      source: "R2:GigabitEthernet0/1"
+      target: "R3:GigabitEthernet0/0"
+      subnet: "10.1.23.0/24"
+      purpose: "SP core link (OSPF area 0, IS-IS L2, iBGP transport)"
+    - id: L3
+      source: "R3:GigabitEthernet0/1"
+      target: "R4:GigabitEthernet0/0"
+      subnet: "10.1.34.0/24"
+      purpose: "eBGP session R3 (AS 65100) ↔ R4 (AS 65200)"
+    - id: L4
+      source: "R1:GigabitEthernet0/1"
+      target: "R4:GigabitEthernet0/1"
+      subnet: "10.1.14.0/24"
+      purpose: "eBGP session R1 (AS 65100) ↔ R4 (AS 65200) — multihoming path"
+    - id: L5
+      source: "R1:GigabitEthernet0/2"
+      target: "R3:GigabitEthernet0/2"
+      subnet: "10.1.13.0/24"
+      purpose: "SP core diagonal (OSPF area 0, IS-IS L2, iBGP transport) — gives R1/R3 a direct path"
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Optional topology — pre-planned IPs, activated when referenced by a lab.
+#   - XR1, XR2:  AS 65100, iBGP to R1/R2/R3, IS-IS L2 adjacencies to R2/R3.
+#   - Introduced in lab-02 for RPL vs route-maps and hierarchical policies.
+# ──────────────────────────────────────────────────────────────────────────────
+optional_devices:
+  - name: XR1
+    platform: xrv9k
+    role: "IOS-XR RPL node; iBGP in AS 65100; IS-IS L2 adjacency to R2"
+    loopback0: "10.0.0.5/32"
+    loopback1: "172.16.11.1/24"            # Customer prefix behind XR1 for RPL match demos
+    bgp_as: 65100
+    console_port: null
+    available_from: lab-02-rpl-vs-route-maps
+    purpose: "Carries RPL examples (prefix-set, community-set, as-path-set, hierarchical/parameterized policies). Pairs with XR2."
+
+  - name: XR2
+    platform: xrv9k
+    role: "IOS-XR RPL node; iBGP in AS 65100; IS-IS L2 adjacency to R3"
+    loopback0: "10.0.0.6/32"
+    bgp_as: 65100
+    console_port: null
+    available_from: lab-02-rpl-vs-route-maps
+    purpose: "Second RPL node; paired with XR1 to demonstrate RPL apply to both ingress and egress policies."
+
+optional_links:
+  - id: L6
+    source: "R2:GigabitEthernet0/2"
+    target: "XR1:GigabitEthernet0/0/0/0"
+    subnet: "10.1.25.0/24"
+    purpose: "IS-IS L2 adjacency R2↔XR1; BGP next-hop transport to XR1"
+    available_from: lab-02-rpl-vs-route-maps
+  - id: L7
+    source: "R3:GigabitEthernet0/3"
+    target: "XR2:GigabitEthernet0/0/0/0"
+    subnet: "10.1.36.0/24"
+    purpose: "IS-IS L2 adjacency R3↔XR2; BGP next-hop transport to XR2"
+    available_from: lab-02-rpl-vs-route-maps
+  - id: L8
+    source: "XR1:GigabitEthernet0/0/0/1"
+    target: "XR2:GigabitEthernet0/0/0/1"
+    subnet: "10.1.56.0/24"
+    purpose: "XR-to-XR backbone link (IS-IS L2, iBGP transport between XR pair)"
+    available_from: lab-02-rpl-vs-route-maps
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Labs
+# ──────────────────────────────────────────────────────────────────────────────
+labs:
+  - number: 0
+    folder: lab-00-route-maps-foundations
+    title: "Route-Maps, Prefix-Lists, and ACL Matching"
+    difficulty: Foundation
+    type: progressive
+    time_minutes: 60
+    devices: [R1, R2, R3, R4]
+    blueprint_refs: ["3.2", "3.2.a", "3.2.b", "3.2.f", "3.2.g"]
+    objectives:
+      - "Bring up OSPF area 0, IS-IS L2, and BGP (AS 65100 iBGP full mesh; eBGP R1↔R4 and R3↔R4 to AS 65200) on the 4-router core"
+      - "Build a standard ACL and an extended ACL; reference each in a route-map `match ip address` clause"
+      - "Build a prefix-list with ge/le and a second prefix-list using exact match; reference in route-map `match ip address prefix-list`"
+      - "Apply an inbound route-map on R1's eBGP session to R4 that denies one of R4's two Lo prefixes; verify with `show ip bgp` before and after"
+      - "Demonstrate match/set/permit/deny semantics: a deny sequence with match drops; an implicit deny at the end drops unmatched; `continue` extends evaluation across sequences"
+      - "Observe the difference between route-map applied to redistribution vs route-map applied to BGP neighbor (same syntax, different injection point)"
+
+  - number: 1
+    folder: lab-01-tags-regex-communities
+    title: "Tags, Route Types, Regex, and BGP Communities"
+    difficulty: Foundation
+    type: progressive
+    time_minutes: 75
+    devices: [R1, R2, R3, R4]
+    extends: lab-00-route-maps-foundations
+    blueprint_refs: ["3.2.c", "3.2.e", "3.2.h", "3.2.i"]
+    objectives:
+      - "Tag routes during OSPF↔IS-IS redistribution on R2 (tag 100 for OSPF→IS-IS, tag 200 for IS-IS→OSPF); filter re-redistribution on R3 with `match tag` to prevent routing loops"
+      - "Match on route-type: `match route-type external type-1` and `match route-type internal` — verify behavior by redistributing a connected interface and an OSPF E1/E2 into IS-IS"
+      - "Write an AS-path regex to match only routes originated in AS 65200 (`_65200$`) and apply inbound on R3's eBGP to R4"
+      - "Write a community-list regex to match `65100:100` and `65100:2.*`; set communities inbound on R1/R3 based on source prefix; verify propagation and filter at R2"
+      - "Use `set local-preference`, `set metric`, `set community` in route-maps; contrast well-known communities (no-export, no-advertise, local-as) with arbitrary numeric communities"
+      - "Troubleshoot a planted regex that matches too broadly (`_65200_` instead of `_65200$`) and leaks transit routes"
+
+  - number: 2
+    folder: lab-02-rpl-vs-route-maps
+    title: "RPL vs Route-Maps — Policy Sets and Hierarchical Policies"
+    difficulty: Intermediate
+    type: progressive
+    time_minutes: 90
+    devices: [R1, R2, R3, R4, XR1, XR2]
+    extends: lab-01-tags-regex-communities
+    blueprint_refs: ["3.1", "3.2.d", "3.2.j"]
+    objectives:
+      - "Activate XR1 and XR2 on L6/L7/L8; bring up IS-IS L2 and iBGP in AS 65100; verify adjacency to R2/R3 and full-mesh iBGP across all 5 AS 65100 routers"
+      - "On R1 (route-maps) and XR1 (RPL), write policies that achieve the same outcome — match routes from prefix-list/prefix-set `P_CUSTOMER`, set community, and apply on ingress from R4. Compare the two syntaxes side by side"
+      - "Build an RPL `prefix-set`, `community-set`, and `as-path-set` on XR1 and XR2; show how RPL sets are named, reusable, and composable — contrast with IOS ip prefix-list/ip community-list which are procedural"
+      - "Write a hierarchical RPL: a parent policy `EBGP_IN` that calls child policies `FILTER_BOGONS` and `SET_LOCAL_PREF_BY_COMMUNITY` via `apply`. Verify with `show rpl policy EBGP_IN`"
+      - "Write a parameterized RPL `MATCH_PREFIX_FROM_SET($set_name)` and instantiate it twice in a parent policy with different `$set_name` arguments"
+      - "Document three behaviors where RPL is fundamentally different from route-maps: (1) unconditional implicit pass vs implicit deny, (2) set operations (in, not in, is-longer-than) vs match-permit semantics, (3) reusable named sets vs inline match clauses"
+
+  - number: 3
+    folder: lab-03-igp-route-manipulation
+    title: "Route Manipulation for IS-IS and OSPF"
+    difficulty: Intermediate
+    type: progressive
+    time_minutes: 90
+    devices: [R1, R2, R3, R4, XR1, XR2]
+    extends: lab-02-rpl-vs-route-maps
+    blueprint_refs: ["3.3", "3.3.a", "3.3.b"]
+    objectives:
+      - "OSPF — apply `distribute-list prefix-list BLOCK_MGMT in` on R2 and observe route filtering on ingress; confirm LSA Type 1/2 are still present but the SPF result excludes the prefix"
+      - "OSPF — configure `area 0 filter-list prefix FILTER_TRANSIT in` on an ABR (temporarily reconfigure R2 as ABR into a stub area for this exercise) to filter inter-area Type 3 LSAs"
+      - "OSPF — use `ip ospf prefix-suppression` on R1's transit interface to hide connected subnets from OSPF advertisements without losing adjacency"
+      - "IS-IS — configure multilevel on a temporary L1-L2 boundary between R2 and XR1; leak a specific L1 prefix into L2 with `redistribute isis level-1 into level-2 route-map LEAK` (IOS) / `route-policy LEAK apply` (XR RPL)"
+      - "IS-IS — on XR1, use RPL `apply` at IS-IS protocol to filter which prefixes are advertised into L2; contrast with IOS `distribute-list` under `router isis`"
+      - "IS-IS — redistribute OSPF external routes into IS-IS on R2 with a route-map that sets metric-type internal and tags routes 300; verify on R3 and XR2"
+      - "Troubleshoot a planted `route-map REDIST` with an implicit deny that silently drops 2 of 5 redistributed prefixes"
+
+  - number: 4
+    folder: lab-04-bgp-filtering-steering
+    title: "BGP Route Filtering and Traffic Steering"
+    difficulty: Intermediate
+    type: progressive
+    time_minutes: 90
+    devices: [R1, R2, R3, R4, XR1, XR2]
+    extends: lab-03-igp-route-manipulation
+    blueprint_refs: ["3.4", "3.4.a", "3.4.b"]
+    objectives:
+      - "Filter inbound on R1 from R4 (AS 65200): deny 172.20.5.0/24 but accept 172.20.4.0/24 using an inbound prefix-list; verify via `show ip bgp neighbors 10.1.14.2 routes`"
+      - "Filter outbound on R3 to R4: advertise only 172.16.0.0/16 aggregate, suppress more-specifics using `aggregate-address ... summary-only`"
+      - "Traffic steering — on R3, set LOCAL_PREF 200 for 172.20.4.0/24 received from R4 (prefer R3's path); verify that R1, R2, XR1, XR2 all prefer R3 as the exit"
+      - "Traffic steering — on R1, AS-path prepend 3× outbound to R4 for 172.16.1.0/24 so that AS 65200 prefers the R3 path inbound; verify at R4 with `show ip bgp 172.16.1.0`"
+      - "Traffic steering — apply `set metric 50` on R3's advertisement of 172.16.0.0/16 to R4 and `set metric 100` on R1's advertisement of 172.16.0.0/16 to R4; verify MED comparison at R4"
+      - "RPL equivalent — on XR1, write an outbound `route-policy SET_COMMUNITY_AND_PREPEND` that applies the same community and AS-path prepend via RPL set operations; compare syntax"
+      - "Conditional advertisement — on R1, advertise a backup route to R4 only if the primary via R3 is withdrawn (`neighbor X.X.X.X advertise-map ... non-exist-map ...`)"
+      - "Troubleshoot a planted route-map that sets LOCAL_PREF on the wrong direction (outbound instead of inbound), causing no effect; diagnose with `show ip bgp` and trace the policy"
+
+  - number: 5
+    folder: lab-05-capstone-config
+    title: "Routing Policy Full Mastery — Capstone I"
+    difficulty: Advanced
+    type: capstone_i
+    clean_slate: true
+    time_minutes: 120
+    devices: [R1, R2, R3, R4, XR1, XR2]
+    blueprint_refs: all
+    objectives:
+      - "Starting from interfaces-only baseline (all IPs assigned, no protocols running), build the complete SP policy framework across the 6-router topology"
+      - "Bring up OSPF area 0 on IOSv core (R1/R2/R3), IS-IS L2 across the full SP core (R1/R2/R3/XR1/XR2), and iBGP full mesh in AS 65100 plus eBGP R1↔R4 and R3↔R4"
+      - "Route-maps on IOS: inbound filtering on eBGP, community tagging, LOCAL_PREF and MED manipulation; redistribution tag/filter chain between OSPF and IS-IS to prevent loops"
+      - "RPL on XR: prefix-set, community-set, as-path-set; hierarchical parent policy that applies child policies for ingress filtering, community assignment, and egress prepending"
+      - "Implement at least one conditional advertisement, one aggregate-address with AS-SET, one IS-IS level leak with route-policy, and one OSPF filter-list at an ABR"
+      - "Verify end-to-end: (a) 172.20.5.0/24 is filtered at R1 but accepted at R3; (b) traffic to 172.16.1.0/24 from R4 ingresses via R3 due to prepend; (c) IGP redistribution does not loop; (d) RPL and route-map paths both converge on the expected best path"
+
+  - number: 6
+    folder: lab-06-capstone-troubleshooting
+    title: "Routing Policy Comprehensive Troubleshooting — Capstone II"
+    difficulty: Advanced
+    type: capstone_ii
+    clean_slate: true
+    time_minutes: 120
+    devices: [R1, R2, R3, R4, XR1, XR2]
+    blueprint_refs: all
+    objectives:
+      - "Diagnose and repair ≥5 concurrent planted faults in a pre-configured routing policy deployment"
+      - "Fault classes: (1) route-map implicit deny dropping unmatched routes; (2) AS-path regex anchored wrong (`_65200_` vs `_65200$`) leaking transit; (3) RPL `apply` missing `pass` in a child policy causing silent drop; (4) community-list ordering hiding a specific match behind a broader one; (5) tag-filter gap allowing IGP redistribution loop; (6) LOCAL_PREF/MED applied on the wrong direction or wrong neighbor"
+      - "Restore: R4 should receive 172.16.1.0/24 only via R3 (with prepend); R1 should prefer R3's path to 172.20.4.0/24; all 3 external prefixes must either be accepted or explicitly filtered per the intent document"
+      - "Document the diagnosis path for each fault: the symptom observed, the show/debug command that isolated it, the RIB/BGP table state before and after, the one-line fix"
+      - "Final verification: `show ip route`, `show ip bgp`, `show rpl policy`, `show route-map` on every device match the intent document produced at the start of the lab"
