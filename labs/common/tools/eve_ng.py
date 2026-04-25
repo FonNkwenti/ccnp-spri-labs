@@ -8,6 +8,7 @@ lab topics. All scripts add labs/common/tools/ to sys.path and import from here.
 
 from __future__ import annotations
 
+import base64
 import sys
 from pathlib import Path
 
@@ -37,6 +38,29 @@ def require_host(host: str) -> str:
         )
         sys.exit(2)
     return host
+
+
+def _extract_port(url: str) -> int | None:
+    """Extract the telnet console port from an EVE-NG node URL.
+
+    Handles two formats:
+    - Legacy:  telnet://host:32769
+    - EVE-NG v5+: /html5/#/client/<base64>?token=...
+      where base64 decodes to b'32769\\x00c\\x00mysql'
+    """
+    if url.startswith("telnet://") and ":" in url:
+        try:
+            return int(url.rsplit(":", 1)[-1])
+        except ValueError:
+            return None
+    if "/client/" in url:
+        try:
+            b64 = url.split("/client/")[1].split("?")[0]
+            decoded = base64.b64decode(b64).decode("latin-1")
+            return int(decoded.split("\x00")[0])
+        except (ValueError, IndexError):
+            return None
+    return None
 
 
 def _eve_session(host: str, username: str = "admin", password: str = "eve") -> requests.Session:
@@ -76,16 +100,19 @@ def discover_ports(
     for node in nodes.values():
         name = node.get("name", "")
         url = node.get("url", "")
-        if name and url and ":" in url:
-            try:
-                port_map[name] = int(url.rsplit(":", 1)[-1])
-            except ValueError:
-                pass
+        if name and url:
+            port = _extract_port(url)
+            if port is not None:
+                port_map[name] = port
     return port_map
 
 
 def connect_node(host: str, port: int, timeout: int = 30):
-    """Open a Netmiko telnet session to an EVE-NG console port."""
+    """Open a Netmiko telnet session to an EVE-NG console port in enable mode.
+
+    Returns the connection already in privilege mode so callers can immediately
+    call send_config_set() without a separate enable() step.
+    """
     if ConnectHandler is None:
         raise EveNgError(
             "netmiko is not installed. Run: pip install netmiko"
@@ -99,6 +126,7 @@ def connect_node(host: str, port: int, timeout: int = 30):
         secret="",
         timeout=timeout,
     )
+    conn.enable()
     return conn
 
 
