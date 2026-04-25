@@ -1,0 +1,323 @@
+topic: multicast
+topic_name: "Multicast Routing"
+exam: "300-510"
+version: 1.0
+
+meta:
+  created:
+    date: "2026-04-25"
+    agent: claude-sonnet-4-6
+    skill: spec-creator
+    skill_version: "2026-04-24"
+  updated: []
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Core topology — present in every lab of this topic. IPs never change.
+#   - R1, R2, R3: IS-IS L2 triangle; R1 is the RP hub and MSDP anchor.
+#   - R4: last-hop router; IGMP querier for RCV1.
+#   - SRC1: Ubuntu 20.04 Linux VM, multicast source (mcjoin), off R2.
+#   - RCV1: Ubuntu 20.04 Linux VM, multicast receiver (mcjoin), off R4.
+#   - R5 (AS 65200): optional IOSv inter-domain router from lab-03.
+# Multicast address plan:
+#   ASM group  (labs 00-01, 03-05):  239.1.1.1
+#   SSM group  (lab-02):             232.1.1.1
+#   BIDIR group (lab-02):            239.2.1.1
+#   Anycast RP (lab-01):             10.0.0.100/32 (advertised by R1 + R3 in IS-IS)
+#   Phantom RP (lab-01):             10.99.99.1/32 (virtual, never assigned)
+# ──────────────────────────────────────────────────────────────────────────────
+core_topology:
+  devices:
+    - name: R1
+      platform: iosv
+      role: "RP (static → Auto-RP → BSR → anycast RP); MSDP speaker; IS-IS L2 AS 65100; iBGP with R3; eBGP with R5 from lab-03; uses all 4 interfaces"
+      loopback0: "10.0.0.1/32"
+      bgp_as: 65100
+      isis_net: "49.0001.0000.0000.0001.00"
+      console_port: null
+
+    - name: R2
+      platform: iosv
+      role: "IS-IS L2 transit; PIM-SM speaker; BSR candidate (lab-01); default gateway for SRC1"
+      loopback0: "10.0.0.2/32"
+      bgp_as: null
+      isis_net: "49.0001.0000.0000.0002.00"
+      console_port: null
+
+    - name: R3
+      platform: iosv
+      role: "IS-IS L2 transit; PIM-SM speaker; secondary RP candidate; anycast RP co-owner (lab-01); iBGP with R1"
+      loopback0: "10.0.0.3/32"
+      bgp_as: 65100
+      isis_net: "49.0001.0000.0000.0003.00"
+      console_port: null
+
+    - name: R4
+      platform: iosv
+      role: "Last-hop PIM-SM router; IGMP querier for RCV1 segment; MLDP leaf (lab-05)"
+      loopback0: "10.0.0.4/32"
+      bgp_as: null
+      isis_net: "49.0001.0000.0000.0004.00"
+      console_port: null
+
+    - name: SRC1
+      platform: linux
+      image: linux-ubuntu-server-20.04
+      role: "Multicast source; sends UDP streams to 239.1.1.1, 232.1.1.1, 239.2.1.1 via mcjoin or Python socket"
+      interface: ens3
+      ip: "192.168.2.10/24"
+      gateway: "192.168.2.1"
+      console_port: null
+
+    - name: RCV1
+      platform: linux
+      image: linux-ubuntu-server-20.04
+      role: "Multicast receiver; joins groups via OS socket API (triggers IGMP on R4); verifies delivery via mcjoin and tcpdump"
+      interface: ens3
+      ip: "192.168.4.10/24"
+      gateway: "192.168.4.1"
+      console_port: null
+
+  links:
+    - id: L1
+      source: "R1:GigabitEthernet0/0"
+      target: "R2:GigabitEthernet0/0"
+      subnet: "10.10.12.0/30"
+      purpose: "IS-IS L2 adjacency R1↔R2; PIM-SM neighbor; MLDP link (lab-05)"
+
+    - id: L2
+      source: "R2:GigabitEthernet0/1"
+      target: "R3:GigabitEthernet0/0"
+      subnet: "10.10.23.0/30"
+      purpose: "IS-IS L2 adjacency R2↔R3; PIM-SM neighbor; completes triangle"
+
+    - id: L3
+      source: "R1:GigabitEthernet0/1"
+      target: "R3:GigabitEthernet0/1"
+      subnet: "10.10.13.0/30"
+      purpose: "IS-IS L2 adjacency R1↔R3; PIM-SM neighbor; intra-domain MSDP (anycast RP lab-01)"
+
+    - id: L4
+      source: "R1:GigabitEthernet0/2"
+      target: "R4:GigabitEthernet0/0"
+      subnet: "10.10.14.0/30"
+      purpose: "IS-IS L2 adjacency R1↔R4; last-hop PIM-SM router path; MLDP leaf path (lab-05)"
+
+    - id: L6
+      source: "R2:GigabitEthernet0/2"
+      target: "SRC1:ens3"
+      subnet: "192.168.2.0/24"
+      purpose: "SRC1 source segment; R2 Gi0/2 is the first-hop PIM-SM router and IGMP querier for SRC1"
+
+    - id: L7
+      source: "R4:GigabitEthernet0/1"
+      target: "RCV1:ens3"
+      subnet: "192.168.4.0/24"
+      purpose: "RCV1 receiver segment; R4 Gi0/1 is the last-hop PIM-SM router and IGMP querier for RCV1"
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Optional devices — IPs pre-reserved; activated at the lab noted below.
+# ──────────────────────────────────────────────────────────────────────────────
+optional_devices:
+  - name: R5
+    platform: iosv
+    role: "Inter-domain router AS 65200; eBGP peer of R1 (IPv4 unicast + multicast); MSDP peer of R1; remote-domain RP for 239.0.0.0/8 in AS 65200"
+    loopback0: "10.0.0.5/32"
+    bgp_as: 65200
+    console_port: null
+    available_from: "lab-03-msdp-inter-domain"
+    purpose: "Required for inter-domain MSDP (2.1.c, 2.2.d, 2.3.d, 2.4.b) and MBGP RPF (2.2.b)"
+
+optional_links:
+  - id: L5
+    source: "R1:GigabitEthernet0/3"
+    target: "R5:GigabitEthernet0/0"
+    subnet: "10.10.15.0/30"
+    available_from: "lab-03-msdp-inter-domain"
+    purpose: "eBGP + MSDP peering R1↔R5; only link between AS 65100 and AS 65200"
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Control-plane plan reference
+#   RP addresses:
+#     Static RP (lab-00):    10.0.0.1 (R1 Loopback0)
+#     Auto-RP (lab-01):      R1 announce+discovery (prio 10), R3 candidate (prio 5)
+#     BSR (lab-01):          R2 BSR; R1 RP cand (prio 10), R3 RP cand (prio 5)
+#     Anycast RP (lab-01):   10.0.0.100/32 on R1 + R3; MSDP peer R1↔R3 (intra-domain)
+#     Phantom RP (lab-01):   10.99.99.1/32 summarized from R1; virtual address
+#   BGP:
+#     iBGP: R1 ↔ R3 (AS 65100; address-family ipv4 multicast from lab-04)
+#     eBGP: R1 ↔ R5 (AS 65100 ↔ AS 65200; ipv4 unicast + ipv4 multicast from lab-04)
+#   MSDP peers:
+#     Intra-domain anycast: R1 (10.0.0.1) ↔ R3 (10.0.0.3) — lab-01
+#     Inter-domain:         R1 (10.0.0.1) ↔ R5 (10.0.0.5) — lab-03
+#   MLDP (lab-05):
+#     LDP enabled on L1-L4 (all IS-IS interfaces)
+#     P2MP root: R1 (10.0.0.1); transit: R2, R3; leaf: R4
+# ──────────────────────────────────────────────────────────────────────────────
+
+labs:
+  - number: 0
+    folder: lab-00-pim-sm-foundations
+    title: "PIM-SM Foundations"
+    difficulty: Foundation
+    type: progressive
+    time_minutes: 60
+    devices: [R1, R2, R3, R4, SRC1, RCV1]
+    blueprint_refs: ["2.1", "2.1.a", "2.1.b", "2.2.a", "2.2.c", "2.2.f", "2.3", "2.4.a"]
+    objectives:
+      - Configure IS-IS L2 on R1, R2, R3, R4 and verify full loopback reachability
+      - Configure R2 Gi0/2 (192.168.2.1/24) and R4 Gi0/1 (192.168.4.1/24) for SRC1 and RCV1 subnets
+      - Enable ip multicast-routing on all four routers; configure static RP (ip pim rp-address 10.0.0.1)
+      - Enable ip pim sparse-mode on all interfaces including Loopback0
+      - Start mcjoin receiver on RCV1 for group 239.1.1.1; verify R4 receives IGMP membership report
+      - Verify IGMP membership: show ip igmp groups on R4
+      - Verify (*,G) entry created on R1 (RP): show ip mroute 239.1.1.1
+      - Start mcjoin sender on SRC1 for group 239.1.1.1; verify (S,G) entry created end-to-end
+      - Verify SPT switchover at R4: show ip mroute — confirm (S,G) replaces (*,G) on last-hop
+      - Use tcpdump on RCV1 to confirm MAC address 01:00:5e:01:01:01 on received frames (2.2.a)
+      - Troubleshoot RPF failure (wrong RPF interface on R3): show ip rpf 192.168.2.10
+
+  - number: 1
+    folder: lab-01-rp-mechanisms
+    title: "RP Mechanisms: Auto-RP, BSR, Anycast, Phantom"
+    difficulty: Foundation
+    type: progressive
+    time_minutes: 75
+    devices: [R1, R2, R3, R4, SRC1, RCV1]
+    extends: lab-00-pim-sm-foundations
+    blueprint_refs: ["2.3.a", "2.4.a"]
+    objectives:
+      - Remove static RP; configure Auto-RP — R1 as RP announcer and mapping agent
+      - Add R3 as secondary RP candidate (lower priority); verify R1 wins via show ip pim rp mapping
+      - Confirm SRC1→RCV1 multicast flow still works under Auto-RP
+      - Replace Auto-RP with BSR — R2 as BSR candidate; R1 and R3 as RP candidates
+      - Verify BSR election and RP hash: show ip pim bsr-router; show ip pim rp
+      - Configure anycast RP — R1 and R3 both advertise 10.0.0.100/32 into IS-IS; MSDP between R1 and R3
+      - Verify anycast RP load distribution: RCV1 traffic uses nearest RP
+      - Configure Phantom RP — R1 summarizes 10.99.99.0/24; all routers set phantom RP 10.99.99.1/32
+      - Verify Phantom RP failover resilience (simulate R1 loss via interface shutdown)
+      - Troubleshoot RP not elected: mapping agent or BSR not reachable
+
+  - number: 2
+    folder: lab-02-ssm-and-bidir-pim
+    title: "SSM and BIDIR-PIM"
+    difficulty: Intermediate
+    type: progressive
+    time_minutes: 75
+    devices: [R1, R2, R3, R4, SRC1, RCV1]
+    extends: lab-01-rp-mechanisms
+    blueprint_refs: ["2.1.b", "2.2.f", "2.3.b", "2.3.c", "2.4.a"]
+    objectives:
+      - Configure SSM range: ip pim ssm default (232.0.0.0/8)
+      - On RCV1, use mcjoin with source filter to join SSM group 232.1.1.1 from 192.168.2.10 (triggers IGMPv3 include)
+      - Upgrade R4 Gi0/1 to IGMPv3: ip igmp version 3; verify with show ip igmp interface
+      - Verify SSM (S,G) entry created without RP: show ip mroute 232.1.1.1
+      - Start SRC1 sending to 232.1.1.1; verify RCV1 receives only when source matches
+      - Verify no (*,G) entry for SSM group — RP not consulted
+      - Configure BIDIR-PIM — ip pim bidir-enable; configure bidir RP for 239.2.1.1
+      - Verify DF (Designated Forwarder) election per interface: show ip pim interface df
+      - Start SRC1 sending to 239.2.1.1; verify bidir shared tree (no SPT switchover)
+      - Compare mroute entries: bidir (*,G) vs ASM (*,G) vs SSM (S,G)
+      - Troubleshoot SSM not creating (S,G): R4 Gi0/1 still IGMPv2 — diagnose and fix
+
+  - number: 3
+    folder: lab-03-msdp-inter-domain
+    title: "MSDP and Inter-Domain Multicast"
+    difficulty: Intermediate
+    type: progressive
+    time_minutes: 90
+    devices: [R1, R2, R3, R4, R5, SRC1, RCV1]
+    extends: lab-02-ssm-and-bidir-pim
+    blueprint_refs: ["2.1.c", "2.2.d", "2.3.d", "2.4.b"]
+    objectives:
+      - Activate R5 (AS 65200); configure eBGP R1↔R5 (IPv4 unicast)
+      - Configure static RP on R5 for 239.0.0.0/8; enable ip multicast-routing and PIM-SM
+      - Configure MSDP peering: ip msdp peer 10.0.0.5 on R1; ip msdp peer 10.0.0.1 on R5
+      - Simulate inter-domain source on R5: ping 239.1.1.1 source Loopback0 repeat 100
+      - Verify MSDP SA message generation on R5 and SA reception on R1: show ip msdp sa-cache
+      - Verify RCV1 receives stream originated from AS 65200 (inter-domain delivery)
+      - Configure MSDP SA-filter inbound on R1: accept only SAs for 239.0.0.0/8
+      - Configure MSDP peer password: ip msdp password peer 10.0.0.5
+      - Troubleshoot MSDP peer Inactive: show ip msdp peer — TCP 639 blocked or RPF failure
+      - Troubleshoot SA not propagating: SA-filter too restrictive, RP address mismatch
+
+  - number: 4
+    folder: lab-04-mbgp-multicast
+    title: "Multiprotocol BGP for Multicast"
+    difficulty: Intermediate
+    type: progressive
+    time_minutes: 75
+    devices: [R1, R2, R3, R4, R5, SRC1, RCV1]
+    extends: lab-03-msdp-inter-domain
+    blueprint_refs: ["2.1.c", "2.2.b", "2.2.f", "2.4.b"]
+    objectives:
+      - Add address-family ipv4 multicast under BGP on R1 and R5
+      - Advertise R5 loopback 10.0.0.5/32 into BGP ipv4 multicast (separate from unicast)
+      - Verify separate multicast BGP table: show ip bgp ipv4 multicast
+      - Configure ip multicast rpf use-bgp on R1; verify RPF for 10.0.0.5 uses MBGP path
+      - Add iBGP address-family ipv4 multicast between R1 and R3
+      - Configure IPv6 addresses on R4 Gi0/1 (fc00:4::1/64) and RCV1 ens3 (fc00:4::10/64)
+      - Enable IPv6 multicast-routing on R4; configure MLD on R4 Gi0/1
+      - On RCV1, join IPv6 multicast group ff3e::1 and verify MLD report on R4
+      - Verify IPv6 mroute: show ipv6 mroute ff3e::1
+      - Troubleshoot MBGP RPF mismatch: unicast and multicast BGP NH differ; fix with route-policy
+
+  - number: 5
+    folder: lab-05-mldp-p2mp
+    title: "MLDP and P2MP LSPs"
+    difficulty: Intermediate
+    type: progressive
+    time_minutes: 90
+    devices: [R1, R2, R3, R4, SRC1, RCV1]
+    extends: lab-04-mbgp-multicast
+    blueprint_refs: ["2.2.e", "2.4.a"]
+    objectives:
+      - Enable MPLS LDP on all IS-IS interfaces (L1-L4) on R1, R2, R3, R4
+      - Verify LDP sessions: show mpls ldp neighbor on all routers
+      - Enable MLDP globally: mpls mldp on all routers
+      - Configure P2MP LSP with R1 as root; use mldp static opaque FEC pointing to R4 as leaf
+      - Verify P2MP MLDP bindings on root R1: show mpls mldp bindings
+      - Verify MLDP state on transit R2 and R3: show mpls mldp neighbors
+      - Verify mLDP forwarding entry on leaf R4: show mpls forwarding-table
+      - Verify that multicast traffic from SRC1 reaches RCV1 via MPLS label switching (not IP multicast)
+      - Use tcpdump on RCV1 to confirm traffic arrival; use show mpls forwarding on R2/R3 to confirm label-switched path
+      - Troubleshoot P2MP LSP not established: LDP not enabled on L4, opaque FEC misconfigured
+
+  - number: 6
+    folder: lab-06-capstone-config
+    title: "Multicast Full Deployment — Capstone I"
+    difficulty: Advanced
+    type: capstone_i
+    clean_slate: true
+    time_minutes: 120
+    devices: [R1, R2, R3, R4, R5, SRC1, RCV1]
+    blueprint_refs: ["2.1", "2.1.a", "2.1.b", "2.1.c", "2.2", "2.2.a", "2.2.b", "2.2.c", "2.2.d", "2.2.e", "2.2.f", "2.3", "2.3.a", "2.3.b", "2.3.c", "2.3.d", "2.4", "2.4.a", "2.4.b"]
+    objectives:
+      - From IP-only baseline configure IS-IS L2 on R1-R4; configure R2/R4 receiver/source subnets
+      - Enable ip multicast-routing on all routers; configure BSR (R2) and RP candidates (R1 prio 10, R3 prio 5)
+      - Enable PIM-SM on all interfaces; verify SRC1 → RCV1 stream for group 239.1.1.1 via mcjoin
+      - Configure anycast RP — R1 + R3 advertise 10.0.0.100/32; MSDP R1↔R3
+      - Configure SSM and IGMPv3 on R4; verify RCV1 SSM join 232.1.1.1 creates (S,G) without RP
+      - Configure BIDIR-PIM for 239.2.1.1; verify DF election and bidirectional shared tree
+      - Activate R5; configure eBGP R1↔R5; configure MSDP R1↔R5; verify inter-domain SA exchange
+      - Configure MBGP (address-family ipv4 multicast) R1↔R5 and R1↔R3; enable MBGP RPF on R1
+      - Configure MLD on R4 Gi0/1; verify RCV1 IPv6 multicast join for ff3e::1
+      - Enable LDP on all IS-IS links; configure MLDP P2MP R1→R4; verify RCV1 receives via MPLS
+      - Verify all: mroute tables, IGMP groups, MSDP SA cache, MBGP table, MLDP bindings, RCV1 delivery
+
+  - number: 7
+    folder: lab-07-capstone-troubleshooting
+    title: "Multicast Comprehensive Troubleshooting — Capstone II"
+    difficulty: Advanced
+    type: capstone_ii
+    clean_slate: true
+    time_minutes: 120
+    devices: [R1, R2, R3, R4, R5, SRC1, RCV1]
+    blueprint_refs: ["2.1", "2.1.a", "2.1.b", "2.1.c", "2.2", "2.2.a", "2.2.b", "2.2.c", "2.2.d", "2.2.e", "2.2.f", "2.3", "2.3.a", "2.3.b", "2.3.c", "2.3.d", "2.4", "2.4.a", "2.4.b"]
+    objectives:
+      - Fault 1 (2.4.a / 2.2.c): RPF failure on R3 — wrong upstream PIM neighbor; RCV1 sees no traffic; diagnose with show ip rpf 192.168.2.10 and show ip mroute; fix IS-IS metric or static RPF
+      - Fault 2 (2.4.a / 2.3.a): Auto-RP mapping not received — dense-mode auto-rp listener missing; show ip pim rp mapping returns empty; fix with ip pim autorp listener on sparse-mode interfaces
+      - Fault 3 (2.4.a / 2.3.c): SSM join creating (*,G) instead of (S,G) — R4 Gi0/1 running IGMPv2; diagnose show ip igmp interface Gi0/1; fix ip igmp version 3
+      - Fault 4 (2.4.b / 2.2.d): MSDP peer R1↔R5 Inactive — ACL blocking TCP 639 on R1; diagnose show ip msdp peer and telnet test; fix ACL
+      - Fault 5 (2.4.b / 2.2.b): MBGP RPF on R1 using unicast path — ip multicast rpf use-bgp missing; diagnose show ip rpf 10.0.0.5; fix by enabling MBGP RPF
+      - Fault 6 (2.4.a / 2.2.e): MLDP P2MP LSP not established — LDP not enabled on R1 Gi0/2 (L4); diagnose show mpls ldp neighbor; fix by enabling mpls ip on missing interface
+      - Restore all: SRC1→RCV1 flow for 239.1.1.1 (ASM), 232.1.1.1 (SSM), MSDP SA exchange, MBGP RPF, P2MP MLDP — all operational simultaneously

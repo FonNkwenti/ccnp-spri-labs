@@ -15,8 +15,7 @@ A comprehensive set of hands-on labs for the CCNP SPRI (300-510) exam: *Implemen
 - Total estimated labs: 64 (including capstones)
 - Coverage: 100% of exam objectives mapped
 
-### Phase 2: Specification Development 🔄 90% Complete (9/10 topics)
-**Completed:**
+### Phase 2: Specification Development ✓ Complete (10/10 topics)
 - [x] ospf — OSPF Routing (spec + baseline)
 - [x] isis — IS-IS Routing (spec + baseline)  
 - [x] bgp — BGP Scalability and Troubleshooting (spec + baseline)
@@ -24,11 +23,9 @@ A comprehensive set of hands-on labs for the CCNP SPRI (300-510) exam: *Implemen
 - [x] ipv6-transition — IPv6 Tunneling and Transition (spec + baseline)
 - [x] fast-convergence — Fast Convergence (spec + baseline)
 - [x] mpls — MPLS (spec + baseline)
+- [x] multicast — Multicast Routing (spec + baseline)
 - [x] segment-routing — Segment Routing and SR-TE (spec + baseline)
 - [x] srv6 — Segment Routing v6 (spec + baseline)
-
-**Remaining:**
-- [ ] multicast — Multicast Routing (PIM-SM, MBGP, MSDP)
 
 ### Phase 3: Lab Construction 🔄 In Progress (1 lab built)
 - **ospf/lab-00-single-area-ospfv2** ✓ Built and approved
@@ -48,7 +45,7 @@ A comprehensive set of hands-on labs for the CCNP SPRI (300-510) exam: *Implemen
 | 5 | **ipv6-transition** | Phase 2 ✓ | 6 | 1.6–1.6.e | 6PE, static tunnels, NAT64, MAP-T |
 | 6 | **fast-convergence** | Phase 2 ✓ | 6 | 1.7–1.7.g | BFD, NSF, NSR, LFA/IP-FRR, BGP PIC |
 | 7 | **mpls** | Phase 2 ✓ | 6 | 4.1–4.1.e | LDP, LSP, RSVP-TE, BGP-free core |
-| 8 | **multicast** | Phase 2 ◻ | 8 | 2.1–2.4.b | PIM-SM, MBGP, MSDP, MLDP, IGMP/MLD |
+| 8 | **multicast** | Phase 2 ✓ | 8 | 2.1–2.4.b | PIM-SM, MBGP, MSDP, MLDP, IGMP/MLD |
 | 9 | **segment-routing** | Phase 2 ✓ | 8 | 4.2–4.3.e | SR-TE, TI-LFA, SR Prefer, PCE, SRLG, Tree SID |
 | 10 | **srv6** | Phase 2 ✓ | 5 | 4.4–4.4.d | SRv6 data-plane, Flex-Algo, interworking |
 
