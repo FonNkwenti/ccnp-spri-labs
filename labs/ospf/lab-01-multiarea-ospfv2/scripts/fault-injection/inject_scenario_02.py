@@ -1,15 +1,14 @@
 #!/usr/bin/env python3
 """
-Fault Injection: Scenario 03 — Missing Network Statement on R1 Loopback0
+Fault Injection: Scenario 02 — R1 Cannot Reach R5 Loopback1
 
-Target:     R1 (router ospf 1 process)
-Injects:    Removes the 'network 10.0.0.1 0.0.0.0 area 0' statement from R1's
-            OSPF process, causing Loopback0 (10.0.0.1/32) to be excluded from
-            R1's Router-LSA.
-Fault Type: Missing OSPF Network Statement
-Result:     OSPF adjacencies remain FULL (formed over Gi0/0), but 10.0.0.1/32
-            disappears from the routing tables of R2 and R3. Pings to R1's
-            loopback from remote routers fail.
+Target:     R5 (OSPF process 1)
+Injects:    Removes the network 172.16.5.0 0.0.0.255 area 3 statement from R5
+Fault Type: Missing OSPF Network Statement (prefix not advertised)
+
+Result:     Lo1 (172.16.5.0/24) is no longer in R5's OSPF process.
+            R5's Type-1 LSA omits the Lo1 stub link; no Type-3 LSA for
+            172.16.5.0/24 is generated; R1 cannot reach 172.16.5.1.
 
 Before running, ensure the lab is in the SOLUTION state:
     python3 apply_solution.py --host <eve-ng-ip>
@@ -22,53 +21,51 @@ import sys
 from pathlib import Path
 
 SCRIPT_DIR = Path(__file__).resolve().parent
-# Depth: scripts/fault-injection -> scripts -> lab-00-single-area-ospfv2 -> ospf -> labs/
+# Depth: scripts/fault-injection -> scripts -> lab-01-multiarea-ospfv2 -> ospf -> labs/
 sys.path.insert(0, str(SCRIPT_DIR.parents[3] / "common" / "tools"))
 from eve_ng import EveNgError, connect_node, discover_ports, require_host  # noqa: E402
 
 
 # Path to the EXISTING, ALREADY-IMPORTED lab in EVE-NG — used only for port
 # discovery via the REST API. This does NOT create or modify the .unl file.
-DEFAULT_LAB_PATH = "ccnp-spri/ospf/lab-00-single-area-ospfv2.unl"
+DEFAULT_LAB_PATH = "ccnp-spri/ospf/lab-01-multiarea-ospfv2.unl"
 
-DEVICE_NAME = "R1"
+DEVICE_NAME = "R5"
 FAULT_COMMANDS = [
     "router ospf 1",
-    "no network 10.0.0.1 0.0.0.0 area 0",
+    "no network 172.16.5.0 0.0.0.255 area 3",
 ]
 
-# Pre-flight: check R1's OSPF process configuration.
-# The fault is a removal, so there is no positive string added by the fault.
-# We check only that the solution-state marker (the Loopback0 network stmt)
-# is present before injecting, and absent as evidence the fault is in effect.
-PREFLIGHT_CMD = "show running-config | section ospf"
-# Used as evidence the fault is already active (solution marker absent).
-# Set to empty string — fault detection is handled in the custom preflight body.
-PREFLIGHT_FAULT_MARKER = ""
-# If this string is absent -> fault already injected (or lab not in solution state).
-PREFLIGHT_SOLUTION_MARKER = "network 10.0.0.1 0.0.0.0 area 0"
+# Pre-flight: check the OSPF process config on R5 to verify Lo1 network
+# statement is present (known-good state) before injecting.
+PREFLIGHT_CMD = "show running-config | section router ospf"
+# This fault is a pure removal — there is no string that appears only after
+# injection. Set to a sentinel that can never be present in IOS config output
+# so the second pre-flight guard is effectively disabled; the solution-marker
+# check (absence of the network statement) is the real guard here.
+PREFLIGHT_FAULT_MARKER = "__SENTINEL_NEVER_PRESENT__"
+# If this string is absent → Lo1 already removed from OSPF, bail out.
+PREFLIGHT_SOLUTION_MARKER = "network 172.16.5.0 0.0.0.255 area 3"
 
 
 def preflight(conn) -> bool:
-    """
-    Custom pre-flight for Scenario 03.
-
-    The fault removes a network statement — there is no positive string that only
-    appears after the fault is injected. Pre-flight logic:
-      - If PREFLIGHT_SOLUTION_MARKER is absent: the fault is already active
-        (or the lab is not in the solution state). Bail out either way.
-    """
     output = conn.send_command(PREFLIGHT_CMD)
     if PREFLIGHT_SOLUTION_MARKER not in output:
         print(f"[!] Pre-flight failed: '{PREFLIGHT_SOLUTION_MARKER}' not found.")
-        print("    Scenario 03 may already be injected, or the lab is not in the")
-        print("    solution state. Run apply_solution.py to restore and retry.")
+        print("    Run apply_solution.py first to restore the known-good config.")
+        print("    (Lo1 network statement already absent — scenario may already be active.)")
+        return False
+    # PREFLIGHT_FAULT_MARKER is a sentinel; this branch is never reached in
+    # normal operation but is kept to preserve the standard preflight pattern.
+    if PREFLIGHT_FAULT_MARKER in output:
+        print(f"[!] Pre-flight failed: '{PREFLIGHT_FAULT_MARKER}' already present.")
+        print("    Scenario 02 appears already injected. Restore with apply_solution.py.")
         return False
     return True
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Inject Scenario 03 fault")
+    parser = argparse.ArgumentParser(description="Inject Scenario 02 fault")
     parser.add_argument("--host", default="192.168.x.x",
                         help="EVE-NG server IP (required)")
     parser.add_argument("--lab-path", default=DEFAULT_LAB_PATH,
@@ -80,7 +77,7 @@ def main() -> int:
     host = require_host(args.host)
 
     print("=" * 60)
-    print("Fault Injection: Scenario 03")
+    print("Fault Injection: Scenario 02 — R1 Cannot Reach R5 Loopback1")
     print("=" * 60)
 
     try:
@@ -110,7 +107,7 @@ def main() -> int:
     finally:
         conn.disconnect()
 
-    print(f"[+] Fault injected on {DEVICE_NAME}. Scenario 03 is now active.")
+    print(f"[+] Fault injected on {DEVICE_NAME}. Scenario 02 is now active.")
     print("=" * 60)
     return 0
 

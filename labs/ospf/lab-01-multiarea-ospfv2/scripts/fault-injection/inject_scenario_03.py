@@ -1,15 +1,14 @@
 #!/usr/bin/env python3
 """
-Fault Injection: Scenario 03 — Missing Network Statement on R1 Loopback0
+Fault Injection: Scenario 03 — R2 Has Lost Its ABR Designation
 
-Target:     R1 (router ospf 1 process)
-Injects:    Removes the 'network 10.0.0.1 0.0.0.0 area 0' statement from R1's
-            OSPF process, causing Loopback0 (10.0.0.1/32) to be excluded from
-            R1's Router-LSA.
-Fault Type: Missing OSPF Network Statement
-Result:     OSPF adjacencies remain FULL (formed over Gi0/0), but 10.0.0.1/32
-            disappears from the routing tables of R2 and R3. Pings to R1's
-            loopback from remote routers fail.
+Target:     R2 (OSPF process 1)
+Injects:    Reverts the 10.1.12.0/24 network statement on R2 from area 1 to area 0
+Fault Type: OSPF Area Misconfiguration (ABR designation lost)
+
+Result:     R2 belongs to only Area 0; it loses its ABR status and stops
+            originating Type-3 Summary-LSAs for Area 1 prefixes into Area 0.
+            R3 and downstream routers lose reachability to Area 1 prefixes.
 
 Before running, ensure the lab is in the SOLUTION state:
     python3 apply_solution.py --host <eve-ng-ip>
@@ -22,47 +21,40 @@ import sys
 from pathlib import Path
 
 SCRIPT_DIR = Path(__file__).resolve().parent
-# Depth: scripts/fault-injection -> scripts -> lab-00-single-area-ospfv2 -> ospf -> labs/
+# Depth: scripts/fault-injection -> scripts -> lab-01-multiarea-ospfv2 -> ospf -> labs/
 sys.path.insert(0, str(SCRIPT_DIR.parents[3] / "common" / "tools"))
 from eve_ng import EveNgError, connect_node, discover_ports, require_host  # noqa: E402
 
 
 # Path to the EXISTING, ALREADY-IMPORTED lab in EVE-NG — used only for port
 # discovery via the REST API. This does NOT create or modify the .unl file.
-DEFAULT_LAB_PATH = "ccnp-spri/ospf/lab-00-single-area-ospfv2.unl"
+DEFAULT_LAB_PATH = "ccnp-spri/ospf/lab-01-multiarea-ospfv2.unl"
 
-DEVICE_NAME = "R1"
+DEVICE_NAME = "R2"
 FAULT_COMMANDS = [
     "router ospf 1",
-    "no network 10.0.0.1 0.0.0.0 area 0",
+    "no network 10.1.12.0 0.0.0.255 area 1",
+    "network 10.1.12.0 0.0.0.255 area 0",
 ]
 
-# Pre-flight: check R1's OSPF process configuration.
-# The fault is a removal, so there is no positive string added by the fault.
-# We check only that the solution-state marker (the Loopback0 network stmt)
-# is present before injecting, and absent as evidence the fault is in effect.
-PREFLIGHT_CMD = "show running-config | section ospf"
-# Used as evidence the fault is already active (solution marker absent).
-# Set to empty string — fault detection is handled in the custom preflight body.
-PREFLIGHT_FAULT_MARKER = ""
-# If this string is absent -> fault already injected (or lab not in solution state).
-PREFLIGHT_SOLUTION_MARKER = "network 10.0.0.1 0.0.0.0 area 0"
+# Pre-flight: check the OSPF process config on R2 to verify the 10.1.12.0/24
+# network is in area 1 (known-good) before injecting.
+PREFLIGHT_CMD = "show running-config | section router ospf"
+# If this string is already present → fault already injected (area is 0), bail out.
+PREFLIGHT_FAULT_MARKER = "network 10.1.12.0 0.0.0.255 area 0"
+# If this string is absent → not in solution state (area 1 must be present), bail out.
+PREFLIGHT_SOLUTION_MARKER = "network 10.1.12.0 0.0.0.255 area 1"
 
 
 def preflight(conn) -> bool:
-    """
-    Custom pre-flight for Scenario 03.
-
-    The fault removes a network statement — there is no positive string that only
-    appears after the fault is injected. Pre-flight logic:
-      - If PREFLIGHT_SOLUTION_MARKER is absent: the fault is already active
-        (or the lab is not in the solution state). Bail out either way.
-    """
     output = conn.send_command(PREFLIGHT_CMD)
     if PREFLIGHT_SOLUTION_MARKER not in output:
         print(f"[!] Pre-flight failed: '{PREFLIGHT_SOLUTION_MARKER}' not found.")
-        print("    Scenario 03 may already be injected, or the lab is not in the")
-        print("    solution state. Run apply_solution.py to restore and retry.")
+        print("    Run apply_solution.py first to restore the known-good config.")
+        return False
+    if PREFLIGHT_FAULT_MARKER in output:
+        print(f"[!] Pre-flight failed: '{PREFLIGHT_FAULT_MARKER}' already present.")
+        print("    Scenario 03 appears already injected. Restore with apply_solution.py.")
         return False
     return True
 
@@ -80,7 +72,7 @@ def main() -> int:
     host = require_host(args.host)
 
     print("=" * 60)
-    print("Fault Injection: Scenario 03")
+    print("Fault Injection: Scenario 03 — R2 Has Lost Its ABR Designation")
     print("=" * 60)
 
     try:
