@@ -16,17 +16,19 @@ Then read `.agent/skills/exam-planner/SKILL.md` and execute it end-to-end. The s
 - Writing `specs/topic-plan.yaml`
 - Creating empty `labs/<topic>/` folders per the plan
 
-When the topic plan is approved, **update `README.md`**:
-1. Read the topic list from `specs/topic-plan.yaml`.
-2. Find the `<!-- lab-index-start -->` / `<!-- lab-index-end -->` markers in `README.md`. If the markers are absent, append them at the end of the file.
-3. Replace everything between the markers (inclusive of the placeholder line) with one section per topic, in plan order:
+When the topic plan is approved, **fill the Suggested Practice Order in `README.md`**:
+1. Read the `build_order`, topic names, `dependencies`, and `scope_notes` from `specs/topic-plan.yaml`.
+2. Find the `<!-- practice-order-start -->` / `<!-- practice-order-end -->` markers in `README.md`. If absent, the README is from before this convention — warn the user and skip this step (they should re-render from the template).
+3. Replace **only** the lines between the markers (preserving the marker lines themselves) with a numbered list, one entry per topic in `build_order`:
 
 ```
-### <topic-slug>
-
-> Spec not yet created — run `/create-spec <topic-slug>`
+1. **<topic-slug>** — <one-line summary distilled from scope_notes> · *needs <comma-separated dependencies>*
+2. ...
 ```
 
-4. Write the updated `README.md` and commit it alongside `specs/topic-plan.yaml` and the empty `labs/` folders.
+The `· *needs ...*` suffix is omitted for topics with no dependencies. Keep each summary under ~12 words.
+
+4. Do **not** modify `README.md` outside the markers. Do **not** modify `STATUS.md` — that is `/project-status`'s job.
+5. Write the updated `README.md` and commit it alongside `specs/topic-plan.yaml` and the empty `labs/` folders.
 
 Finish by summarising the generated topic list and pointing the user at `/create-spec <topic-slug>` for Phase 2.

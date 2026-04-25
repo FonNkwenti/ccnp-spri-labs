@@ -64,6 +64,23 @@ Every topic moves through three sequential phases. The skill toolkit at `.agent/
 Each phase has a review gate — outputs are inspected before the next phase begins.
 See [`.agent/skills/README.md`](.agent/skills/) for the full skill catalogue and design.
 
+## Suggested Practice Order
+
+<!-- practice-order-start -->
+1. **ospf** — multiarea OSPFv2/v3, summarization, LSA behavior
+2. **isis** — multilevel IS-IS, dual-stack, L1/L2 boundaries
+3. **bgp** — scalability, communities, FlowSpec, dampening
+4. **routing-policy** — RPL vs route-maps, traffic steering · *needs ospf, isis, bgp*
+5. **ipv6-transition** — 6PE, static tunnels, NAT64, MAP-T · *needs bgp*
+6. **fast-convergence** — BFD, NSF, NSR, LFA/IP-FRR, BGP PIC · *needs ospf, isis, bgp*
+7. **mpls** — LDP, LSP, RSVP-TE, BGP-free core · *needs ospf, isis, bgp*
+8. **multicast** — PIM-SM, MBGP, MSDP, MLDP · *needs bgp, mpls*
+9. **segment-routing** — SR-TE, TI-LFA, PCE, Tree SID · *needs mpls, routing-policy*
+10. **srv6** — SRv6 data-plane, Flex-Algo, interworking · *needs segment-routing*
+<!-- practice-order-end -->
+
+> **You can practice topics in any order.** Each lab is self-contained — every lab folder has its own `setup_lab.py`, initial configs, and topology, so prerequisites are baked in and don't depend on having completed earlier labs. The order above is the recommended progression for working through the exam from scratch; if you already know the foundations, jump straight to whichever topic you want to drill.
+
 ## Commands
 
 | Command | Phase | Purpose |
