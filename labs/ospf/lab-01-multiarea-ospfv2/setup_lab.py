@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Lab Setup — Single-Area OSPFv2 Foundations (ospf/lab-00)
+Lab Setup — Multiarea OSPFv2 and LSA Propagation (ospf/lab-01)
 
 Pushes initial configs to all lab devices via EVE-NG console ports.
 Ports are discovered at runtime via the EVE-NG REST API — no hardcoded ports needed.
@@ -27,10 +27,10 @@ INITIAL_CONFIGS_DIR = SCRIPT_DIR / "initial-configs"
 
 # Path to the EXISTING, ALREADY-IMPORTED lab in EVE-NG — used only for port
 # discovery via the REST API. This does NOT create or modify the .unl file.
-DEFAULT_LAB_PATH = "ccnp-spri/ospf/lab-00-single-area-ospfv2.unl"
+DEFAULT_LAB_PATH = "ccnp-spri/ospf/lab-01-multiarea-ospfv2.unl"
 
 # Active devices for this lab (must match node names in EVE-NG).
-DEVICES = ["R1", "R2", "R3"]
+DEVICES = ["R1", "R2", "R3", "R4", "R5"]
 
 
 def push_config(host: str, name: str, port: int) -> bool:
@@ -68,7 +68,7 @@ def main() -> int:
     host = require_host(args.host)
 
     print("=" * 60)
-    print(f"Lab Setup: Single-Area OSPFv2 Foundations (EVE-NG: {host})")
+    print(f"Lab Setup: Multiarea OSPFv2 and LSA Propagation (EVE-NG: {host})")
     print("=" * 60)
 
     try:
