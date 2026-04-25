@@ -23,6 +23,8 @@ Last updated: 2026-04-24
 |-----|-------|--------|
 | lab-00-single-area-ospfv2 | Single-Area OSPFv2 Foundations | Built ✓ |
 | lab-01-multiarea-ospfv2 | Multiarea OSPFv2 and LSA Propagation | Not Started |
+| lab-01-multiarea-ospfv2-sonnet | Multiarea OSPFv2 and LSA Propagation (Sonnet build) | Review Needed |
+| lab-01-multiarea-ospfv2-sonnet-medium | Multiarea OSPFv2 and LSA Propagation (Sonnet medium effort) | Review Needed |
 | lab-02-ospfv3-dual-stack | OSPFv3 Dual-Stack Multiarea | Not Started |
 | lab-03-summarization-stub-nssa | Summarization, Stub, and NSSA | Not Started |
 | lab-04-capstone-config | OSPF Full Protocol Mastery — Capstone I | Not Started |

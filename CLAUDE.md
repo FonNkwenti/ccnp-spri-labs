@@ -12,13 +12,13 @@ See .agent/skills/memory/CLAUDE.md for the foundation skills repository context.
 
 ## Project Structure
 
-See conductor/product.md and conductor/workflow.md for detailed documentation.
+See `.agent/skills/README.md` for the foundation toolkit documentation.
 
 ## Active Work
 
-- See conductor/tracks.md for the current chapter plan
-- See labs/ for existing lab content
-- Run git submodule status to check skills version
+- See `memory/progress.md` for the current chapter plan
+- See `labs/` for existing lab content
+- Run `git submodule status` to check skills version
 
 ## Three-Phase Workflow (slash commands)
 
