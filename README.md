@@ -1,117 +1,100 @@
 # CCNP SPRI (300-510) Lab Series
 
-A comprehensive set of hands-on labs for the CCNP SPRI (300-510) exam: *Implementing Cisco Service Provider Advanced Routing Solutions*.
+> Hands-on labs for the CCNP SPRI (300-510) exam: *Implementing Cisco Service Provider Advanced Routing Solutions*.
+> Built on EVE-NG (Intel/Windows) using the [cisco-lab-skills](.agent/skills/) toolkit.
 
-**Exam Code:** 300-510  
-**Total Blueprint Objectives:** 94  
-**Planned Lab Count:** ~64 labs across 10 topics  
-**Platform:** EVE-NG (Intel/Windows)
+**For current build progress, see [`STATUS.md`](STATUS.md).**
 
-## Project Status
+## At a Glance
 
-### Phase 1: Exam Planning ✓ Complete
-- Blueprint analyzed and organized into 10 technology-based topics
-- Topic plan created: `specs/topic-plan.yaml`
-- Total estimated labs: 64 (including capstones)
-- Coverage: 100% of exam objectives mapped
+| | |
+|---|---|
+| **Exam** | CCNP SPRI — Implementing Cisco Service Provider Advanced Routing Solutions |
+| **Code** | 300-510 |
+| **Blueprint** | [`blueprint/300-510/blueprint.md`](blueprint/300-510/blueprint.md) |
+| **Topics** | 10 (see [`specs/topic-plan.yaml`](specs/topic-plan.yaml)) |
+| **Total labs (planned)** | ~64 |
+| **Platform** | EVE-NG (Intel/Windows) |
+| **Skill toolkit** | [`.agent/skills/`](.agent/skills/) (git submodule) |
 
-### Phase 2: Specification Development ✓ Complete (10/10 topics)
-- [x] ospf — OSPF Routing (spec + baseline)
-- [x] isis — IS-IS Routing (spec + baseline)  
-- [x] bgp — BGP Scalability and Troubleshooting (spec + baseline)
-- [x] routing-policy — Routing Policy and Manipulation (spec + baseline)
-- [x] ipv6-transition — IPv6 Tunneling and Transition (spec + baseline)
-- [x] fast-convergence — Fast Convergence (spec + baseline)
-- [x] mpls — MPLS (spec + baseline)
-- [x] multicast — Multicast Routing (spec + baseline)
-- [x] segment-routing — Segment Routing and SR-TE (spec + baseline)
-- [x] srv6 — Segment Routing v6 (spec + baseline)
+## Quick Start
 
-### Phase 3: Lab Construction 🔄 In Progress (1 lab built)
-- **ospf/lab-00-single-area-ospfv2** ✓ Built and approved
-- Three-model comparison (Haiku / Sonnet / Opus) of lab-01 completed and archived — see `labs/ospf/report.md`. Variant folders removed; canonical lab-01 will be built once the model-enforcement gate is live.
-- Remaining labs build on prior lab solutions — work sequentially
+```bash
+git clone --recurse-submodules <repo-url>
+cd ccnp-spri-labs
+pip install -r requirements.txt
+```
 
-## Lab Chapters
+Run the reference lab to verify your EVE-NG setup:
 
-<!-- lab-index-start -->
+```bash
+cd labs/ospf/lab-00-single-area-ospfv2/
+python setup_lab.py --host <eve-ng-ip>
+# then follow workbook.md
+```
 
-| # | Topic | Status | Labs Est. | Blueprint Bullets | Notes |
-|---|-------|--------|-----------|-------------------|-------|
-| 1 | **ospf** | Phase 3 (1/6) | 6 | 1.1–1.2.b | Multiarea OSPFv2/v3, summarization, LSA behavior |
-| 2 | **isis** | Phase 2 ✓ | 5 | 1.3–1.3.b | Multilevel IS-IS, dual-stack, L1/L2 |
-| 3 | **bgp** | Phase 2 ✓ | 9 | 1.4–1.5.j | Scalability, communities, FlowSpec, dampening |
-| 4 | **routing-policy** | Phase 2 ✓ | 7 | 3.1–3.4.b | RPL vs route-maps, conditional matching, traffic steering |
-| 5 | **ipv6-transition** | Phase 2 ✓ | 6 | 1.6–1.6.e | 6PE, static tunnels, NAT64, MAP-T |
-| 6 | **fast-convergence** | Phase 2 ✓ | 6 | 1.7–1.7.g | BFD, NSF, NSR, LFA/IP-FRR, BGP PIC |
-| 7 | **mpls** | Phase 2 ✓ | 6 | 4.1–4.1.e | LDP, LSP, RSVP-TE, BGP-free core |
-| 8 | **multicast** | Phase 2 ✓ | 8 | 2.1–2.4.b | PIM-SM, MBGP, MSDP, MLDP, IGMP/MLD |
-| 9 | **segment-routing** | Phase 2 ✓ | 8 | 4.2–4.3.e | SR-TE, TI-LFA, SR Prefer, PCE, SRLG, Tree SID |
-| 10 | **srv6** | Phase 2 ✓ | 5 | 4.4–4.4.d | SRv6 data-plane, Flex-Algo, interworking |
+> First time? Read [`labs/ospf/lab-00-single-area-ospfv2/README.md`](labs/ospf/lab-00-single-area-ospfv2/) for a full walkthrough.
 
-<!-- lab-index-end -->
+## Repository Layout
 
-## Workflow: Three-Phase Pipeline
+```
+ccnp-spri-labs/
+├── blueprint/300-510/          Exam blueprint (source of truth for objectives)
+├── specs/topic-plan.yaml       Topic breakdown + build order (Phase 1 output)
+├── labs/<topic>/               Per-topic specs (Phase 2) and lab builds (Phase 3)
+│   ├── spec.md                 Topic spec — progression and coverage
+│   ├── baseline.yaml           Topology + IP plan + lab definitions
+│   └── lab-NN-<slug>/          Built lab: workbook, configs, topology, scripts
+├── conductor/                  Project workflow docs (product, tracks, workflow)
+├── memory/                     Cross-session notes and progress logs
+├── tests/                      Repo-level tests
+└── .agent/skills/              Lab-generation toolkit (git submodule)
+```
 
-Each topic moves through three sequential phases:
+## How Labs Are Built
 
-### Phase 1: Exam Planning (exam-planner skill)
-- **Input:** Exam blueprint (`blueprint/300-510/blueprint.md`)
-- **Output:** `specs/topic-plan.yaml` with 10 topics, dependencies, and build order
-- **Status:** ✓ Complete
+Every topic moves through three sequential phases. The skill toolkit at `.agent/skills/` automates each one.
 
-### Phase 2: Specification (spec-creator skill)
-- **Input:** Topic from `topic-plan.yaml` + blueprint bullets
-- **Output:** `labs/<topic>/spec.md` (progression table, coverage matrix) + `labs/<topic>/baseline.yaml` (topology, IPs, lab definitions)
-- **Process:** One topic at a time, review after each
-- **Status:** 3/10 topics done → next: `routing-policy`
+| Phase | Skill | Input → Output |
+|-------|-------|----------------|
+| **1. Plan** | `exam-planner` | Blueprint → `specs/topic-plan.yaml` |
+| **2. Spec** | `spec-creator` | Topic → `labs/<topic>/spec.md` + `baseline.yaml` |
+| **3. Build** | `lab-builder` | Spec → workbook, configs, topology, fault-injection scripts |
 
-### Phase 3: Lab Construction (lab-builder skill)
-- **Input:** `spec.md` + `baseline.yaml` for a topic
-- **Output:** Workbooks, configs, solutions, topology diagrams, fault-injection scripts (one lab at a time)
-- **Process:** Sequential with pause-and-review between labs
-- **Status:** Pending Phase 2 completion
+Each phase has a review gate — outputs are inspected before the next phase begins.
+See [`.agent/skills/README.md`](.agent/skills/) for the full skill catalogue and design.
 
 ## Commands
 
-```bash
-# Phase 1 (already done, but shown for reference)
-/plan-exam                    # Read blueprint, create topic-plan.yaml
+| Command | Phase | Purpose |
+|---------|-------|---------|
+| `/plan-exam` | 1 | Read blueprint, create `topic-plan.yaml` |
+| `/create-spec <topic>` | 2 | Generate `spec.md` + `baseline.yaml` for one topic |
+| `/build-lab <topic>/<lab-id>` | 3 | Build a single lab |
+| `/build-topic <topic>` | 3 | Build all labs for a topic with review gates |
+| `/build-capstone` | 3 | Multi-domain capstone spanning topics |
+| `/tag-lab <topic>/<lab-id>` | — | Stamp lab `meta.yaml` with provenance |
+| `/sync-skills` | — | Pull latest `.agent/skills/` from upstream |
+| `/project-status` | — | Regenerate [`STATUS.md`](STATUS.md) |
 
-# Phase 2: Create specs for next topic
-/create-spec routing-policy   # Create spec.md and baseline.yaml for routing-policy
+For the current state of the project (which labs are built, what's next), run `/project-status` or read [`STATUS.md`](STATUS.md).
 
-# Phase 3: Build labs for a topic (after spec approval)
-/build-lab routing-policy/lab-00-introduction   # Build one lab at a time
-/build-topic routing-policy                     # Build all labs for a topic with review gates
+## Prerequisites
 
-# Optional: Wrap-up
-/build-capstone               # Build multi-domain capstone spanning multiple topics
-/tag-lab routing-policy/lab-00-introduction     # Add metadata (difficulty, blueprint refs)
-```
+- Python 3.10+ with `pip install -r requirements.txt`
+- EVE-NG accessible on your network (see [`.agent/skills/eve-ng/SKILL.md`](.agent/skills/eve-ng/) for image and hardware constraints)
+- Cisco IOSv / IOSvL2 / XRv 9000 images loaded in EVE-NG (per topic requirements in `baseline.yaml`)
 
-## Getting Started
+## Working on This Project
 
-### Prerequisites
-1. Clone with submodules: `git clone --recurse-submodules <repo-url>`
-2. Install Python: `pip install -r requirements.txt`
-3. EVE-NG running on local network (see `.agent/skills/eve-ng/SKILL.md` for image constraints)
+| If you want to… | Read |
+|----|----|
+| Understand conventions and project context | [`CLAUDE.md`](CLAUDE.md) |
+| See current chapter plan / track | [`conductor/tracks.md`](conductor/tracks.md) |
+| See live build progress | [`STATUS.md`](STATUS.md) |
+| Learn how the skill toolkit works | [`.agent/skills/README.md`](.agent/skills/) |
+| Read the exam blueprint | [`blueprint/300-510/blueprint.md`](blueprint/300-510/blueprint.md) |
 
-### Running Labs
-1. Navigate to a lab: `cd labs/<topic>/<lab-folder>/`
-2. Run setup: `python setup_lab.py --host <eve-ng-ip>`
-3. Follow the workbook: `workbook.md`
+---
 
-## Development
-
-Lab creation is orchestrated via **Claude Code skills** mounted at `.agent/skills/`:
-
-| Skill | Phase | Role |
-|-------|-------|------|
-| `exam-planner` | 1 | Read blueprint, produce topic plan |
-| `spec-creator` | 2 | Spec one topic per run (review gate) |
-| `lab-builder` | 3 | Build labs for topic (pause between each) |
-| `drawio` | 3 | Render topology diagrams (Cisco style) |
-| `fault-injector` | 3 | Generate fault scenarios for capstones |
-
-See `CLAUDE.md` and `.agent/skills/CLAUDE.md` for detailed workflow context and skill documentation.
+*This README is generated from `.agent/skills/scaffolding/README_template.md` at project bootstrap. Keep it stable — put live status in [`STATUS.md`](STATUS.md) instead.*
