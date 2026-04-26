@@ -27,6 +27,7 @@ OSPF's multiarea design is the cornerstone of scalable service provider IGPs. A 
 An OSPF area is a group of routers and links that share a common LSDB (Link-State Database). Every router inside an area runs the full Dijkstra SPF algorithm on the LSDB for that area. Critically, routers in one area do **not** see the detailed topology of another area — they only see the inter-area summary routes (Type-3 LSAs) advertised by the ABR.
 
 Rules that must be followed to maintain a valid multiarea domain:
+
 - **Area 0 (backbone)** must exist and all other areas must connect to it directly or via a virtual link.
 - An **ABR** (Area Border Router) sits at the boundary between two or more areas. It maintains a separate LSDB per area and originates Type-3 Summary-LSAs to advertise inter-area prefixes.
 - An ABR is *not* elected — any router with active interfaces in two or more OSPF areas is automatically an ABR.
@@ -50,6 +51,7 @@ In this lab only Types 1, 2, and 3 are generated. Type 4 appears in lab-03 when 
 When an ABR runs SPF on Area 1, it computes the cost to each prefix in that area. For each prefix it then originates a Type-3 Summary-LSA into every other area it belongs to (e.g., Area 0). The cost in the Type-3 LSA is the ABR's own cost to reach that prefix — downstream routers add their cost to the ABR to compute the full inter-area metric.
 
 Key behaviour to observe:
+
 - A Type-3 LSA is **re-originated** by each successive ABR it crosses. If traffic from Area 2 must transit Area 0 to reach Area 1, R3 creates a Type-3 for Area 1 prefixes into Area 0, and R2 re-creates a new Type-3 for those same prefixes into Area 1 (and vice versa for Area 2 prefixes into Area 1). There is no Type-3 LSA that crosses more than one ABR unchanged.
 - The metric accumulated on a Type-3 LSA is the **cost from the originating ABR to that prefix**, not the end-to-end path cost. Routers add their own cost to the ABR when computing the full route metric.
 
@@ -160,6 +162,7 @@ An area-mismatch fault — two adjacent routers advertising the same link in dif
 The following is **pre-loaded** via `setup_lab.py`:
 
 **IS pre-loaded:**
+
 - Hostnames on all five routers
 - Interface IP addressing on all routed links and loopbacks (all five routers)
 - `no ip domain-lookup` on all routers
@@ -167,6 +170,7 @@ The following is **pre-loaded** via `setup_lab.py`:
 - R4 and R5 have IP addressing only — no OSPF configuration
 
 **IS NOT pre-loaded** (student configures this):
+
 - Correct area assignments for the L1 link (Area 1), L3 link (Area 2), and L4 link (Area 3)
 - ABR configuration on R2 (Area 0 and Area 1) and R3 (Area 0, Area 2, Area 3)
 - OSPFv2 process on R4 (Area 2) and R5 (Area 3)
@@ -181,6 +185,7 @@ The following is **pre-loaded** via `setup_lab.py`:
 ### Task 1: Migrate Link L1 to Area 1
 
 On R1, R2, and R3, update the OSPF process so that:
+
 - The L1 subnet (10.1.12.0/24) is assigned to Area 1 instead of Area 0
 - R1's loopback0 and loopback1 are also assigned to Area 1 (R1 is an internal Area 1 router)
 - R2's loopback0 remains in Area 0 (R2 is an ABR; its management loopback anchors in the backbone)
@@ -193,6 +198,7 @@ On R1, R2, and R3, update the OSPF process so that:
 ### Task 2: Extend OSPF to R4 in Area 2
 
 Configure OSPF on R4 and extend R3's OSPF process to include the L3 subnet and R4's loopback addresses:
+
 - Assign the L3 subnet (10.1.34.0/24), R4's loopback0 (10.0.0.4/32), and R4's loopback1 (172.16.4.0/24) all to Area 2
 - Assign the L3 subnet on R3 (its Gi0/1 interface) to Area 2 as well
 
@@ -203,6 +209,7 @@ Configure OSPF on R4 and extend R3's OSPF process to include the L3 subnet and R
 ### Task 3: Extend OSPF to R5 in Area 3
 
 Configure OSPF on R5 and extend R3's OSPF process to include the L4 subnet and R5's loopback addresses:
+
 - Assign the L4 subnet (10.1.35.0/24), R5's loopback0 (10.0.0.5/32), and R5's loopback1 (172.16.5.0/24) all to Area 3
 - Assign the L4 subnet on R3 (its Gi0/2 interface) to Area 3
 
@@ -213,6 +220,7 @@ Configure OSPF on R5 and extend R3's OSPF process to include the L4 subnet and R
 ### Task 4: Verify LSA Propagation and Inter-Area Reachability
 
 Without adding any new configuration, verify the following using `show` commands:
+
 - On any router, `show ip ospf database summary` lists Type-3 Summary-LSAs for all inter-area prefixes
 - The originating router-id in each Type-3 LSA matches the correct ABR (10.0.0.2 for Area 1 prefixes in Area 0; 10.0.0.3 for Area 2 and Area 3 prefixes in Area 0)
 - End-to-end reachability: R1 can ping R4's loopback1 (172.16.4.1) and R5's loopback1 (172.16.5.1)
@@ -224,6 +232,7 @@ Without adding any new configuration, verify the following using `show` commands
 ### Task 5: Diagnose a Planted Area-Mismatch Fault
 
 After completing Tasks 1–4, a colleague changes a single `network` statement on one router. OSPF adjacency on one link drops to INIT and inter-area routes disappear. Using only `show` commands (no debug), identify:
+
 - Which link is affected
 - Which router has the misconfigured area number
 - The correct area assignment that restores Full adjacency
@@ -428,6 +437,7 @@ router ospf 1
  network 10.1.12.0 0.0.0.255 area 1
  network 172.16.1.0 0.0.0.255 area 1
 ```
+
 </details>
 
 <details>
@@ -439,6 +449,7 @@ router ospf 1
  no network 10.1.12.0 0.0.0.255 area 0
  network 10.1.12.0 0.0.0.255 area 1
 ```
+
 </details>
 
 <details>
@@ -448,6 +459,7 @@ router ospf 1
 show ip ospf
 show ip ospf neighbor
 ```
+
 </details>
 
 ---
@@ -466,6 +478,7 @@ interface GigabitEthernet0/1
 router ospf 1
  network 10.1.34.0 0.0.0.255 area 2
 ```
+
 </details>
 
 <details>
@@ -479,6 +492,7 @@ router ospf 1
  network 10.1.34.0 0.0.0.255 area 2
  network 172.16.4.0 0.0.0.255 area 2
 ```
+
 </details>
 
 <details>
@@ -488,6 +502,7 @@ router ospf 1
 show ip ospf neighbor
 show ip route ospf
 ```
+
 </details>
 
 ---
@@ -506,6 +521,7 @@ interface GigabitEthernet0/2
 router ospf 1
  network 10.1.35.0 0.0.0.255 area 3
 ```
+
 </details>
 
 <details>
@@ -519,6 +535,7 @@ router ospf 1
  network 10.1.35.0 0.0.0.255 area 3
  network 172.16.5.0 0.0.0.255 area 3
 ```
+
 </details>
 
 <details>
@@ -530,6 +547,7 @@ show ip route ospf
 ping 172.16.4.1 source loopback0
 ping 172.16.5.1 source loopback0
 ```
+
 </details>
 
 ---
@@ -549,6 +567,7 @@ show ip ospf | include Border
 ! Confirm all inter-area routes visible from R1
 show ip route ospf
 ```
+
 </details>
 
 ---
@@ -569,6 +588,7 @@ show ip ospf interface GigabitEthernet0/0   ! run on R4
 ! Step 3 — compare: if one side shows "Area 0" and the other shows "Area 2",
 ! the area ID is mismatched. Fix the one with the wrong area number.
 ```
+
 </details>
 
 <details>
@@ -580,6 +600,7 @@ router ospf 1
  no network 10.1.34.0 0.0.0.255 area 0
  network 10.1.34.0 0.0.0.255 area 2
 ```
+
 </details>
 
 ---
@@ -620,6 +641,7 @@ show ip ospf interface GigabitEthernet0/1
 ! If both show the same area but no neighbor → check hello/dead timers
 ! show ip ospf interface <int> shows: hello interval, dead interval, area
 ```
+
 </details>
 
 <details>
@@ -631,6 +653,7 @@ router ospf 1
  no network 10.1.34.0 0.0.0.255 area 0
  network 10.1.34.0 0.0.0.255 area 2
 ```
+
 </details>
 
 ---
@@ -659,6 +682,7 @@ show ip ospf database router
 show ip ospf interface brief
 ! Lo1 (172.16.5.1) must appear; if absent, it was removed from the OSPF process
 ```
+
 </details>
 
 <details>
@@ -669,6 +693,7 @@ show ip ospf interface brief
 router ospf 1
  network 172.16.5.0 0.0.0.255 area 3
 ```
+
 </details>
 
 ---
@@ -697,6 +722,7 @@ show ip ospf
 show ip ospf interface GigabitEthernet0/0
 ! If Gi0/0 shows Area 0 → the network statement for Area 1 was removed or changed
 ```
+
 </details>
 
 <details>
@@ -708,6 +734,7 @@ router ospf 1
  no network 10.1.12.0 0.0.0.255 area 0
  network 10.1.12.0 0.0.0.255 area 1
 ```
+
 </details>
 
 ---
@@ -716,22 +743,22 @@ router ospf 1
 
 ### Core Implementation
 
-- [ ] R1 fully in Area 1 (lo0, lo1, Gi0/0 all area 1)
-- [ ] R2 is ABR: `show ip ospf` shows "Border router" and two areas (0 and 1)
-- [ ] R3 is ABR: `show ip ospf` shows three areas (0, 2, and 3)
-- [ ] R4 adjacency with R3 is Full in Area 2
-- [ ] R5 adjacency with R3 is Full in Area 3
-- [ ] `show ip ospf database summary` on R2 shows Type-3 LSAs for Area 1 prefixes in Area 0 (ADV Router 10.0.0.2)
-- [ ] `show ip ospf database summary` on R3 shows Type-3 LSAs for Area 2 and Area 3 prefixes in Area 0 (ADV Router 10.0.0.3)
-- [ ] `show ip route ospf` on R1 shows R4 and R5 loopbacks as `O IA`
-- [ ] `ping 172.16.4.1 source loopback0` from R1 succeeds 5/5
-- [ ] `ping 172.16.5.1 source loopback0` from R1 succeeds 5/5
+- [x] R1 fully in Area 1 (lo0, lo1, Gi0/0 all area 1)
+- [x] R2 is ABR: `show ip ospf` shows "Border router" and two areas (0 and 1)
+- [x] R3 is ABR: `show ip ospf` shows three areas (0, 2, and 3)
+- [x] R4 adjacency with R3 is Full in Area 2
+- [x] R5 adjacency with R3 is Full in Area 3
+- [x] `show ip ospf database summary` on R2 shows Type-3 LSAs for Area 1 prefixes in Area 0 (ADV Router 10.0.0.2)
+- [x] `show ip ospf database summary` on R3 shows Type-3 LSAs for Area 2 and Area 3 prefixes in Area 0 (ADV Router 10.0.0.3)
+- [x] `show ip route ospf` on R1 shows R4 and R5 loopbacks as `O IA`
+- [x] `ping 172.16.4.1 source loopback0` from R1 succeeds 5/5
+- [x] `ping 172.16.5.1 source loopback0` from R1 succeeds 5/5
 
 ### Troubleshooting
 
-- [ ] Ticket 1 diagnosed and resolved (area-mismatch on L3)
-- [ ] Ticket 2 diagnosed and resolved (missing Lo1 network statement on R5)
-- [ ] Ticket 3 diagnosed and resolved (L1 reverted to Area 0 on R2, ABR designation lost)
+- [x] Ticket 1 diagnosed and resolved (area-mismatch on L3)
+- [x] Ticket 2 diagnosed and resolved (missing Lo1 network statement on R5)
+- [x] Ticket 3 diagnosed and resolved (L1 reverted to Area 0 on R2, ABR designation lost)
 
 ---
 
