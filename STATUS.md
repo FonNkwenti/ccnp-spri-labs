@@ -24,7 +24,7 @@
 <!-- topic-matrix-start -->
 | Topic | Spec | Labs Built / Planned | Notes |
 |-------|:----:|:--------------------:|-------|
-| ospf | ✓ | 1/6 | Multiarea OSPFv2/v3, summarization, LSA behavior |
+| ospf | ✓ | 3/6 | Multiarea OSPFv2/v3, summarization, LSA behavior |
 | isis | ✓ | 0/5 | Multilevel IS-IS, dual-stack, L1/L2 |
 | bgp | ✓ | 0/9 | Scalability, communities, FlowSpec, dampening |
 | routing-policy | ✓ | 0/7 | RPL vs route-maps, conditional matching, traffic steering |
@@ -44,12 +44,14 @@ State legend: `—` not started · `⧗` in progress · `✓` complete · `⚠` 
 - **2026-04-24** — `ospf/lab-00-single-area-ospfv2` built and approved
 - **2026-04-24** — Three-model comparison (Haiku / Sonnet / Opus) of `lab-01-multiarea-ospfv2` completed; variant folders archived pending the model-enforcement gate
 - **2026-04-25** — README/STATUS templates centralized in `.agent/skills/scaffolding/`; this repo migrated to the new gateway pattern
+- **2026-04-25** — `ospf/lab-01-multiarea-ospfv2` built and approved (Foundation, Sonnet)
+- **2026-04-25** — `ospf/lab-02-ospfv3-dual-stack` built and approved (Intermediate, Sonnet)
 <!-- recent-activity-end -->
 
 ## Next Step
 
 <!-- next-step-start -->
-Run `/build-lab ospf/lab-01-multiarea-ospfv2` (next lab in build order, after the model-enforcement gate is live).
+Run `/build-lab ospf/lab-03-summarization-stub-nssa` (Intermediate, Sonnet OK; adds R6, redistribution, stub/NSSA areas). Labs 04–05 require `claude-opus-4-7`.
 <!-- next-step-end -->
 
 ---

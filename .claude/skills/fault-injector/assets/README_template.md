@@ -20,8 +20,18 @@ python3 inject_scenario_03.py --host <eve-ng-ip>   # Ticket 3
 ## Restore
 
 ```bash
+# Restore all devices to known-good state
 python3 apply_solution.py --host <eve-ng-ip>
-python3 apply_solution.py --host <eve-ng-ip> --reset   # full write-erase + restore
+
+# Soft-reset first (default interface + no router), then restore — use when a fault
+# leaves stale running-config state that a plain config push cannot undo
+python3 apply_solution.py --host <eve-ng-ip> --reset
+
+# Restore a single device only (faster for targeted fixes)
+python3 apply_solution.py --host <eve-ng-ip> --node R1
+
+# Soft-reset + restore a single device
+python3 apply_solution.py --host <eve-ng-ip> --reset --node R1
 ```
 
 ## Exit Codes

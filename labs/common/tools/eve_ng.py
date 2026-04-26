@@ -130,17 +130,67 @@ def connect_node(host: str, port: int, timeout: int = 30):
     return conn
 
 
-def erase_device_config(host: str, name: str, port: int) -> None:
-    """Issue 'write erase' and reload on a device, then wait for it to come back."""
-    if ConnectHandler is None:
-        raise EveNgError("netmiko is not installed.")
+def _parse_cleanup_commands(config_path: Path | str) -> list[str]:
+    """Return IOS commands that undo the interfaces and routing protocols in a config file.
+
+    Generates 'default interface X' for every interface block and 'no router Y'
+    for every routing-protocol block found. Used by soft_reset_device() before
+    re-pushing a config so the device reaches a clean baseline without a reload.
+    """
+    interfaces: list[str] = []
+    routers: list[str] = []
+    with open(config_path) as fh:
+        for line in fh:
+            stripped = line.strip()
+            if stripped.startswith("interface "):
+                interfaces.append(stripped.split(" ", 1)[1])
+            elif stripped.startswith("router "):
+                routers.append(stripped)
+    cleanup: list[str] = []
+    for iface in interfaces:
+        cleanup.append(f"default interface {iface}")
+    for router in routers:
+        cleanup.append(f"no {router}")
+    return cleanup
+
+
+def soft_reset_device(host: str, port: int, config_path: Path | str) -> None:
+    """Default all interfaces and remove routing protocols parsed from config_path.
+
+    Intended to be called immediately before re-pushing a config so the device
+    reaches a clean baseline without a disruptive reload. Does NOT save config —
+    the caller is expected to push the new config and save_config() afterward.
+    """
+    cleanup = _parse_cleanup_commands(config_path)
+    if not cleanup:
+        return
     conn = connect_node(host, port)
     try:
-        conn.send_command_timing("write erase", strip_prompt=False, strip_command=False)
-        conn.send_command_timing("\n", strip_prompt=False, strip_command=False)
-        conn.send_command_timing("reload", strip_prompt=False, strip_command=False)
-        conn.send_command_timing("\n", strip_prompt=False, strip_command=False)
+        conn.send_config_set(cleanup)
     finally:
         conn.disconnect()
-    # Caller is responsible for waiting for boot before pushing configs.
-    print(f"[*] {name}: write erase + reload issued. Wait ~60s before restoring config.")
+
+
+def erase_device_config(host: str, name: str, port: int) -> bool:
+    """Send 'write erase' to clear a device's startup-config without reloading.
+
+    Uses expect_string to synchronize on IOS confirmation prompts so the
+    device is still reachable when this function returns. Returns True on
+    success, False on connection or command failure.
+    """
+    print(f"[*] {name}: erasing startup-config...")
+    try:
+        conn = connect_node(host, port)
+    except Exception as exc:
+        print(f"[!] {name}: connection failed — {exc}")
+        return False
+    try:
+        conn.send_command("write erase", expect_string=r"\[confirm\]")
+        conn.send_command("\n", expect_string=r"#")
+        print(f"[+] {name}: startup-config erased.")
+        return True
+    except Exception as exc:
+        print(f"[!] {name}: erase failed — {exc}")
+        return False
+    finally:
+        conn.disconnect()

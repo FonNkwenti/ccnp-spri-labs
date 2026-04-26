@@ -224,6 +224,33 @@ labs:
       - [5+ concurrent fault diagnosis objectives spanning all blueprint bullets]
 ```
 
+## Required per-lab fields in baseline.yaml labs[]
+
+- `number` — integer, lab ordering within the topic
+- `folder` — directory name (kebab-case), matches `labs/<topic>/<folder>/`
+- `title` — human-readable title
+- `difficulty` — **REQUIRED**. One of: `Foundation` | `Intermediate` | `Advanced`.
+  This field drives the hard model-enforcement gate in `/build-lab` and `/build-topic`.
+  A missing or invalid difficulty will cause the gate to fall back to `Intermediate`
+  and warn the user. Pick the tier honestly — do not downgrade difficulty to enable
+  a cheaper model. Difficulty reflects the lab's pedagogical rigor, not build budget.
+- `blueprint_refs` — list of exam-blueprint bullet IDs this lab covers
+- `devices` — active devices from core_topology.devices
+- `time_minutes` — estimated completion time
+- `objectives` — list of learning objectives
+
+## Difficulty tier definitions (for spec authors)
+
+- **Foundation** — first lab(s) of a topic; single concept; minimal prior knowledge.
+  Scaffolds into later labs. Example: `lab-00-single-area-ospfv2`.
+- **Intermediate** — combines 2–3 concepts; exercises real troubleshooting.
+  The meat of the certification. Example: `lab-01-multiarea-ospfv2`.
+- **Advanced** — capstone-style; spans multiple areas; open-ended troubleshooting
+  or design justification. Both capstone labs are always `Advanced`.
+
+See `MODEL-POLICY.md` at the skills submodule root for the allowed-model mapping
+per tier.
+
 --# Step 6: Create Lab Folder Structure
 
 Create empty lab subdirectories under `labs/<topic>/`:
@@ -253,6 +280,7 @@ Before presenting to the user, confirm:
 - [ ] Standalone labs (if any) come after all progressive labs and before capstones
 - [ ] Lab folder names are valid kebab-case and match the `folder` field in baseline.yaml
 - [ ] `spec.md` Blueprint Coverage Matrix has no gaps
+- [ ] Every lab entry has a `difficulty` field set to `Foundation` | `Intermediate` | `Advanced` (required for the model-enforcement gate)
 
 --# Step 8: Pause for Review
 

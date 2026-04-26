@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Solution Restoration — OSPF Lab 00: Single-Area OSPFv2
+Solution Restoration — OSPFv3 Dual-Stack Lab 02
 
 Reads per-device configs from solutions/ and pushes them to all affected
 devices, returning the lab to the known-good state after fault injection.
@@ -25,23 +25,26 @@ import sys
 from pathlib import Path
 
 SCRIPT_DIR = Path(__file__).resolve().parent
-# Depth: scripts/fault-injection -> scripts -> lab-00-single-area-ospfv2 -> ospf -> labs/
+# Depth: scripts/fault-injection -> scripts -> lab-02-ospfv3-dual-stack -> ospf -> labs/
 sys.path.insert(0, str(SCRIPT_DIR.parents[3] / "common" / "tools"))
 from eve_ng import EveNgError, connect_node, discover_ports, require_host, soft_reset_device  # noqa: E402
 
-# solutions/ is two levels above this script (lab root: lab-00-single-area-ospfv2/)
+# solutions/ is two levels above this script (lab root: lab-02-ospfv3-dual-stack/)
 SOLUTIONS_DIR = SCRIPT_DIR.parents[1] / "solutions"
 
 # Path to the EXISTING, ALREADY-IMPORTED lab in EVE-NG — used only for port
 # discovery via the REST API. This does NOT create or modify the .unl file.
-DEFAULT_LAB_PATH = "ccnp-spri/ospf/lab-00-single-area-ospfv2.unl"
+DEFAULT_LAB_PATH = "ccnp-spri/ospf/lab-02-ospfv3-dual-stack.unl"
 
-# All devices affected by any troubleshooting scenario — restored in order.
-# Scenario 01 targets R1, Scenario 02 targets R3, Scenario 03 targets R1.
+# All devices in the lab — restored in order.
+# Scenario 01 targets R4, Scenario 02 targets R5, Scenario 03 targets R2.
+# All five are included to guarantee a complete, consistent restoration.
 RESTORE_TARGETS = [
     "R1",
     "R2",
     "R3",
+    "R4",
+    "R5",
 ]
 
 

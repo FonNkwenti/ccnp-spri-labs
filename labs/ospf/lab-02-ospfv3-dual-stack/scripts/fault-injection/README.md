@@ -1,4 +1,4 @@
-# Fault Injection — OSPF Lab 01
+# Fault Injection — OSPF Lab 02
 
 Each script injects one fault. Work through the corresponding ticket in
 `workbook.md` Section 9 before looking at the solution.
@@ -9,12 +9,24 @@ Each script injects one fault. Work through the corresponding ticket in
 - All nodes must be **started** in EVE-NG
 - Python 3.x and `netmiko` installed (`pip install netmiko`)
 
-## Inject a Fault
+## Scenarios
+
+### Ticket 1 — Target: R4
 
 ```bash
-python3 inject_scenario_01.py --host <eve-ng-ip>   # Ticket 1
-python3 inject_scenario_02.py --host <eve-ng-ip>   # Ticket 2
-python3 inject_scenario_03.py --host <eve-ng-ip>   # Ticket 3
+python3 inject_scenario_01.py --host <eve-ng-ip>
+```
+
+### Ticket 2 — Target: R5
+
+```bash
+python3 inject_scenario_02.py --host <eve-ng-ip>
+```
+
+### Ticket 3 — Target: R2
+
+```bash
+python3 inject_scenario_03.py --host <eve-ng-ip>
 ```
 
 ## Restore

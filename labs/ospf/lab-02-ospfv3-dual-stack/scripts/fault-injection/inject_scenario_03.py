@@ -1,12 +1,17 @@
 #!/usr/bin/env python3
 """
-Fault Injection: Scenario 03 — [SCENARIO_TITLE]
+Fault Injection: Scenario 03 — R2 Not Advertising IPv6 Inter-Area Prefixes for Area 1
 
-Target:     [DEVICE_NAME] ([INTERFACE] — link to [PEER])
-Injects:    [ONE_LINE_FAULT_DESCRIPTION]
-Fault Type: [FAULT_TYPE, e.g. Timer Mismatch / Passive Interface / AS Mismatch]
+Target:     R2 (GigabitEthernet0/0 — link to R1)
+Injects:    Changes R2 GigabitEthernet0/0 from OSPFv3 IPv6 area 1 to area 0,
+            collapsing R2 from an ABR into an internal router and stopping
+            inter-area prefix advertisement for Area 1 prefixes.
+Fault Type: Wrong OSPFv3 Interface Area Assignment
 
-Result:     [OBSERVABLE_SYMPTOM — what the student will see]
+Result:     'show ospfv3' on R2 shows 'Internal router' instead of 'Border router'.
+            R3 has no Type-3 Inter-Area Prefix-LSAs for 2001:db8::1/128 or
+            2001:db8:1::/64. R2's OSPFv3 adjacency with R1 remains Full, masking
+            the fault.
 
 Before running, ensure the lab is in the SOLUTION state:
     python3 apply_solution.py --host <eve-ng-ip>
@@ -19,28 +24,28 @@ import sys
 from pathlib import Path
 
 SCRIPT_DIR = Path(__file__).resolve().parent
-# Depth: scripts/fault-injection -> scripts -> lab-NN -> <topic> -> labs/
+# Depth: scripts/fault-injection -> scripts -> lab-02-ospfv3-dual-stack -> ospf -> labs/
 sys.path.insert(0, str(SCRIPT_DIR.parents[3] / "common" / "tools"))
 from eve_ng import EveNgError, connect_node, discover_ports, require_host  # noqa: E402
 
 
 # Path to the EXISTING, ALREADY-IMPORTED lab in EVE-NG — used only for port
 # discovery via the REST API. This does NOT create or modify the .unl file.
-DEFAULT_LAB_PATH = "[PROJECT_FOLDER]/[TOPIC]/[LAB_SLUG].unl"
+DEFAULT_LAB_PATH = "ccnp-spri/ospf/lab-02-ospfv3-dual-stack.unl"
 
-DEVICE_NAME = "[DEVICE_NAME]"
+DEVICE_NAME = "R2"
 FAULT_COMMANDS = [
-    "[FAULT_COMMAND_1]",
-    "[FAULT_COMMAND_2]",
+    "interface GigabitEthernet0/0",
+    "no ospfv3 1 ipv6 area 1",
+    "ospfv3 1 ipv6 area 0",
 ]
 
-# Pre-flight: read running config on the target interface / process to verify
-# the lab is in the expected solution state before injecting.
-PREFLIGHT_CMD = "show running-config [RELEVANT_SECTION]"
-# If this string is already present → fault already injected, bail out.
-PREFLIGHT_FAULT_MARKER = "[STRING_THAT_SHOWS_FAULT_ALREADY_ACTIVE]"
-# If this string is absent → not in solution state, bail out.
-PREFLIGHT_SOLUTION_MARKER = "[STRING_THAT_CONFIRMS_KNOWN_GOOD_STATE]"
+# Pre-flight: check R2 Gi0/0 interface config to verify known-good state.
+PREFLIGHT_CMD = "show running-config interface GigabitEthernet0/0"
+# If this string is already present -> fault already injected (area changed to 0).
+PREFLIGHT_FAULT_MARKER = "ospfv3 1 ipv6 area 0"
+# If this string is absent -> not in solution state, bail out.
+PREFLIGHT_SOLUTION_MARKER = "ospfv3 1 ipv6 area 1"
 
 
 def preflight(conn) -> bool:
@@ -69,7 +74,7 @@ def main() -> int:
     host = require_host(args.host)
 
     print("=" * 60)
-    print("Fault Injection: Scenario 03 — [SCENARIO_TITLE]")
+    print("Fault Injection: Scenario 03")
     print("=" * 60)
 
     try:

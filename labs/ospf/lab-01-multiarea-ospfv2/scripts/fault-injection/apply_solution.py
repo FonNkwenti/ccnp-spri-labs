@@ -7,7 +7,9 @@ devices, returning the lab to the known-good state after fault injection.
 
 Usage:
     python3 apply_solution.py --host <eve-ng-ip>
-    python3 apply_solution.py --host <eve-ng-ip> --reset   # erase before restore
+    python3 apply_solution.py --host <eve-ng-ip> --reset          # soft-reset before restore
+    python3 apply_solution.py --host <eve-ng-ip> --node R1        # restore one device
+    python3 apply_solution.py --host <eve-ng-ip> --reset --node R1  # soft-reset + restore one device
 
 Exit codes:
     0 — all devices restored
@@ -25,7 +27,7 @@ from pathlib import Path
 SCRIPT_DIR = Path(__file__).resolve().parent
 # Depth: scripts/fault-injection -> scripts -> lab-01-multiarea-ospfv2 -> ospf -> labs/
 sys.path.insert(0, str(SCRIPT_DIR.parents[3] / "common" / "tools"))
-from eve_ng import EveNgError, connect_node, discover_ports, erase_device_config, require_host  # noqa: E402
+from eve_ng import EveNgError, connect_node, discover_ports, require_host, soft_reset_device  # noqa: E402
 
 # solutions/ is two levels above this script (lab root)
 SOLUTIONS_DIR = SCRIPT_DIR.parents[1] / "solutions"
@@ -59,7 +61,7 @@ def restore_device(host: str, ports: dict, name: str, *, reset: bool) -> bool:
     print(f"[*] Restoring {name} on {host}:{port} ...")
     try:
         if reset:
-            erase_device_config(host, name, port)
+            soft_reset_device(host, port, cfg_file)
 
         conn = connect_node(host, port)
         commands = [
@@ -84,10 +86,21 @@ def main() -> int:
     parser.add_argument("--lab-path", default=DEFAULT_LAB_PATH,
                         help=f"Lab .unl path in EVE-NG (default: {DEFAULT_LAB_PATH})")
     parser.add_argument("--reset", action="store_true",
-                        help="Erase device config before restoring (full write erase)")
+                        help="Soft-reset before restoring: default all interfaces and remove routing protocols")
+    parser.add_argument("--node", default=None,
+                        help="Restore a single device only (e.g. R1). Omit to restore all targets.")
     args = parser.parse_args()
 
     host = require_host(args.host)
+
+    if args.node:
+        if args.node not in RESTORE_TARGETS:
+            print(f"[!] '{args.node}' is not a valid target. Choose from: {', '.join(RESTORE_TARGETS)}",
+                  file=sys.stderr)
+            return 1
+        targets = [args.node]
+    else:
+        targets = RESTORE_TARGETS
 
     print("=" * 60)
     print("Solution Restoration: Removing All Faults")
@@ -100,7 +113,7 @@ def main() -> int:
         return 3
 
     success, failed = 0, 0
-    for name in RESTORE_TARGETS:
+    for name in targets:
         if restore_device(host, ports, name, reset=args.reset):
             success += 1
         else:

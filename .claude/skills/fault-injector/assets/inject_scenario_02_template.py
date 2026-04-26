@@ -26,7 +26,7 @@ from eve_ng import EveNgError, connect_node, discover_ports, require_host  # noq
 
 # Path to the EXISTING, ALREADY-IMPORTED lab in EVE-NG — used only for port
 # discovery via the REST API. This does NOT create or modify the .unl file.
-DEFAULT_LAB_PATH = "[TOPIC]/[LAB_SLUG].unl"
+DEFAULT_LAB_PATH = "[PROJECT_FOLDER]/[TOPIC]/[LAB_SLUG].unl"
 
 DEVICE_NAME = "[DEVICE_NAME]"
 FAULT_COMMANDS = [

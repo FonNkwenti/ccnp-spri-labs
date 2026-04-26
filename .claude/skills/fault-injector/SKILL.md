@@ -52,7 +52,7 @@ Use `assets/apply_solution_template.py` as the base template. Customise:
 
 The script reads solution configs from `solutions/[Device].cfg` (two directory levels above
 `scripts/fault-injection/`, i.e. the lab root). It calls `discover_ports()` for port lookup
-and supports `--reset` to run `erase_device_config()` before pushing configs.
+and supports `--reset` to run `soft_reset_device()` (issues `default interface` + `no router` to clear running-config state without a reload) before pushing configs, and `--node` to target a single device.
 
 --# Step 4: Generate scripts/fault-injection/README.md
 
@@ -71,26 +71,29 @@ Use `assets/README_template.md` as the base. Fill in:
 - [ ] `DEFAULT_LAB_PATH` set correctly in all scripts (matches the running lab's path in EVE-NG)
 - [ ] `RESTORE_TARGETS` in `apply_solution.py` covers every device touched by any scenario
 - [ ] `PREFLIGHT_SOLUTION_MARKER` and `PREFLIGHT_FAULT_MARKER` are distinct, unambiguous strings
-- [ ] Run `python3 -m py_compile` on every generated `.py` file — fix any SyntaxError before proceeding
+- [ ] Syntax-check every generated `.py` file WITHOUT creating cache files. Use one of:
+  - `python3 -c "import ast, sys; [ast.parse(open(f).read(), f) for f in sys.argv[1:]]" inject_scenario_01.py ...`  (preferred — no filesystem side effects)
+  - OR `python3 -m py_compile *.py && rm -rf __pycache__ scripts/fault-injection/__pycache__`  (acceptable — but MUST include the rm)
+  Fix any SyntaxError before proceeding. Never leave `__pycache__/` directories in the lab package.
 
---# Step 6: Update meta.yaml
+--# Step 6: Report generated files (do NOT write meta.yaml)
 
-Update provenance tracking for this lab.
+The fault-injector skill MUST NOT write or modify `meta.yaml`. Provenance is
+owned by the caller:
 
-- **If `meta.yaml` already exists** (lab-assembler wrote it): append to `updated[]`:
-  ```yaml
-  updated:
-    - date: "[YYYY-MM-DD]"
-      agent: claude-sonnet-4-6
-      skill: inject-faults
-      skill_version: "[date of .agent/skills HEAD]"
-      files:
-        - scripts/fault-injection/inject_scenario_01.py
-        # ... all inject scripts generated
-        - scripts/fault-injection/apply_solution.py
-        - scripts/fault-injection/README.md
-  ```
-- **If `meta.yaml` does not exist** (standalone run on a pre-existing lab): create it with `created` fields set to today's date and `agent: unknown` to indicate provenance was not tracked at generation time, then add the fault-injection files to `created.files`.
+- **When dispatched by lab-assembler (default):** Return the list of generated
+  files in your Output Confirmation. The parent `lab-assembler` run will fold
+  those paths into `meta.yaml.created.files` using the parent agent's
+  provenance. Do not touch meta.yaml.
+
+- **When invoked standalone on a pre-existing lab (rare):** The invoking user
+  or orchestrator is responsible for running `/tag-lab <lab-path>` after this
+  skill completes. `/tag-lab` stamps the correct provenance and appends an
+  `updated[]` entry with the real agent ID. Do not auto-write meta.yaml.
+
+This rule prevents "subagent bleed" where the fault-injector's own identity
+(`agent: claude-sonnet-4-6` or `agent: unknown`) overwrites the parent's
+provenance record.
 
 -# Output Structure
 
@@ -224,4 +227,4 @@ Actions:
 3. For each scenario, generate an `inject_scenario_0N.py` using the template from `assets/`.
 4. Generate `apply_solution.py` with `RESTORE_TARGETS` covering all affected devices.
 5. Generate `scripts/fault-injection/README.md` with `--host <eve-ng-ip>` in all commands.
-6. Update `meta.yaml` (Step 6).
+6. Report generated files to the caller per Step 6 — DO NOT write `meta.yaml`.
