@@ -174,52 +174,20 @@
       <mxGeometry x="672" y="558" as="geometry" />
     </mxCell>
 
-    <!-- FAULT ANNOTATIONS -->
-
-    <mxCell id="annot_F1" value="&lt;i style=&quot;color:#FF6B6B;font-size:10px;&quot;&gt;[F1] dead-interval 80&lt;/i&gt;"
-      style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;strokeColor=none;fillColor=none;"
+    <!-- SYMPTOM SUMMARY (observable behaviors only — no fault location hints) -->
+    <mxCell id="symptom_summary"
+      value="&lt;b style=&quot;color:#FFB300;&quot;&gt;REPORTED SYMPTOMS&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#FFFFFF&quot; style=&quot;font-size:10px;&quot;&gt;&#x2022; A stub area has lost full OSPF reachability&lt;br&gt;&#x2022; A redistributed external prefix is absent&lt;br&gt;&amp;nbsp;&amp;nbsp;from all routers&amp;apos; routing tables&lt;br&gt;&#x2022; Inter-area summarization is incomplete &#x2014;&lt;br&gt;&amp;nbsp;&amp;nbsp;individual component routes visible&lt;br&gt;&amp;nbsp;&amp;nbsp;instead of the expected summary&lt;br&gt;&#x2022; IPv6 routing is incomplete in one area&lt;br&gt;&amp;nbsp;&amp;nbsp;(IPv4 works; IPv6 does not)&lt;br&gt;&#x2022; A known external prefix is missing from&lt;br&gt;&amp;nbsp;&amp;nbsp;OSPF despite a static route existing&lt;/font&gt;"
+      style="rounded=1;whiteSpace=wrap;html=1;fillColor=#1a1200;strokeColor=#FFB300;fontColor=#FFFFFF;fontSize=10;align=left;verticalAlign=top;spacingLeft=8;spacingTop=8;arcSize=3;"
       vertex="1" parent="1">
-      <mxGeometry x="590" y="500" width="175" height="20" as="geometry" />
-    </mxCell>
-
-    <mxCell id="annot_F2" value="&lt;i style=&quot;color:#FF6B6B;font-size:10px;&quot;&gt;[F2] R5 prefix-list /25 mask (no Type-7)&lt;/i&gt;"
-      style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;strokeColor=none;fillColor=none;"
-      vertex="1" parent="1">
-      <mxGeometry x="360" y="510" width="230" height="20" as="geometry" />
-    </mxCell>
-
-    <mxCell id="annot_F3" value="&lt;i style=&quot;color:#FF6B6B;font-size:10px;&quot;&gt;[F3] area 1 range 172.16.0.0/23 (wrong)&lt;/i&gt;"
-      style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;strokeColor=none;fillColor=none;"
-      vertex="1" parent="1">
-      <mxGeometry x="270" y="330" width="240" height="20" as="geometry" />
-    </mxCell>
-
-    <mxCell id="annot_F4" value="&lt;i style=&quot;color:#FF6B6B;font-size:10px;&quot;&gt;[F4] ospfv3 ipv6 area 3 missing&lt;/i&gt;"
-      style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;strokeColor=none;fillColor=none;"
-      vertex="1" parent="1">
-      <mxGeometry x="360" y="472" width="200" height="20" as="geometry" />
-    </mxCell>
-
-    <mxCell id="annot_F5" value="&lt;i style=&quot;color:#FF6B6B;font-size:10px;&quot;&gt;[F5] distribute-list blocks 192.168.66.0/24&lt;/i&gt;"
-      style="text;html=1;align=left;verticalAlign=middle;whiteSpace=wrap;strokeColor=none;fillColor=none;"
-      vertex="1" parent="1">
-      <mxGeometry x="690" y="155" width="240" height="20" as="geometry" />
-    </mxCell>
-
-    <!-- FAULT LEGEND BOX -->
-    <mxCell id="fault_legend"
-      value="&lt;b style=&quot;color:#FF6B6B;&quot;&gt;INJECTED FAULTS&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#FFFFFF&quot; style=&quot;font-size:10px;&quot;&gt;&lt;b&gt;F1:&lt;/b&gt; R3 Gi0/1 dead-interval 80&lt;br&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;(R3-R4 adjacency broken)&lt;br&gt;&lt;b&gt;F2:&lt;/b&gt; R5 prefix-list mask /25 (wrong)&lt;br&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;(no Type-7 LSA generated)&lt;br&gt;&lt;b&gt;F3:&lt;/b&gt; R2 area 1 range 172.16.0.0/23&lt;br&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;(wrong mask, should be /21)&lt;br&gt;&lt;b&gt;F4:&lt;/b&gt; R5 Gi0/0 ospfv3 1 ipv6 area 3&lt;br&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;(interface statement missing)&lt;br&gt;&lt;b&gt;F5:&lt;/b&gt; R3 distribute-list inbound&lt;br&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;blocks 192.168.66.0/24&lt;/font&gt;"
-      style="rounded=1;whiteSpace=wrap;html=1;fillColor=#1a0000;strokeColor=#FF6B6B;fontColor=#FFFFFF;fontSize=10;align=left;verticalAlign=top;spacingLeft=8;spacingTop=8;arcSize=3;"
-      vertex="1" parent="1">
-      <mxGeometry x="50" y="490" width="280" height="220" as="geometry" />
+      <mxGeometry x="50" y="490" width="280" height="210" as="geometry" />
     </mxCell>
 
     <!-- LEGEND BOX -->
     <mxCell id="legend"
-      value="&lt;b&gt;LEGEND&lt;/b&gt;&lt;br&gt;&#9473;&#9473;&#9473;  Physical Link (OSPF)&lt;br&gt;- - -  External Link (non-OSPF)&lt;br&gt;&lt;br&gt;[blue]   Area 0 &#8212; Backbone&lt;br&gt;[green]  Area 1 &#8212; Normal&lt;br&gt;[orange] Area 2 &#8212; Totally Stubby&lt;br&gt;[purple] Area 3 &#8212; NSSA&lt;br&gt;[gray]   External AS (no OSPF)&lt;br&gt;&lt;br&gt;OSPF Process ID: 1&lt;br&gt;R2 = ABR (Areas 0/1)&lt;br&gt;R3 = ABR (Areas 0/2/3) + ASBR&lt;br&gt;R5 = NSSA ASBR (Type-7 LSA)&lt;br&gt;&lt;br&gt;&lt;i style=&quot;color:#FF6B6B;&quot;&gt;Red text = injected fault marker&lt;/i&gt;"
+      value="&lt;b&gt;LEGEND&lt;/b&gt;&lt;br&gt;&#9473;&#9473;&#9473;  Physical Link (OSPF)&lt;br&gt;- - -  External Link (non-OSPF)&lt;br&gt;&lt;br&gt;[blue]   Area 0 &#8212; Backbone&lt;br&gt;[green]  Area 1 &#8212; Normal&lt;br&gt;[orange] Area 2 &#8212; Totally Stubby&lt;br&gt;[purple] Area 3 &#8212; NSSA&lt;br&gt;[gray]   External AS (no OSPF)&lt;br&gt;&lt;br&gt;OSPF Process ID: 1&lt;br&gt;R2 = ABR (Areas 0/1)&lt;br&gt;R3 = ABR (Areas 0/2/3) + ASBR&lt;br&gt;R5 = NSSA ASBR (Type-7 LSA)"
       style="rounded=1;whiteSpace=wrap;html=1;fillColor=#000000;strokeColor=#FFFFFF;fontColor=#FFFFFF;fontSize=10;align=left;verticalAlign=top;spacingLeft=8;spacingTop=8;arcSize=3;"
       vertex="1" parent="1">
-      <mxGeometry x="50" y="725" width="280" height="195" as="geometry" />
+      <mxGeometry x="50" y="720" width="280" height="170" as="geometry" />
     </mxCell>
 
   </root>
