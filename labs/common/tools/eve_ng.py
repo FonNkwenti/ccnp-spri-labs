@@ -181,6 +181,11 @@ def connect_node(host: str, port: int, timeout: int = 30):
         global_delay_factor=2,
     )
     conn.enable()
+    # Silence console logging immediately so that any IOS syslog messages
+    # buffered from a previous session (e.g. %SYS-5-CONFIG_I after save_config)
+    # do not corrupt subsequent command/prompt matching in this session.
+    # cmd_verify=False avoids echo-matching against potentially stale buffer content.
+    conn.send_config_set(["no logging console"], cmd_verify=False)
     return conn
 
 
