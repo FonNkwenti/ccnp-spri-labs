@@ -112,6 +112,10 @@ def connect_node(host: str, port: int, timeout: int = 30):
 
     Returns the connection already in privilege mode so callers can immediately
     call send_config_set() without a separate enable() step.
+
+    fast_cli=False and global_delay_factor=2 are required for EVE-NG console
+    ports: buffered boot/session output in the telnet stream causes Netmiko to
+    miss the prompt during session setup at default timing.
     """
     if ConnectHandler is None:
         raise EveNgError(
@@ -125,6 +129,8 @@ def connect_node(host: str, port: int, timeout: int = 30):
         password="",
         secret="",
         timeout=timeout,
+        fast_cli=False,
+        global_delay_factor=2,
     )
     conn.enable()
     return conn
@@ -185,8 +191,11 @@ def erase_device_config(host: str, name: str, port: int) -> bool:
         print(f"[!] {name}: connection failed — {exc}")
         return False
     try:
-        conn.send_command("write erase", expect_string=r"\[confirm\]")
-        conn.send_command("\n", expect_string=r"#")
+        # send_command_timing is used here because write erase prompts for
+        # confirmation and then immediately returns to prompt — no reliable
+        # terminating string to anchor expect_string on the second send.
+        conn.send_command_timing("write erase")
+        conn.send_command_timing("")   # press Enter to confirm
         print(f"[+] {name}: startup-config erased.")
         return True
     except Exception as exc:
