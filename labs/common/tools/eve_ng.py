@@ -128,7 +128,9 @@ def find_open_lab(
         raise EveNgError(f"EVE-NG login failed at {host}: {exc}") from exc
 
     def _list_folder(path: str) -> tuple[list[str], list[str]]:
-        url = f"http://{host}/api/folders/{path}".rstrip("/")
+        # Root folder requires trailing slash: /api/folders/
+        # Subfolders do not: /api/folders/ccnp-spri/ospf
+        url = f"http://{host}/api/folders/{path}"
         try:
             resp = session.get(url, timeout=10)
             resp.raise_for_status()
@@ -137,21 +139,39 @@ def find_open_lab(
         data = resp.json().get("data", {})
         prefix = f"{path}/" if path else ""
         lab_paths = [f"{prefix}{d['file']}" for d in data.get("labs", []) if d.get("file")]
-        subdirs = [f"{prefix}{d['name']}" for d in data.get("dirs", []) if d.get("name")]
+        # EVE-NG uses "folders" (not "dirs"); filter ".." parent entries
+        subdirs = [
+            f"{prefix}{d['name']}"
+            for d in data.get("folders", [])
+            if d.get("name") and d["name"] != ".."
+        ]
         return lab_paths, subdirs
 
+    # Pass 1: walk the full folder tree to collect all .unl paths.
+    # discover_ports() must NOT be called here — EVE-NG tracks the open lab
+    # per user, so opening any lab via the API will cause subsequent folder
+    # listing requests to return 412 ("lab is open, close it first").
+    all_lab_paths: list[str] = []
+    visited: set[str] = set()
     queue = [""]
     while queue:
         folder = queue.pop(0)
+        if folder in visited:
+            continue
+        visited.add(folder)
         lab_paths, subdirs = _list_folder(folder)
+        all_lab_paths.extend(lab_paths)
         queue.extend(subdirs)
-        for lab_path in lab_paths:
-            try:
-                ports = discover_ports(host, lab_path, username, password)
-                if all(name in ports for name in node_names):
-                    return lab_path
-            except EveNgError:
-                continue
+
+    # Pass 2: now that folder browsing is complete, check each lab for the
+    # expected running nodes.
+    for lab_path in all_lab_paths:
+        try:
+            ports = discover_ports(host, lab_path, username, password)
+            if all(name in ports for name in node_names):
+                return lab_path
+        except EveNgError:
+            continue
     return None
 
 
