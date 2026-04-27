@@ -250,9 +250,9 @@ Comprehensive addressing table for all routers. Loopback addresses serve as rout
 | Router | Interface | IPv4 Address | IPv6 Address | Subnet Mask / Prefix | OSPF Area | Purpose |
 |--------|-----------|--------------|--------------|----------------------|-----------|---------|
 | **R1** | Loopback0 | 10.0.0.1 | 2001:db8::1 | /32 / /128 | 1 | Router identifier |
-| **R1** | Loopback1 | 172.16.1.1 | 2001:db8:1:0::1 | /24 / /64 | 1 | Test stub prefix (summarization) |
-| **R1** | Loopback2 | 172.16.2.1 | 2001:db8:1:1::1 | /24 / /64 | 1 | Test stub prefix (summarization) |
-| **R1** | Loopback3 | 172.16.3.1 | 2001:db8:1:2::1 | /24 / /64 | 1 | Test stub prefix (summarization) |
+| **R1** | Loopback1 | 172.16.1.1 | 2001:db8:1::1 | /24 / /64 | 1 | Test stub prefix (summarization) |
+| **R1** | Loopback2 | 172.16.2.1 | 2001:db8:1:2::1 | /24 / /64 | 1 | Test stub prefix (summarization) |
+| **R1** | Loopback3 | 172.16.3.1 | 2001:db8:1:3::1 | /24 / /64 | 1 | Test stub prefix (summarization) |
 | **R1** | Gi0/0 | 10.1.12.1 | 2001:db8:12::1 | /24 / /64 | 1 | Link to R2 (Area 1) |
 | **R2** | Loopback0 | 10.0.0.2 | 2001:db8::2 | /32 / /128 | 0 | Router identifier |
 | **R2** | Gi0/0 | 10.1.12.2 | 2001:db8:12::2 | /24 / /64 | 1 | Link to R1 (Area 1) |
