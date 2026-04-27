@@ -1,6 +1,6 @@
 # Lab Build Progress — CCNP SPRI (300-510)
 
-Last updated: 2026-04-27
+Last updated: 2026-04-27 (lab-01-route-reflectors approved)
 
 ## Build Order
 
@@ -42,8 +42,8 @@ Last updated: 2026-04-27
 
 | Lab | Title | Status |
 |-----|-------|--------|
-| lab-00-ebgp-ibgp-foundations | eBGP and iBGP Foundations | Not Started |
-| lab-01-route-reflectors | iBGP Route Reflectors and Cluster IDs | Not Started |
+| lab-00-ebgp-ibgp-foundations | eBGP and iBGP Foundations | Built ✓ |
+| lab-01-route-reflectors | iBGP Route Reflectors and Cluster IDs | Built ✓ |
 | lab-02-ebgp-multihoming | eBGP Multihoming and Traffic Engineering | Not Started |
 | lab-03-interdomain-security | Inter-Domain Security and Maximum-Prefix | Not Started |
 | lab-04-dampening-dynamic | Route Dampening and Dynamic Neighbors | Not Started |

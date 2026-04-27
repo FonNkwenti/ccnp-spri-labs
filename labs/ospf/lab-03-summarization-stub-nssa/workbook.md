@@ -862,6 +862,8 @@ python3 scripts/fault-injection/apply_solution.py --host <eve-ng-ip>       # res
 python3 scripts/fault-injection/apply_solution.py --host <eve-ng-ip> --node R3   # restore one device
 ```
 
+**Important:** This lab is dual-stack (OSPFv2 + OSPFv3). Fault injection scripts modify **both OSPF and OSPFv3 processes** to ensure faults are visible in both protocols. For example, Ticket 2 injects an area-type mismatch in both processes so the OSPF adjacency fully breaks (rather than partially failing with one protocol up and one down).
+
 ---
 
 ### Ticket 1 — External Prefix Vanishes from All Routers

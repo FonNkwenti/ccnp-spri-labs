@@ -86,7 +86,8 @@ See `references/diagnostic-commands.md` for the full CLI command library and evi
 
 --# Phase IV: Resolution & Reporting
 
-Generate a resolution report covering:
+Generate a resolution report using `references/resolution-report-template.md`.
+The report must cover:
 1. Incident Summary (problem statement, lab, severity)
 2. Methodology Applied (selected approach + rationale)
 3. Diagnostic Log (chronological, timestamped)
@@ -95,7 +96,16 @@ Generate a resolution report covering:
 6. Testing & Verification (all symptoms confirmed resolved)
 7. Lessons Learned (exam trap, preventive notes)
 
-See `references/resolution-report-template.md` for the full template.
+**Write the report to a file** — do not leave it only in the conversation:
+
+- Directory: `labs/<topic>/<lab-id>/reports/`
+- Filename: `INC-<YYYY>-<NNNN>-<device>-<fault-slug>.md`
+  - `<NNNN>` — sequential 4-digit number (check existing files in `reports/` to pick the next one)
+  - `<device>` — primary affected device (e.g. `R4`)
+  - `<fault-slug>` — 2–4 word kebab-case description (e.g. `stub-area-mismatch`)
+- Example: `labs/ospf/lab-03-summarization-stub-nssa/reports/INC-2026-0001-R4-stub-area-mismatch.md`
+
+Create the `reports/` directory if it does not exist. After writing, tell the user the file path.
 
 -# Common Issues
 
