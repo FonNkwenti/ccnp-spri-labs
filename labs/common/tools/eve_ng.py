@@ -201,10 +201,15 @@ def connect_node(host: str, port: int, timeout: int = 30):
         global_delay_factor=2,
     )
     conn.enable()
-    # Silence console logging immediately so that any IOS syslog messages
-    # buffered from a previous session (e.g. %SYS-5-CONFIG_I after save_config)
-    # do not corrupt subsequent command/prompt matching in this session.
-    # cmd_verify=False avoids echo-matching against potentially stale buffer content.
+    # A previous session may have left the router in config or config-if mode.
+    # Netmiko's enable() sees '#' in the prompt and considers the device enabled
+    # without checking whether it is also in config mode. Send 'end' anchored
+    # on '#' so we fully wait for the privilege prompt before proceeding.
+    conn.send_command("end", expect_string=r"#", read_timeout=15)
+    # Silence console logging so that any IOS syslog messages buffered from a
+    # previous session (e.g. %SYS-5-CONFIG_I after save_config) do not corrupt
+    # subsequent command/prompt matching. cmd_verify=False avoids echo-matching
+    # against potentially stale buffer content.
     conn.send_config_set(["no logging console"], cmd_verify=False)
     return conn
 

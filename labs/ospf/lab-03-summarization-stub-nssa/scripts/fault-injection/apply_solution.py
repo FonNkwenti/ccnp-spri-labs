@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
 """
-Solution Restoration -- Lab 05: OSPF Comprehensive Troubleshooting - Capstone II
+Solution Restoration -- Lab 03: Summarization, Stub, and NSSA
 
 Reads per-device configs from solutions/ and pushes them to all affected
-devices, returning the lab to the known-good state after the troubleshooting exercise.
+devices, returning the lab to the known-good state after fault injection.
 
 Usage:
     python3 apply_solution.py --host <eve-ng-ip>
     python3 apply_solution.py --host <eve-ng-ip> --reset          # soft-reset before restore
-    python3 apply_solution.py --host <eve-ng-ip> --node R2        # restore one device
+    python3 apply_solution.py --host <eve-ng-ip> --node R3        # restore one device
     python3 apply_solution.py --host <eve-ng-ip> --reset --node R3  # soft-reset + restore one device
 
 Exit codes:
@@ -25,15 +25,17 @@ import sys
 from pathlib import Path
 
 SCRIPT_DIR = Path(__file__).resolve().parent
-# Depth: scripts/fault-injection -> scripts -> lab-05 -> ospf -> labs/
+# Depth: scripts/fault-injection -> scripts -> lab-03 -> ospf -> labs/
 sys.path.insert(0, str(SCRIPT_DIR.parents[3] / "common" / "tools"))
 from eve_ng import EveNgError, connect_node, discover_ports, require_host, soft_reset_device  # noqa: E402
 
 # solutions/ is two levels above this script (lab root)
 SOLUTIONS_DIR = SCRIPT_DIR.parents[1] / "solutions"
 
-DEFAULT_LAB_PATH = "ccnp-spri/ospf/lab-05-capstone-troubleshooting.unl"
+DEFAULT_LAB_PATH = "ccnp-spri/ospf/lab-03-summarization-stub-nssa.unl"
 
+# All devices affected by the troubleshooting scenarios -- restored in order.
+# All three scenarios target R3; remaining devices included for full domain restore.
 RESTORE_TARGETS = [
     "R1",
     "R2",
