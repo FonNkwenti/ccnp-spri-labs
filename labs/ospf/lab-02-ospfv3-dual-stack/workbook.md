@@ -182,6 +182,7 @@ Comprehensive addressing table for all routers. Loopback addresses serve as rout
 | **R5** | Gi0/0 | 10.1.35.5 | 2001:db8:35::5 | /24 / /64 | 3 | Link to R3 (Area 3) |
 
 **Key relationships:**
+
 - **Router identifiers (Loopback0):** Assigned from the 10.0.0.0/8 space; must remain stable across all routing processes (both OSPFv2 and OSPFv3 use 10.0.0.N as the router-id)
 - **Secondary loopbacks (Loopback1):** Assigned from the 172.16.0.0/12 space on R1, R4, and R5; these are stub prefixes that do not form adjacencies but are advertised into the OSPF database
 - **Interface IPv6 addresses:** All use the 2001:db8::/32 documentation prefix (RFC 3849); link segments use the 12/23/34/35 scheme to encode the connected routers
@@ -204,12 +205,14 @@ Comprehensive addressing table for all routers. Loopback addresses serve as rout
 The following is **pre-loaded** via `setup_lab.py`:
 
 **IS pre-loaded:**
+
 - Hostnames on all five routers
 - IPv4 addressing on all interfaces and loopbacks
 - `no ip domain-lookup` on all routers
 - OSPFv2 process 1 fully functional: multiarea, R1-R5, all adjacencies Full (carried forward from lab-01)
 
 **IS NOT pre-loaded** (student configures this):
+
 - `ipv6 unicast-routing` global command on each router
 - IPv6 addresses on all interfaces and loopbacks
 - OSPFv3 process (router-id, process definition)
@@ -232,6 +235,7 @@ On every router, enable IPv6 forwarding and configure IPv6 addresses on all inte
 ### Task 2: Activate OSPFv3 on R1, R2, and R3
 
 Start the OSPFv3 process on R1, R2, and R3 with router-IDs matching their OSPFv2 router-IDs (10.0.0.1, 10.0.0.2, 10.0.0.3). Assign each interface to the same OSPF area that it uses under OSPFv2:
+
 - R1: loopback0, loopback1, and Gi0/0 all in Area 1
 - R2: loopback0 and Gi0/1 in Area 0; Gi0/0 in Area 1
 - R3: loopback0 and Gi0/0 in Area 0; Gi0/1 in Area 2; Gi0/2 in Area 3
@@ -251,6 +255,7 @@ Activate OSPFv3 on R4 (router-id 10.0.0.4) and R5 (router-id 10.0.0.5). Assign t
 ### Task 4: Verify Dual-Stack Adjacency and LSA Database
 
 Confirm that OSPFv2 and OSPFv3 adjacencies are simultaneously Full on all four links, and inspect the OSPFv3 LSDB to identify Link-LSAs (Type-8) and Intra-Area Prefix-LSAs (Type-9):
+
 - Verify all OSPFv2 adjacencies remain Full (no disruption from OSPFv2 during the IPv6 additions)
 - Verify all OSPFv3 adjacencies are Full
 - Run `show ospfv3 database` on any router and identify at least one Type-8 and one Type-9 LSA
@@ -458,6 +463,7 @@ interface Loopback1
 interface GigabitEthernet0/0
  ipv6 address 2001:db8:12::1/64
 ```
+
 </details>
 
 <details>
@@ -466,6 +472,7 @@ interface GigabitEthernet0/0
 ```bash
 show ipv6 interface brief
 ```
+
 </details>
 
 ---
@@ -489,6 +496,7 @@ interface Loopback1
 interface GigabitEthernet0/0
  ospfv3 1 ipv6 area 1
 ```
+
 </details>
 
 <details>
@@ -508,6 +516,7 @@ interface GigabitEthernet0/0
 interface GigabitEthernet0/1
  ospfv3 1 ipv6 area 0
 ```
+
 </details>
 
 <details>
@@ -530,6 +539,7 @@ interface GigabitEthernet0/1
 interface GigabitEthernet0/2
  ospfv3 1 ipv6 area 3
 ```
+
 </details>
 
 <details>
@@ -539,6 +549,7 @@ interface GigabitEthernet0/2
 show ospfv3 neighbor
 show ospfv3 | include Border
 ```
+
 </details>
 
 ---
@@ -562,6 +573,7 @@ interface Loopback1
 interface GigabitEthernet0/0
  ospfv3 1 ipv6 area 2
 ```
+
 </details>
 
 <details>
@@ -581,6 +593,7 @@ interface Loopback1
 interface GigabitEthernet0/0
  ospfv3 1 ipv6 area 3
 ```
+
 </details>
 
 <details>
@@ -592,6 +605,7 @@ show ipv6 route ospf
 ping 2001:db8:4::1 source loopback0
 ping 2001:db8:5::1 source loopback0
 ```
+
 </details>
 
 ---
@@ -614,6 +628,7 @@ show ospfv3 database prefix
 ping 2001:db8:4::1 source loopback0
 ping 2001:db8:5::1 source loopback0
 ```
+
 </details>
 
 ---
@@ -634,6 +649,7 @@ show ospfv3 interface brief    ! run on each router
 ! the missing side lacks the 'ospfv3 1 ipv6 area X' command
 show running-config interface GigabitEthernet0/0   ! look for ospfv3 line
 ```
+
 </details>
 
 <details>
@@ -644,6 +660,7 @@ show running-config interface GigabitEthernet0/0   ! look for ospfv3 line
 interface GigabitEthernet0/0
  ospfv3 1 ipv6 area 3
 ```
+
 </details>
 
 ---
@@ -682,6 +699,7 @@ show ospfv3 interface brief
 show ospfv3 interface GigabitEthernet0/1
 ! If R3 shows Area 2 but R4 shows no ospfv3 interface → fault is on R4
 ```
+
 </details>
 
 <details>
@@ -692,6 +710,7 @@ show ospfv3 interface GigabitEthernet0/1
 interface GigabitEthernet0/0
  ospfv3 1 ipv6 area 2
 ```
+
 </details>
 
 ---
@@ -719,6 +738,7 @@ show ospfv3 interface brief
 show running-config interface GigabitEthernet0/0
 ! The ospfv3 1 ipv6 area 3 line will be absent
 ```
+
 </details>
 
 <details>
@@ -729,6 +749,7 @@ show running-config interface GigabitEthernet0/0
 interface GigabitEthernet0/0
  ospfv3 1 ipv6 area 3
 ```
+
 </details>
 
 ---
@@ -757,6 +778,7 @@ show ospfv3 interface brief
 show running-config interface GigabitEthernet0/0
 ! The ospfv3 1 ipv6 area line will show area 0 instead of area 1
 ```
+
 </details>
 
 <details>
@@ -768,6 +790,7 @@ interface GigabitEthernet0/0
  no ospfv3 1 ipv6 area 0
  ospfv3 1 ipv6 area 1
 ```
+
 </details>
 
 ---
@@ -776,23 +799,23 @@ interface GigabitEthernet0/0
 
 ### Core Implementation
 
-- [ ] `ipv6 unicast-routing` enabled on all five routers
-- [ ] All interfaces have correct IPv6 addresses per the address plan
-- [ ] `router ospfv3 1` with matching router-id configured on all five routers
-- [ ] All interfaces assigned to their OSPFv3 areas via `ospfv3 1 ipv6 area X`
-- [ ] `show ospfv3 neighbor` shows all four adjacencies as Full
-- [ ] `show ospfv3` on R2 shows "Border router"
-- [ ] `show ospfv3` on R3 shows three areas (0, 2, 3) and "Border router"
-- [ ] `show ospfv3 database` shows Type-8 (Link) and Type-9 (Intra Area Prefix) LSAs
-- [ ] `ping 2001:db8:4::1 source loopback0` from R1 succeeds 5/5
-- [ ] `ping 2001:db8:5::1 source loopback0` from R1 succeeds 5/5
-- [ ] `show ip ospf neighbor` still shows all OSPFv2 adjacencies as Full (no regression)
+- [x] `ipv6 unicast-routing` enabled on all five routers
+- [x] All interfaces have correct IPv6 addresses per the address plan
+- [x] `router ospfv3 1` with matching router-id configured on all five routers
+- [x] All interfaces assigned to their OSPFv3 areas via `ospfv3 1 ipv6 area X`
+- [x] `show ospfv3 neighbor` shows all four adjacencies as Full
+- [x] `show ospfv3` on R2 shows "Border router"
+- [x] `show ospfv3` on R3 shows three areas (0, 2, 3) and "Border router"
+- [x] `show ospfv3 database` shows Type-8 (Link) and Type-9 (Intra Area Prefix) LSAs
+- [x] `ping 2001:db8:4::1 source loopback0` from R1 succeeds 5/5
+- [x] `ping 2001:db8:5::1 source loopback0` from R1 succeeds 5/5
+- [x] `show ip ospf neighbor` still shows all OSPFv2 adjacencies as Full (no regression)
 
 ### Troubleshooting
 
-- [ ] Ticket 1 diagnosed and resolved (missing `ospfv3 1 ipv6 area 2` on R4 Gi0/0)
-- [ ] Ticket 2 diagnosed and resolved (missing `ospfv3 1 ipv6 area 3` on R5 Gi0/0)
-- [ ] Ticket 3 diagnosed and resolved (R2 Gi0/0 area 0 instead of area 1 in OSPFv3)
+- [x] Ticket 1 diagnosed and resolved (missing `ospfv3 1 ipv6 area 2` on R4 Gi0/0)
+- [x] Ticket 2 diagnosed and resolved (missing `ospfv3 1 ipv6 area 3` on R5 Gi0/0)
+- [x] Ticket 3 diagnosed and resolved (R2 Gi0/0 area 0 instead of area 1 in OSPFv3)
 
 ---
 
