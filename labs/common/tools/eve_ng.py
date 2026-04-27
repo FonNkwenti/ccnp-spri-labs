@@ -108,6 +108,53 @@ def discover_ports(
     return port_map
 
 
+def find_open_lab(
+    host: str,
+    node_names: list[str],
+    username: str = "admin",
+    password: str = "eve",
+) -> str | None:
+    """Walk the EVE-NG folder tree and return the path of the first lab whose
+    running nodes include all names in node_names.
+
+    Searches breadth-first starting from the root folder. Returns a path
+    suitable for passing to discover_ports(), e.g.
+    'ccnp-spri/ospf/lab-03-summarization-stub-nssa.unl'.
+    Returns None if no matching lab is found.
+    """
+    try:
+        session = _eve_session(host, username, password)
+    except requests.RequestException as exc:
+        raise EveNgError(f"EVE-NG login failed at {host}: {exc}") from exc
+
+    def _list_folder(path: str) -> tuple[list[str], list[str]]:
+        url = f"http://{host}/api/folders/{path}".rstrip("/")
+        try:
+            resp = session.get(url, timeout=10)
+            resp.raise_for_status()
+        except requests.RequestException:
+            return [], []
+        data = resp.json().get("data", {})
+        prefix = f"{path}/" if path else ""
+        lab_paths = [f"{prefix}{d['file']}" for d in data.get("labs", []) if d.get("file")]
+        subdirs = [f"{prefix}{d['name']}" for d in data.get("dirs", []) if d.get("name")]
+        return lab_paths, subdirs
+
+    queue = [""]
+    while queue:
+        folder = queue.pop(0)
+        lab_paths, subdirs = _list_folder(folder)
+        queue.extend(subdirs)
+        for lab_path in lab_paths:
+            try:
+                ports = discover_ports(host, lab_path, username, password)
+                if all(name in ports for name in node_names):
+                    return lab_path
+            except EveNgError:
+                continue
+    return None
+
+
 def connect_node(host: str, port: int, timeout: int = 30):
     """Open a Netmiko telnet session to an EVE-NG console port in enable mode.
 

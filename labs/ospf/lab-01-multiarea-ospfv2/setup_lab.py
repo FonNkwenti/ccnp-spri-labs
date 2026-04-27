@@ -50,7 +50,7 @@ def push_config(host: str, name: str, port: int, reset: bool = False) -> bool:
     if reset:
         print(f"[*] Resetting {name} on {host}:{port} ...")
         try:
-            soft_reset_device(host, port, cfg_file)
+            soft_reset_device(host, port)
             print(f"[+] {name} reset complete.")
         except Exception as exc:
             print(f"  [!] {name} reset failed: {exc}")

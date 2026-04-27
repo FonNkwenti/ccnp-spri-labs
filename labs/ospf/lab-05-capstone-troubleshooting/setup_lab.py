@@ -37,7 +37,7 @@ from eve_ng import (  # noqa: E402
 
 INITIAL_CONFIGS_DIR = SCRIPT_DIR / "initial-configs"
 
-DEFAULT_LAB_PATH = "ospf/lab-05-capstone-troubleshooting.unl"
+DEFAULT_LAB_PATH = "ccnp-spri/ospf/lab-05-capstone-troubleshooting.unl"
 
 DEVICES = [
     "R1",
@@ -58,7 +58,7 @@ def push_config(host: str, name: str, port: int, reset: bool = False) -> bool:
     if reset:
         print(f"[*] Resetting {name} on {host}:{port} ...")
         try:
-            soft_reset_device(host, port, cfg_file)
+            soft_reset_device(host, port)
             print(f"[+] {name} reset complete.")
         except Exception as exc:
             print(f"  [!] {name} reset failed: {exc}")
