@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Lab Setup — Multiarea OSPFv2 and LSA Propagation (ospf/lab-01)
+Lab Setup — OSPF Lab 03: Summarization, Stub, and NSSA
 
 Pushes initial configs to all lab devices via EVE-NG console ports.
 Ports are discovered at runtime via the EVE-NG REST API — no hardcoded ports needed.
@@ -21,7 +21,7 @@ import sys
 from pathlib import Path
 
 SCRIPT_DIR = Path(__file__).resolve().parent
-# Depth: lab-NN-<slug>/ -> <topic>/ -> labs/
+# Depth: lab-03-summarization-stub-nssa/ -> ospf/ -> labs/
 sys.path.insert(0, str(SCRIPT_DIR.parents[1] / "common" / "tools"))
 from eve_ng import (  # noqa: E402
     EveNgError,
@@ -33,12 +33,16 @@ from eve_ng import (  # noqa: E402
 
 INITIAL_CONFIGS_DIR = SCRIPT_DIR / "initial-configs"
 
-# Path to the EXISTING, ALREADY-IMPORTED lab in EVE-NG — used only for port
-# discovery via the REST API. This does NOT create or modify the .unl file.
-DEFAULT_LAB_PATH = "ccnp-spri/ospf/lab-01-multiarea-ospfv2.unl"
+DEFAULT_LAB_PATH = "ospf/lab-03-summarization-stub-nssa.unl"
 
-# Active devices for this lab (must match node names in EVE-NG).
-DEVICES = ["R1", "R2", "R3", "R4", "R5"]
+DEVICES = [
+    "R1",
+    "R2",
+    "R3",
+    "R4",
+    "R5",
+    "R6",
+]
 
 
 def push_config(host: str, name: str, port: int, reset: bool = False) -> bool:
@@ -100,7 +104,7 @@ def main() -> int:
         target_devices = requested
 
     print("=" * 60)
-    print(f"Lab Setup: Multiarea OSPFv2 and LSA Propagation (EVE-NG: {host})")
+    print(f"Lab Setup: OSPF Lab 03 — Summarization, Stub, and NSSA (EVE-NG: {host})")
     if args.reset:
         print("[*] Reset mode enabled — interfaces and routing will be cleared first")
     if args.node:
