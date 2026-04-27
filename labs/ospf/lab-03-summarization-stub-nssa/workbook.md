@@ -250,9 +250,9 @@ Comprehensive addressing table for all routers. Loopback addresses serve as rout
 | Router | Interface | IPv4 Address | IPv6 Address | Subnet Mask / Prefix | OSPF Area | Purpose |
 |--------|-----------|--------------|--------------|----------------------|-----------|---------|
 | **R1** | Loopback0 | 10.0.0.1 | 2001:db8::1 | /32 / /128 | 1 | Router identifier |
-| **R1** | Loopback1 | 172.16.1.1 | 2001:db8:1::1 | /24 / /64 | 1 | Test stub prefix (summarization) |
-| **R1** | Loopback2 | 172.16.2.1 | 2001:db8:1:2::1 | /24 / /64 | 1 | Test stub prefix (summarization) |
-| **R1** | Loopback3 | 172.16.3.1 | 2001:db8:1:3::1 | /24 / /64 | 1 | Test stub prefix (summarization) |
+| **R1** | Loopback1 | 172.16.1.1 | 2001:db8:1:0::1 | /24 / /64 | 1 | Test stub prefix (summarization) |
+| **R1** | Loopback2 | 172.16.2.1 | 2001:db8:1:1::1 | /24 / /64 | 1 | Test stub prefix (summarization) |
+| **R1** | Loopback3 | 172.16.3.1 | 2001:db8:1:2::1 | /24 / /64 | 1 | Test stub prefix (summarization) |
 | **R1** | Gi0/0 | 10.1.12.1 | 2001:db8:12::1 | /24 / /64 | 1 | Link to R2 (Area 1) |
 | **R2** | Loopback0 | 10.0.0.2 | 2001:db8::2 | /32 / /128 | 0 | Router identifier |
 | **R2** | Gi0/0 | 10.1.12.2 | 2001:db8:12::2 | /24 / /64 | 1 | Link to R1 (Area 1) |
@@ -267,7 +267,7 @@ Comprehensive addressing table for all routers. Loopback addresses serve as rout
 | **R4** | Gi0/0 | 10.1.34.4 | 2001:db8:34::4 | /24 / /64 | 2 | Link to R3 (Area 2, Totally Stubby) |
 | **R5** | Loopback0 | 10.0.0.5 | 2001:db8::5 | /32 / /128 | 3 | Router identifier |
 | **R5** | Loopback1 | 172.16.5.1 | 2001:db8:5::1 | /24 / /64 | 3 | Stub prefix (internal to Area 3 NSSA) |
-| **R5** | Loopback2 | 192.168.55.1 | 2001:db8:66::1 | /24 / /64 | 3 | External prefix (NSSA ASBR Type-7 injection) |
+| **R5** | Loopback2 | 192.168.55.1 | 2001:db8:55::1 | /24 / /64 | 3 | External prefix (NSSA ASBR Type-7 injection) |
 | **R5** | Gi0/0 | 10.1.35.5 | 2001:db8:35::5 | /24 / /64 | 3 | Link to R3 (Area 3, NSSA) |
 | **R6** | Loopback0 | 10.0.0.6 | 2001:db8::6 | /32 / /128 | N/A | External AS router identifier |
 | **R6** | Loopback1 | 192.168.66.1 | 2001:db8:66::1 | /24 / /64 | N/A | External AS prefix (redistributed via R3) |
