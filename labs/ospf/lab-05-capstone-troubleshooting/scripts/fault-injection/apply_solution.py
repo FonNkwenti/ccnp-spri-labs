@@ -56,7 +56,7 @@ def restore_device(host: str, ports: dict, name: str, *, reset: bool) -> bool:
     print(f"[*] Restoring {name} on {host}:{port} ...")
     try:
         if reset:
-            soft_reset_device(host, port, cfg_file)
+            soft_reset_device(host, port)
 
         conn = connect_node(host, port)
         commands = [
@@ -81,7 +81,7 @@ def main() -> int:
     parser.add_argument("--lab-path", default=None,
                         help="Lab .unl path in EVE-NG (auto-discovered if omitted)")
     parser.add_argument("--reset", action="store_true",
-                        help="Soft-reset before restoring: remove faults and routing state")
+                        help="Soft-reset before restoring: default all interfaces and remove routing protocols")
     parser.add_argument("--node", default=None,
                         help="Restore a single device only (e.g. R3). Omit to restore all targets.")
     args = parser.parse_args()

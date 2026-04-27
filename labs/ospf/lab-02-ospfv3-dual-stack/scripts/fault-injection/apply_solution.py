@@ -62,7 +62,7 @@ def restore_device(host: str, ports: dict, name: str, *, reset: bool) -> bool:
     print(f"[*] Restoring {name} on {host}:{port} ...")
     try:
         if reset:
-            soft_reset_device(host, port, cfg_file)
+            soft_reset_device(host, port)
 
         conn = connect_node(host, port)
         commands = [

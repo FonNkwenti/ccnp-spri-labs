@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import base64
 import sys
+import time
 from pathlib import Path
 
 import requests
@@ -136,45 +137,52 @@ def connect_node(host: str, port: int, timeout: int = 30):
     return conn
 
 
-def _parse_cleanup_commands(config_path: Path | str) -> list[str]:
-    """Return IOS commands that undo the interfaces and routing protocols in a config file.
+# All interfaces and routing protocols that any CCNP SPRI lab could configure.
+# IOS silently ignores commands for interfaces that do not exist or have no config,
+# so this list is safe to run on any device regardless of topology.
+# Ordering matters:
+#   1. logging synchronous — prevents log bursts from splitting a prompt mid-line
+#      during the sweep itself.
+#   2. interface defaults and routing-protocol removals — generate log messages.
+#   3. no logging console (last) — stops IOS writing any further syslog to the
+#      console port after disconnect. EVE-NG telnet buffers persist across
+#      connections; without this, the next connect_node call reads the stale
+#      %SYS-5-CONFIG_I line and Netmiko's handshake fails with "Pattern not detected".
+_LAB_SWEEP_COMMANDS = [
+    "line con 0",
+    "logging synchronous",
+    "exit",
+    "default interface Loopback0",
+    "default interface Loopback1",
+    "default interface Loopback2",
+    "default interface Loopback3",
+    "default interface GigabitEthernet0/0",
+    "default interface GigabitEthernet0/1",
+    "default interface GigabitEthernet0/2",
+    "default interface GigabitEthernet0/3",
+    "no router ospf 1",
+    "no router ospfv3 1",
+    "no logging console",
+]
 
-    Generates 'default interface X' for every interface block and 'no router Y'
-    for every routing-protocol block found. Used by soft_reset_device() before
-    re-pushing a config so the device reaches a clean baseline without a reload.
+
+def soft_reset_device(host: str, port: int) -> None:
+    """Default all lab interfaces and remove OSPF processes.
+
+    Runs a fixed sweep covering every interface and routing protocol used
+    across all CCNP SPRI labs so that interfaces not present in the solution
+    config (e.g. an unused port the student configured) are also cleared.
+    Ends with 'no logging console' so IOS stops writing syslog to the console
+    port after disconnect — prevents stale log lines from corrupting the next
+    Netmiko session handshake on the shared EVE-NG telnet stream.
+    Does NOT save config — the caller pushes the solution and saves afterward.
     """
-    interfaces: list[str] = []
-    routers: list[str] = []
-    with open(config_path) as fh:
-        for line in fh:
-            stripped = line.strip()
-            if stripped.startswith("interface "):
-                interfaces.append(stripped.split(" ", 1)[1])
-            elif stripped.startswith("router "):
-                routers.append(stripped)
-    cleanup: list[str] = []
-    for iface in interfaces:
-        cleanup.append(f"default interface {iface}")
-    for router in routers:
-        cleanup.append(f"no {router}")
-    return cleanup
-
-
-def soft_reset_device(host: str, port: int, config_path: Path | str) -> None:
-    """Default all interfaces and remove routing protocols parsed from config_path.
-
-    Intended to be called immediately before re-pushing a config so the device
-    reaches a clean baseline without a disruptive reload. Does NOT save config —
-    the caller is expected to push the new config and save_config() afterward.
-    """
-    cleanup = _parse_cleanup_commands(config_path)
-    if not cleanup:
-        return
     conn = connect_node(host, port)
     try:
-        conn.send_config_set(cleanup)
+        conn.send_config_set(_LAB_SWEEP_COMMANDS)
     finally:
         conn.disconnect()
+    time.sleep(2)
 
 
 def erase_device_config(host: str, name: str, port: int) -> bool:
@@ -203,3 +211,57 @@ def erase_device_config(host: str, name: str, port: int) -> bool:
         return False
     finally:
         conn.disconnect()
+
+
+def reload_device(host: str, name: str, port: int, wait: int = 180, poll_interval: int = 10):
+    """Trigger a device reload and return an open connection when the device is back.
+
+    Declines the startup-config save prompt (assumes erase_device_config was
+    already called) so the device boots with an empty startup-config. Polls
+    until the device accepts a Netmiko connection, then returns that live
+    connection in enable mode so the caller can push config immediately without
+    a second connect attempt. Returns None on timeout or connection failure.
+
+    The caller is responsible for calling conn.disconnect() on the returned conn.
+    """
+    print(f"[*] {name}: sending reload (will wait up to {wait}s for reboot)...")
+    try:
+        conn = connect_node(host, port)
+    except Exception as exc:
+        print(f"[!] {name}: could not connect to send reload — {exc}")
+        return None
+
+    try:
+        output = conn.send_command_timing("reload")
+        if "save" in output.lower() or "modified" in output.lower():
+            output = conn.send_command_timing("no")
+        if "confirm" in output.lower() or "proceed" in output.lower():
+            conn.send_command_timing("")
+    except Exception:
+        pass  # connection drop when reload fires is expected
+    finally:
+        try:
+            conn.disconnect()
+        except Exception:
+            pass
+
+    deadline = time.monotonic() + wait
+    while time.monotonic() < deadline:
+        time.sleep(poll_interval)
+        try:
+            conn = connect_node(host, port, timeout=30)
+            # Suppress console log messages from splitting the prompt during
+            # config push. On a fresh boot IOS sends interface/OSPF state
+            # changes to the console which break Netmiko's prompt detection.
+            conn.send_config_set(
+                ["line con 0", "logging synchronous", "end"],
+                cmd_verify=False,
+            )
+            print(f"[+] {name}: back online.")
+            return conn  # caller must disconnect
+        except Exception:
+            remaining = max(0, int(deadline - time.monotonic()))
+            print(f"[*] {name}: still rebooting ({remaining}s remaining)...")
+
+    print(f"[!] {name}: did not come back up within {wait}s.")
+    return None

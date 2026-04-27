@@ -16,17 +16,16 @@ Read from the lab directory:
 2. From each scenario extract: **Scenario Number**, **Target Device**, **Fault Type**, **Commands to inject**
 
 **Port discovery at runtime:** Console ports are NOT hardcoded in the scripts. Each script calls
-`discover_ports(host, lab_path)` at runtime against the EVE-NG REST API, which returns the current
-`{node_name: port}` map. The `--lab-path` argument points to the EXISTING, ALREADY-IMPORTED lab
-in EVE-NG — it is used exclusively for REST API port discovery. It does NOT generate, create, or
-modify the `.unl` file.
+`find_open_lab(host, node_names=[DEVICE_NAME])` to auto-discover which lab is currently running,
+then passes the result to `discover_ports(host, lab_path)` for the `{node_name: port}` map.
+The optional `--lab-path` argument lets users override auto-discovery when needed. Scripts must
+NEVER hardcode a `DEFAULT_LAB_PATH` — lab paths vary across EVE-NG instances and .unl filenames.
 
 --# Step 2: Generate Fault Injection Scripts
 
 For each scenario (minimum 3 per lab), generate `scripts/fault-injection/inject_scenario_0N.py`.
 
 Use `assets/inject_scenario_01_template.py` (and `_02`, `_03`) as base templates. Customise:
-- `DEFAULT_LAB_PATH` — `"<topic>/<lab-slug>.unl"` (path within EVE-NG to the running lab)
 - `DEVICE_NAME` — target device name (must match the node name in the EVE-NG lab)
 - `FAULT_COMMANDS` list — from the scenario's solution section (the inverse of the fix)
 - `PREFLIGHT_CMD` — `show` command whose output verifies pre-injection state
@@ -36,23 +35,28 @@ Use `assets/inject_scenario_01_template.py` (and `_02`, `_03`) as base templates
 
 Each script must:
 1. Call `require_host(args.host)` to validate the `--host` argument (exits with code 2 if placeholder)
-2. Call `discover_ports(host, args.lab_path)` to get the `{node_name: port}` map via EVE-NG REST API
-3. Call `connect_node(host, port)` to open a Netmiko telnet session to the console port
-4. Run `preflight(conn)` to verify the lab is in the known-good state before injecting
-5. Apply fault commands via `conn.send_config_set(FAULT_COMMANDS)`
-6. Save with `conn.save_config()` and always `conn.disconnect()` in a `finally` block
+2. Call `find_open_lab(host, node_names=[DEVICE_NAME])` to auto-discover the running lab path
+3. Call `discover_ports(host, lab_path)` to get the `{node_name: port}` map via EVE-NG REST API
+4. Call `connect_node(host, port)` to open a Netmiko telnet session to the console port
+5. Run `preflight(conn)` to verify the lab is in the known-good state before injecting
+6. Apply fault commands via `conn.send_config_set(FAULT_COMMANDS)`
+7. Save with `conn.save_config()` and always `conn.disconnect()` in a `finally` block
+
+**Never define `DEFAULT_LAB_PATH`.** Lab paths vary across EVE-NG instances. Auto-discovery
+via `find_open_lab()` is required; `--lab-path` is an optional manual override only.
 
 Exit codes: `0` success, `3` EVE-NG error, `4` pre-flight check failed.
 
 --# Step 3: Generate apply_solution.py
 
 Use `assets/apply_solution_template.py` as the base template. Customise:
-- `DEFAULT_LAB_PATH` — same value as in the inject scripts
 - `RESTORE_TARGETS` — list of all device names affected by any of the scenarios
 
 The script reads solution configs from `solutions/[Device].cfg` (two directory levels above
-`scripts/fault-injection/`, i.e. the lab root). It calls `discover_ports()` for port lookup
-and supports `--reset` to run `soft_reset_device()` (issues `default interface` + `no router` to clear running-config state without a reload) before pushing configs, and `--node` to target a single device.
+`scripts/fault-injection/`, i.e. the lab root). It calls `find_open_lab(host, node_names=RESTORE_TARGETS)`
+to auto-discover the lab, then `discover_ports()` for port lookup. Supports `--reset` to run
+`soft_reset_device()` (issues `default interface` + `no router` to clear running-config state without a
+reload) before pushing configs, and `--node` to target a single device. Do NOT define `DEFAULT_LAB_PATH`.
 
 --# Step 4: Generate scripts/fault-injection/README.md
 
@@ -68,7 +72,9 @@ Use `assets/README_template.md` as the base. Fill in:
 - [ ] `apply_solution.py` restores all affected devices
 - [ ] `README.md` lists all available scenarios
 - [ ] All scripts are idempotent (safe to run multiple times)
-- [ ] `DEFAULT_LAB_PATH` set correctly in all scripts (matches the running lab's path in EVE-NG)
+- [ ] NO `DEFAULT_LAB_PATH` constant in any script — auto-discovery via `find_open_lab()` is used
+- [ ] `find_open_lab` is imported from `eve_ng` in all scripts
+- [ ] `--lab-path` defaults to `None` and is treated as optional override only
 - [ ] `RESTORE_TARGETS` in `apply_solution.py` covers every device touched by any scenario
 - [ ] `PREFLIGHT_SOLUTION_MARKER` and `PREFLIGHT_FAULT_MARKER` are distinct, unambiguous strings
 - [ ] Syntax-check every generated `.py` file WITHOUT creating cache files. Use one of:
@@ -128,9 +134,8 @@ from pathlib import Path
 SCRIPT_DIR = Path(__file__).resolve().parent
 # Depth: scripts/fault-injection -> scripts -> lab-NN -> <topic> -> labs/
 sys.path.insert(0, str(SCRIPT_DIR.parents[3] / "common" / "tools"))
-from eve_ng import EveNgError, connect_node, discover_ports, require_host
+from eve_ng import EveNgError, connect_node, discover_ports, find_open_lab, require_host
 
-DEFAULT_LAB_PATH = "[TOPIC]/[LAB_SLUG].unl"
 DEVICE_NAME = "[DEVICE_NAME]"
 FAULT_COMMANDS = ["[FAULT_COMMAND_1]", "[FAULT_COMMAND_2]"]
 PREFLIGHT_CMD = "show running-config [RELEVANT_SECTION]"
@@ -152,20 +157,31 @@ def preflight(conn) -> bool:
 def main() -> int:
     parser = argparse.ArgumentParser(description="Inject Scenario 0N fault")
     parser.add_argument("--host", default="192.168.x.x")
-    parser.add_argument("--lab-path", default=DEFAULT_LAB_PATH)
+    parser.add_argument("--lab-path", default=None,
+                        help="Lab .unl path in EVE-NG (auto-discovered if omitted)")
     parser.add_argument("--skip-preflight", action="store_true")
     args = parser.parse_args()
 
     host = require_host(args.host)  # exits with code 2 if placeholder
 
+    if args.lab_path:
+        lab_path = args.lab_path
+    else:
+        lab_path = find_open_lab(host, node_names=[DEVICE_NAME])
+        if lab_path is None:
+            print(f"[!] No running lab found with {DEVICE_NAME}. Start all nodes first.",
+                  file=sys.stderr)
+            return 3
+
     try:
-        ports = discover_ports(host, args.lab_path)
+        ports = discover_ports(host, lab_path)
     except EveNgError as exc:
         print(f"[!] {exc}", file=sys.stderr)
         return 3
 
     port = ports.get(DEVICE_NAME)
     if port is None:
+        print(f"[!] {DEVICE_NAME} not found in lab '{lab_path}'.")
         return 3
 
     try:
@@ -223,8 +239,7 @@ User: "Generate fault injection scripts for EIGRP Lab 03."
 
 Actions:
 1. Read `labs/eigrp/lab-03-[name]/workbook.md` — extract 3 troubleshooting scenarios (target device, fault type, commands).
-2. Set `DEFAULT_LAB_PATH = "eigrp/lab-03-[name].unl"` in each inject script.
-3. For each scenario, generate an `inject_scenario_0N.py` using the template from `assets/`.
-4. Generate `apply_solution.py` with `RESTORE_TARGETS` covering all affected devices.
-5. Generate `scripts/fault-injection/README.md` with `--host <eve-ng-ip>` in all commands.
-6. Report generated files to the caller per Step 6 — DO NOT write `meta.yaml`.
+2. For each scenario, generate an `inject_scenario_0N.py` using the template from `assets/` — using `find_open_lab()` for lab discovery, NOT a hardcoded `DEFAULT_LAB_PATH`.
+3. Generate `apply_solution.py` with `RESTORE_TARGETS` covering all affected devices.
+4. Generate `scripts/fault-injection/README.md` with `--host <eve-ng-ip>` in all commands.
+5. Report generated files to the caller per Step 6 — DO NOT write `meta.yaml`.

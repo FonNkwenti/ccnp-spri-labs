@@ -27,14 +27,10 @@ from pathlib import Path
 SCRIPT_DIR = Path(__file__).resolve().parent
 # Depth: scripts/fault-injection -> scripts -> lab-NN -> <topic> -> labs/
 sys.path.insert(0, str(SCRIPT_DIR.parents[3] / "common" / "tools"))
-from eve_ng import EveNgError, connect_node, discover_ports, require_host, soft_reset_device  # noqa: E402
+from eve_ng import EveNgError, connect_node, discover_ports, find_open_lab, require_host, soft_reset_device  # noqa: E402
 
 # solutions/ is two levels above this script (lab root)
 SOLUTIONS_DIR = SCRIPT_DIR.parents[1] / "solutions"
-
-# Path to the EXISTING, ALREADY-IMPORTED lab in EVE-NG — used only for port
-# discovery via the REST API. This does NOT create or modify the .unl file.
-DEFAULT_LAB_PATH = "[PROJECT_FOLDER]/[TOPIC]/[LAB_SLUG].unl"
 
 # All devices affected by the troubleshooting scenarios — restored in order.
 RESTORE_TARGETS = [
@@ -79,8 +75,8 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="Restore lab to known-good state")
     parser.add_argument("--host", default="192.168.x.x",
                         help="EVE-NG server IP (required)")
-    parser.add_argument("--lab-path", default=DEFAULT_LAB_PATH,
-                        help=f"Lab .unl path in EVE-NG (default: {DEFAULT_LAB_PATH})")
+    parser.add_argument("--lab-path", default=None,
+                        help="Lab .unl path in EVE-NG (auto-discovered if omitted)")
     parser.add_argument("--reset", action="store_true",
                         help="Soft-reset before restoring: default all interfaces and remove routing protocols")
     parser.add_argument("--node", default=None,
@@ -102,8 +98,17 @@ def main() -> int:
     print("Solution Restoration: Removing All Faults")
     print("=" * 60)
 
+    if args.lab_path:
+        lab_path = args.lab_path
+    else:
+        print("[*] Detecting open lab in EVE-NG...")
+        lab_path = find_open_lab(host, node_names=RESTORE_TARGETS)
+        if lab_path is None:
+            print("[!] No running lab found. Start all nodes in EVE-NG first.", file=sys.stderr)
+            return 3
+
     try:
-        ports = discover_ports(host, args.lab_path)
+        ports = discover_ports(host, lab_path)
     except EveNgError as exc:
         print(f"[!] {exc}", file=sys.stderr)
         return 3
