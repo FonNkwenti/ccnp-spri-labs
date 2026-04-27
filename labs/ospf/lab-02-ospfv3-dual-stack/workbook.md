@@ -158,6 +158,35 @@ IS-IS uses a single topology by default for both IPv4 and IPv6 — every IS-IS r
 | L3 | R3 Gi0/1 | 10.1.34.3 | 2001:db8:34::3 | R4 Gi0/0 | 10.1.34.4 | 2001:db8:34::4 | 2 |
 | L4 | R3 Gi0/2 | 10.1.35.3 | 2001:db8:35::3 | R5 Gi0/0 | 10.1.35.5 | 2001:db8:35::5 | 3 |
 
+### IP Address Plan
+
+Comprehensive addressing table for all routers. Loopback addresses serve as router identifiers within each area; interface addresses are used for adjacency formation and link-local communication.
+
+| Router | Interface | IPv4 Address | IPv6 Address | Subnet Mask / Prefix | OSPF Area | Purpose |
+|--------|-----------|--------------|--------------|----------------------|-----------|---------|
+| **R1** | Loopback0 | 10.0.0.1 | 2001:db8::1 | /32 / /128 | 1 | Router identifier |
+| **R1** | Loopback1 | 172.16.1.1 | 2001:db8:1::1 | /24 / /64 | 1 | Secondary loopback (stub) |
+| **R1** | Gi0/0 | 10.1.12.1 | 2001:db8:12::1 | /24 / /64 | 1 | Link to R2 (Area 1) |
+| **R2** | Loopback0 | 10.0.0.2 | 2001:db8::2 | /32 / /128 | 0 | Router identifier |
+| **R2** | Gi0/0 | 10.1.12.2 | 2001:db8:12::2 | /24 / /64 | 1 | Link to R1 (Area 1) |
+| **R2** | Gi0/1 | 10.1.23.2 | 2001:db8:23::2 | /24 / /64 | 0 | Link to R3 (Area 0) — ABR interface |
+| **R3** | Loopback0 | 10.0.0.3 | 2001:db8::3 | /32 / /128 | 0 | Router identifier |
+| **R3** | Gi0/0 | 10.1.23.3 | 2001:db8:23::3 | /24 / /64 | 0 | Link to R2 (Area 0) — ABR interface |
+| **R3** | Gi0/1 | 10.1.34.3 | 2001:db8:34::3 | /24 / /64 | 2 | Link to R4 (Area 2) — ABR interface |
+| **R3** | Gi0/2 | 10.1.35.3 | 2001:db8:35::3 | /24 / /64 | 3 | Link to R5 (Area 3) — ABR interface |
+| **R4** | Loopback0 | 10.0.0.4 | 2001:db8::4 | /32 / /128 | 2 | Router identifier |
+| **R4** | Loopback1 | 172.16.4.1 | 2001:db8:4::1 | /24 / /64 | 2 | Secondary loopback (stub) |
+| **R4** | Gi0/0 | 10.1.34.4 | 2001:db8:34::4 | /24 / /64 | 2 | Link to R3 (Area 2) |
+| **R5** | Loopback0 | 10.0.0.5 | 2001:db8::5 | /32 / /128 | 3 | Router identifier |
+| **R5** | Loopback1 | 172.16.5.1 | 2001:db8:5::1 | /24 / /64 | 3 | Secondary loopback (stub) |
+| **R5** | Gi0/0 | 10.1.35.5 | 2001:db8:35::5 | /24 / /64 | 3 | Link to R3 (Area 3) |
+
+**Key relationships:**
+- **Router identifiers (Loopback0):** Assigned from the 10.0.0.0/8 space; must remain stable across all routing processes (both OSPFv2 and OSPFv3 use 10.0.0.N as the router-id)
+- **Secondary loopbacks (Loopback1):** Assigned from the 172.16.0.0/12 space on R1, R4, and R5; these are stub prefixes that do not form adjacencies but are advertised into the OSPF database
+- **Interface IPv6 addresses:** All use the 2001:db8::/32 documentation prefix (RFC 3849); link segments use the 12/23/34/35 scheme to encode the connected routers
+- **ABR interfaces on R2 and R3:** Each router that connects multiple areas must enable `ospfv3 1 ipv6 area X` on every interface, with X matching the area that interface serves
+
 ### Console Access Table
 
 | Device | Port | Connection Command |
