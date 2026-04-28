@@ -244,6 +244,7 @@ Your task: migrate the existing minimal iBGP mesh to an RR architecture. The leg
 The following is **pre-loaded** via `setup_lab.py`:
 
 **IS pre-loaded** (lab-00 complete solution):
+
 - Hostnames (R1 through R6)
 - Interface IP addressing on all routed links and loopbacks
 - `no ip domain-lookup` on all devices
@@ -253,6 +254,7 @@ The following is **pre-loaded** via `setup_lab.py`:
 - Legacy iBGP session R2↔R5 (direct, loopback-sourced) with `next-hop-self` on both sides
 
 **IS NOT pre-loaded** (student configures this):
+
 - BGP process on R4 (Route Reflector)
 - BGP process on R3 (new iBGP client)
 - R4 configured as Route Reflector with cluster-id and client designations for R2, R3, R5
@@ -314,7 +316,7 @@ With the full fabric established, confirm prefix propagation through the RR and 
 - Identify which value represents R2's router-id and which represents R4's cluster-id.
 - In your lab notes, write a one-sentence answer: why does the legacy R2↔R5 direct session persist, and what would need to happen before it could be safely removed in production?
 
-**Verification:** `show ip route bgp` on R3 must include both prefixes. `show ip bgp 172.16.1.0` on R5 must show `Next Hop: 10.0.0.2`. `show ip bgp 172.16.1.0` on R5 shows `Originator: 10.0.0.2` and `Cluster list: 10.0.0.4`. `show ip bgp 172.16.6.0` on R3 shows `Originator: 10.0.0.5` and `Cluster list: 10.0.0.4`.
+**Verification:** `show ip route bgp` on R3 must include both prefixes. Use `show ip bgp 172.16.1.0` on R5 (detailed view — attributes appear as labeled lines) to confirm `Next Hop: 10.0.0.2`, `Originator: 10.0.0.2`, and `Cluster list: 10.0.0.4`. Use `show ip bgp 172.16.6.0` on R3 (detailed view) to verify `Originator: 10.0.0.5` and `Cluster list: 10.0.0.4`.
 
 ---
 
@@ -446,11 +448,13 @@ router bgp 65100
 | Command | What to Look For |
 |---------|-----------------|
 | `show ip bgp summary` | All iBGP peers in `Estab` state; non-zero `PfxRcd` on clients |
-| `show ip bgp` | `*>i` prefix status code: valid, best, internal (iBGP-learned) |
-| `show ip bgp <prefix>` | `Originator` and `Cluster list` fields on reflected routes |
+| `show ip bgp` (table view) | `*>i` prefix status code: valid, best, internal (iBGP-learned) |
+| `show ip bgp <prefix>` (detailed view) | `Originator` and `Cluster list` fields appear as **labeled lines** on reflected routes (not present on locally originated routes) |
 | `show ip route bgp` | Prefix with `[200/0]` in RIB confirms iBGP install (AD=200) |
-| `show ip bgp neighbors <ip> | include source` | Confirms `update-source` is Loopback0 |
+| `show ip bgp neighbors <ip> \| include source` | Confirms `update-source` is Loopback0 |
 | `show tcp brief` | TCP session source IP for BGP — must be loopback, not physical interface |
+
+> **Exam tip:** Originator and Cluster list only appear in detailed view (`show ip bgp <prefix>`) and ONLY on routes that were reflected. Locally originated routes do not have these attributes. Use `show ip bgp <prefix>` to verify reflection is working and to identify which RR reflected the route.
 
 ### BGP Status Codes Quick Reference
 
@@ -685,7 +689,7 @@ Verify: `show ip bgp` on R3 now shows both prefixes with `*>i` status. `show ip 
 
 ### Ticket 2 — R3's iBGP Session to R4 Stays in Active State
 
-After a configuration change, the NOC reports that R3 cannot establish its iBGP session to R4. `show ip bgp summary` on R3 shows neighbor 10.0.0.4 permanently in `Active` state. R4's session to R3 is also `Active`.
+After a configuration change, the NOC reports that R3 cannot establish its iBGP session to R4. `show ip bgp summary` on both R3 and R4 shows the neighbor permanently in `Active` state.
 
 **Inject:** `python3 scripts/fault-injection/inject_scenario_02.py --host <eve-ng-ip>`
 
@@ -695,24 +699,39 @@ After a configuration change, the NOC reports that R3 cannot establish its iBGP 
 <summary>Click to view Diagnosis Steps</summary>
 
 1. `show ip bgp summary` on R3 — 10.0.0.4 is in `Active` state. BGP is attempting TCP but not completing.
-2. `show ip bgp neighbors 10.0.0.4 | include source` on R3 — check whether `update-source` is configured. If not shown, R3's TCP connection originates from a physical interface IP.
-3. `show ip ospf neighbor` on R3 — confirm R4 is an OSPF neighbor (10.1.34.4). OSPF is up, so 10.0.0.4 is reachable, but only via OSPF-advertised loopbacks.
-4. `show tcp brief` on R3 — observe the source IP of the TCP connection to 10.0.0.4. If the source is 10.1.34.3 (physical interface) instead of 10.0.0.3 (loopback), R4 rejects the connection — R4 expects TCP from 10.0.0.3.
-5. The fault: `update-source Loopback0` is missing on R3 for neighbor 10.0.0.4. R3 sources the TCP session from its physical egress interface, R4 only accepts connections from R3's loopback (10.0.0.3), so the session is rejected.
+2. `show ip bgp summary` on R4 — 10.0.0.3 is also in `Active` state. Both sides are failing — this means neither peer's outgoing TCP is being accepted by the other.
+3. `show ip bgp neighbors 10.0.0.4 | include source` on R3 — check whether `update-source` is configured. If not shown, R3's TCP connection to R4 originates from its physical egress interface IP (10.1.34.3) instead of Loopback0 (10.0.0.3). R4 only has `neighbor 10.0.0.3` configured, so it rejects the connection from 10.1.34.3.
+4. Add `neighbor 10.0.0.4 update-source Loopback0` back on R3, then clear: `clear ip bgp 10.0.0.4`. Check `show ip bgp summary` again.
+5. **If the session is still Active** — the fault is on both sides. `show ip bgp neighbors 10.0.0.3 | include source` on R4 — check whether R4's `update-source` for neighbor R3 is also missing. If absent, R4's TCP to R3 sources from 10.1.34.4, which R3 rejects (R3 only accepts from 10.0.0.4).
+6. **Exam trap — `update-source` controls outgoing TCP only.** It has no effect on incoming connections — those are accepted or rejected purely based on the configured `neighbor` IP. This means removing update-source from only ONE side always leaves the other side able to establish the session. A single-side fix that doesn't resolve the symptom is the clue to check the other end.
+7. The fault: `update-source Loopback0` is missing on **both** R3 and R4 for their respective sessions with each other. Both outgoing TCP connections source from physical interface IPs (10.1.34.3 and 10.1.34.4) that the peer does not recognise, so both connections are rejected.
 
 </details>
 
 <details>
 <summary>Click to view Fix</summary>
 
-On R3, add the missing `update-source` directive:
+On R3, restore `update-source`:
 
 ```bash
 router bgp 65100
  neighbor 10.0.0.4 update-source Loopback0
 ```
 
-Verify: `show ip bgp summary` on R3 shows R4 in `Estab` state. `show tcp brief` on R3 shows the BGP TCP session sourced from 10.0.0.3.
+On R4, restore `update-source` for R3:
+
+```bash
+router bgp 65100
+ neighbor 10.0.0.3 update-source Loopback0
+```
+
+After both are restored, clear the session on either router to force reconnection:
+
+```bash
+clear ip bgp 10.0.0.4   ! on R3, or equivalently clear ip bgp 10.0.0.3 on R4
+```
+
+Verify: `show ip bgp summary` on R3 shows R4 in `Estab` state with `PfxRcd = 2`. `show tcp brief` on R3 shows the BGP TCP session sourced from 10.0.0.3.
 
 </details>
 
@@ -760,22 +779,22 @@ Verify: `show ip bgp 172.16.1.0` on R3 now shows `Next Hop: 10.0.0.2`. `show ip 
 
 ### Core Implementation
 
-- [ ] R4 has `router bgp 65100` with `bgp cluster-id 10.0.0.4`
-- [ ] R4 has three iBGP peers (R2: 10.0.0.2, R3: 10.0.0.3, R5: 10.0.0.5), all as `route-reflector-client`
-- [ ] R3 has `router bgp 65100` with one iBGP peer (R4: 10.0.0.4)
-- [ ] R2 has iBGP sessions to both R4 (new RR) and R5 (legacy direct)
-- [ ] R5 has iBGP sessions to both R4 (new RR) and R2 (legacy direct)
-- [ ] `show ip bgp summary` on R4 shows three Estab iBGP peers
-- [ ] `show ip bgp summary` on R3 shows R4 Estab with PfxRcd = 2
-- [ ] `show ip route bgp` on R3 shows both prefixes installed with [200/0]
-- [ ] `show ip bgp 172.16.1.0` on R5 shows `Originator: 10.0.0.2, Cluster list: 10.0.0.4`
-- [ ] `show ip bgp 172.16.6.0` on R3 shows `Originator: 10.0.0.5, Cluster list: 10.0.0.4`
-- [ ] `ping 172.16.1.1 source 172.16.6.1` from R6 succeeds (end-to-end path)
+- [x] R4 has `router bgp 65100` with `bgp cluster-id 10.0.0.4`
+- [x] R4 has three iBGP peers (R2: 10.0.0.2, R3: 10.0.0.3, R5: 10.0.0.5), all as `route-reflector-client`
+- [x] R3 has `router bgp 65100` with one iBGP peer (R4: 10.0.0.4)
+- [x] R2 has iBGP sessions to both R4 (new RR) and R5 (legacy direct)
+- [x] R5 has iBGP sessions to both R4 (new RR) and R2 (legacy direct)
+- [x] `show ip bgp summary` on R4 shows three Estab iBGP peers
+- [x] `show ip bgp summary` on R3 shows R4 Estab with PfxRcd = 2
+- [x] `show ip route bgp` on R3 shows both prefixes installed with [200/0]
+- [x] `show ip bgp 172.16.1.0` on R5 shows `Originator: 10.0.0.2, Cluster list: 10.0.0.4`
+- [x] `show ip bgp 172.16.6.0` on R3 shows `Originator: 10.0.0.5, Cluster list: 10.0.0.4`
+- [x] `ping 172.16.1.1 source 172.16.6.1` from R6 succeeds (end-to-end path)
 
 ### Troubleshooting
 
 - [ ] Ticket 1: Identified missing `route-reflector-client` on R4 for R3; restored and verified
-- [ ] Ticket 2: Identified missing `update-source Loopback0` on R3; restored and verified session
+- [ ] Ticket 2: Identified missing `update-source Loopback0` on both R3 and R4; restored both and verified session
 - [ ] Ticket 3: Identified missing `next-hop-self` on R2; restored and verified prefix installation in RIB
 
 ---

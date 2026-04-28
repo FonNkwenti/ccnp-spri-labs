@@ -424,10 +424,12 @@ exit-address-family
 | Command | What to Look For |
 |---|---|
 | `show ip bgp summary` | All peers must show a numeric prefix count (not Idle/Active) |
-| `show ip bgp` | 172.16.1.0/24 with `>` (best) on R5 and R6; 172.16.6.0/24 on R2 and R1 |
-| `show ip bgp <prefix>` | Next-hop must be an OSPF-reachable address; path shows correct AS sequence |
+| `show ip bgp` (table view) | 172.16.1.0/24 with `>` (best) on R5 and R6; 172.16.6.0/24 on R2 and R1; Path column shows AS-path |
+| `show ip bgp <prefix>` (detailed view) | Next-hop must be an OSPF-reachable address; AS-path appears as **first unlabeled line** in path block |
 | `show ip ospf neighbor` | R4 must have three FULL neighbors |
 | `show ip route 172.16.1.0` | R6 must show this route via 10.1.56.5 (R5 eBGP next-hop) |
+
+> **Exam tip:** Use `show ip bgp` (table view) to quickly scan multiple prefixes and their AS-paths. Use `show ip bgp <prefix>` (detailed view) to verify specific attributes like next-hop, AS-path (first unlabeled line), and route characteristics. Both views show the same information but in different formats.
 
 ### Common BGP Failure Causes
 

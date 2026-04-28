@@ -251,7 +251,7 @@ Advertise prefixes:
 - R1: `network 172.16.1.0 mask 255.255.255.0`
 - R6: `network 172.16.6.0 mask 255.255.255.0`
 
-**Verification:** `show ip bgp 172.16.1.0/24` on R6 must show the prefix with AS_PATH containing only `65001 65100` (sub-AS numbers stripped). `show ip bgp 172.16.6.0/24` on R1 must show AS_PATH `65100 65002`.
+**Verification:** Use `show ip bgp 172.16.1.0/24` on R6 (detailed view — AS_PATH appears as the first unlabeled line; table view shows in Path column) to confirm AS_PATH contains only `65001 65100` (sub-AS numbers stripped from external view). Use `show ip bgp 172.16.6.0/24` on R1 to verify AS_PATH shows only `65100 65002` (confederation identifier + external AS).
 
 ---
 
@@ -358,9 +358,12 @@ router bgp <sub-AS>
 |---------|-----------------|
 | `show ip bgp summary` | Shows `local AS number <sub-AS>`, `Confederation identifier: 65100`, `Confederation peers: <list>` |
 | `show ip bgp neighbors X \| include confederation` | Confirms session classified as `confederation external peer` vs `internal` |
-| `show ip bgp <prefix>` | Inside confederation: `AS_PATH: (65101) 65001` shows AS_CONFED_SEQUENCE in parentheses |
-| `show ip bgp <prefix>` | At external peer: `AS_PATH: 65100 65001` — sub-AS numbers stripped, only public ID visible |
+| `show ip bgp <prefix>` (detailed view) | Inside confederation: `AS_PATH: (65101) 65001` shows AS_CONFED_SEQUENCE in parentheses (AS_PATH is first unlabeled line) |
+| `show ip bgp <prefix>` (detailed view) | At external peer: `AS_PATH: 65100 65001` — sub-AS numbers stripped, only public ID visible (first unlabeled line) |
+| `show ip bgp` (table view) | AS_PATH column shows same values as detailed view; use table view for clearer at-a-glance AS_PATH comparison |
 | `show ip bgp neighbors X \| include next.hop` | Confirms `Next-hop-self enabled` on iBGP sessions |
+
+> **Exam tip:** In detailed view (`show ip bgp <prefix>`), AS_PATH appears as the **first unlabeled line** of the path block. In table view (`show ip bgp`), AS_PATH appears in a labeled **Path** column — use table view for rapid verification of AS_PATH values across multiple routes.
 
 ### Confederation Session Classification
 

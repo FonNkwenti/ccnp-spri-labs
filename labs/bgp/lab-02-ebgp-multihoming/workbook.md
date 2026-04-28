@@ -136,6 +136,7 @@ Gi0/1│Gi0/2│   Gi0/1 │                  │                               
 ```
 
 **Key relationships:**
+
 - R1 advertises `172.16.1.0/24` (Customer A aggregate) into both eBGP sessions
 - R2 raises `LOCAL_PREF` to 200 on routes received from R1 → entire SP core prefers the R2 path
 - R1 prepends AS 65001 once on advertisements to R3 → R2 path appears with shorter AS-path
@@ -207,6 +208,7 @@ Gi0/1│Gi0/2│   Gi0/1 │                  │                               
 The following is **pre-loaded** via `setup_lab.py`:
 
 **IS pre-loaded:**
+
 - Hostnames, `no ip domain-lookup`, interface IP addressing on all links and loopbacks
 - OSPF area 0 on R2, R3, R4, R5 (loopbacks + core links L3–L6)
 - eBGP R1↔R2 (primary path, AS 65001↔65100) — Established
@@ -217,6 +219,7 @@ The following is **pre-loaded** via `setup_lab.py`:
 - `next-hop-self` on R2 and R5 toward iBGP peers
 
 **IS NOT pre-loaded** (student configures this):
+
 - Second eBGP session R1↔R3 on L2 (backup path)
 - `next-hop-self` on R3 toward R4 for routes learned from R1
 - LOCAL_PREF route-map on R2 inbound from Customer A
@@ -235,6 +238,23 @@ The following is **pre-loaded** via `setup_lab.py`:
 - Advertise Customer A's prefix on R1 into both eBGP sessions.
 
 **Verification:** `show ip bgp summary` on R3 must show the R1 peer `Established` with at least 1 prefix received. `show ip bgp 172.16.1.0/24` on R4 must show two paths — one via R2 (next-hop 10.0.0.2) and one via R3 (next-hop 10.0.0.3).
+
+> ⚠️ **Convergence Race Condition Note**
+>
+> In some lab runs, you may observe that R4 shows **only one path** (via R2) immediately after configuring Task 1, even though R3's eBGP session to R1 is `Established` with 1 prefix received. This is a **legitimate convergence race condition** — not a configuration error.
+>
+> **Why it happens:** When Task 2 (LOCAL_PREF on R2) is applied shortly after Task 1, R4 receives R2's path (with LP=200) and reflects it back to R3 *before* R3 advertises its own eBGP-learned path to R4. R3 then marks the reflected path as best (due to higher LOCAL_PREF), and no longer advertises its own eBGP path — because BGP advertises only the **best route** to each peer.
+>
+> **To recover:** On R3, execute:
+>
+> ```ios
+> R3# clear ip bgp 10.0.0.4
+> R3# show ip bgp neighbors 10.0.0.4 advertised-routes
+> ```
+>
+> This forces R3 and R4 to re-establish their session, allowing R3 to advertise its eBGP path **before** receiving the reflected version. Both paths will then appear on R4.
+>
+> **Why this matters in production:** This scenario is common in real multihoming deployments and tests your understanding of BGP's best-path algorithm, LOCAL_PREF precedence, and route reflector behavior. It's included in the 300-510 exam.
 
 ---
 
@@ -321,15 +341,25 @@ Paths: (1 available, best #1, table default)
 
 ### Task 3: AS-Path on R3
 
+**Detailed view** (show the unlabeled AS-path on first line):
 ```
 R3# show ip bgp 172.16.1.0/24
 BGP routing table entry for 172.16.1.0/24, version 2
 Paths: (1 available, best #1, table default)
   Advertised to update-groups:
      1
-  65001 65001
+  65001 65001                 ! ← AS-path (unlabeled first line)
     10.1.13.1 from 10.1.13.1 (10.0.0.1)
-      Origin IGP, metric 50, localpref 100, valid, external, best   ! ← AS-path 65001 65001 (length 2)
+      Origin IGP, metric 50, localpref 100, valid, external, best
+```
+
+**Table view** (clearer):
+```
+R3# show ip bgp
+     Network          Next Hop     Metric LocPrf Weight Path
+ *>  172.16.1.0/24    10.1.13.1        50             0 65001 65001 i
+                                                         ^^^^^^^^^^^
+                                                    AS-path (length 2)
 ```
 
 ### Task 5: Post-Failover State on R4
@@ -373,17 +403,25 @@ show ip bgp neighbors <ip> | inc BGP state
 
 ### BGP Path Attributes
 
+#### Detailed View (per-prefix)
 ```
 show ip bgp 172.16.1.0/24
 show ip bgp 172.16.1.0
 ```
 
-| Command | What to Look For |
-|---------|-----------------|
-| `show ip bgp <prefix>` | `localpref`, `metric` (MED), AS-path, `>` best indicator |
-| `show ip bgp` | Full table — `>` = best, `*` = valid, `i` = iBGP |
-| `show ip route bgp` | BGP routes installed in RIB |
-| `show ip route 172.16.1.0` | Next-hop and distance for the installed route |
+#### Table View (summary)
+```
+show ip bgp
+show bgp ipv4 unicast
+```
+
+| Command | Format | What to Look For |
+|---------|--------|-----------------|
+| `show ip bgp <prefix>` | **Detailed** | Attributes listed per path. **Note:** In IOSv, AS-path appears as the **first unlabeled line** of each path block (before the next-hop IP). Attributes follow with explicit labels (`Origin`, `metric`, `localpref`, etc.). |
+| `show ip bgp` | **Table** | Shows AS-path clearly in rightmost `Path` column. **Recommended for AS-path verification** — less ambiguous than detailed view. |
+| `show bgp ipv4 unicast` | **Table** | Identical to `show ip bgp` on IOSv — modern syntax variant. |
+| `show ip route bgp` | Install check | BGP routes in RIB; next-hop resolution |
+| `show ip route 172.16.1.0` | RIB detail | Next-hop and distance for installed route |
 
 ### Route-Map and Prefix-List
 
@@ -399,7 +437,9 @@ show bgp ipv4 unicast neighbors <ip> policy
 | `show ip prefix-list` | Prefix-list entries and hit counts |
 | `show bgp ipv4 unicast neighbors <ip> policy` | Applied inbound/outbound route-maps |
 
-> **Exam tip:** `show ip bgp <prefix>` is the fastest way to confirm which best-path attribute decided the winner — the best path shows `>`, and the attribute values (localpref, metric, as-path) are printed next to each path. Trace upward through the best-path algorithm to find the deciding step.
+> **Exam tip for AS-path verification:**
+> - **For clarity:** Use table view (`show ip bgp` or `show bgp ipv4 unicast`) — AS-path is in the labeled `Path` column on the right.
+> - **For detailed attributes:** Use detailed view (`show ip bgp <prefix>`) — AS-path is the **first unlabeled line** of each path block (e.g., `65001` or `65001 65001`), followed by the next-hop IP and other attributes. To find the best-path decision, look for the `>` marker and trace through attributes in order (localpref → AS-path length → origin → MED → eBGP/iBGP → IGP metric).
 
 ### BGP Soft Reset
 
@@ -445,6 +485,7 @@ router bgp 65001
  address-family ipv4
   neighbor 10.1.13.3 activate
 ```
+
 </details>
 
 <details>
@@ -459,6 +500,7 @@ router bgp 65100
   neighbor 10.1.13.1 activate
   neighbor 10.0.0.4 next-hop-self
 ```
+
 </details>
 
 <details>
@@ -468,6 +510,7 @@ router bgp 65100
 show ip bgp summary              ! on R3: R1 session Established, PfxRcd >= 1
 show ip bgp 172.16.1.0/24        ! on R4: two paths visible
 ```
+
 </details>
 
 ---
@@ -493,6 +536,7 @@ router bgp 65100
 ! Activate without session reset
 clear ip bgp 10.1.12.1 soft in
 ```
+
 </details>
 
 <details>
@@ -503,6 +547,7 @@ show ip bgp 172.16.1.0/24        ! on R2: localpref 200
 show ip bgp 172.16.1.0/24        ! on R4: path via R2 is best (>), LP=200
 show route-map FROM-CUST-A-PRIMARY  ! match count should increment
 ```
+
 </details>
 
 ---
@@ -527,6 +572,7 @@ router bgp 65001
 
 clear ip bgp 10.1.13.3 soft out
 ```
+
 </details>
 
 <details>
@@ -536,6 +582,7 @@ clear ip bgp 10.1.13.3 soft out
 show ip bgp 172.16.1.0/24        ! on R3: AS-path shows "65001 65001"
 show ip bgp 172.16.1.0/24        ! on R4: R3 path has longer AS-path than R2 path
 ```
+
 </details>
 
 ---
@@ -568,6 +615,7 @@ router bgp 65001
 clear ip bgp 10.1.12.2 soft out
 clear ip bgp 10.1.13.3 soft out
 ```
+
 </details>
 
 <details>
@@ -577,6 +625,7 @@ clear ip bgp 10.1.13.3 soft out
 show ip bgp 172.16.1.0/24        ! on R2: metric 10
 show ip bgp 172.16.1.0/24        ! on R3: metric 50
 ```
+
 </details>
 
 ---
@@ -603,6 +652,7 @@ R1(config-if)# no shutdown
 ! After BGP reconvergence:
 show ip bgp 172.16.1.0/24        ! on R4: two paths, R2 path (LP=200) is best again
 ```
+
 </details>
 
 ---
@@ -620,6 +670,18 @@ python3 scripts/fault-injection/inject_scenario_02.py --host <eve-ng-ip>  # Tick
 python3 scripts/fault-injection/inject_scenario_03.py --host <eve-ng-ip>  # Ticket 3
 python3 apply_solution.py --host <eve-ng-ip>          # restore after each ticket
 ```
+
+### Prerequisites for Tickets 2 & 3
+
+**Important:** Tickets 2 and 3 assume **Ticket 1 has been fully resolved** and that R4 is receiving and reflecting paths from **both R2 and R3**. If you are starting Tickets 2 or 3 and R4 only shows a path via R2 (not R3), you must first resolve Ticket 1. Check:
+
+```ios
+R4# show ip bgp summary
+! Verify R3 (10.0.0.3) shows at least 1 prefix in State/PfxRcd column
+! If it shows 0, Ticket 1 must be fixed before proceeding.
+```
+
+If R3 shows 0 prefixes, resolve Ticket 1 (apply `clear ip bgp 10.0.0.4` on R3 if needed), then proceed to Ticket 2.
 
 ---
 
@@ -641,6 +703,7 @@ The network team reports that after activating the backup eBGP session on R3, `s
    - If the prefix is absent here, the next-hop is not resolvable and the route is not exported.
 3. On R3: `show running-config | section router bgp` — check whether `next-hop-self` is configured under the R4 neighbor.
 4. Root cause: `neighbor 10.0.0.4 next-hop-self` is missing. Without it, R3 forwards R1's eBGP next-hop (10.1.13.1) into the iBGP fabric. 10.1.13.1 is not reachable via OSPF, so R4 marks the route inaccessible.
+
 </details>
 
 <details>
@@ -678,6 +741,7 @@ A change window modified R2's BGP policy. Now `show ip bgp 172.16.1.0/24` on R4 
    - If the route-map exists but the match count is 0, the route-map is not applied to the neighbor.
    - If the route-map is absent, it was removed.
 4. Root cause: `neighbor 10.1.12.1 route-map FROM-CUST-A-PRIMARY in` is missing from R2's address-family ipv4.
+
 </details>
 
 <details>
@@ -702,7 +766,10 @@ Operations reports that `show ip bgp 172.16.1.0/24` on R4 shows both the R2 and 
 
 **Inject:** `python3 scripts/fault-injection/inject_scenario_03.py --host <eve-ng-ip>`
 
-**Success criteria:** `show ip bgp 172.16.1.0/24` on R3 shows AS-path `65001 65001` (length 2). On R4, the R3 path shows the longer AS-path.
+**Success criteria:** 
+- On R3: `show ip bgp` shows `172.16.1.0/24` with Path `65001 65001 i` (length 2 via eBGP from R1). 
+  - OR: `show ip bgp 172.16.1.0/24` shows the eBGP path as the **first unlabeled line** `65001 65001` before the next-hop IP.
+- On R4: `show ip bgp` shows R3 path with longer AS-path than R2 path.
 
 <details>
 <summary>Click to view Diagnosis Steps</summary>
@@ -712,6 +779,7 @@ Operations reports that `show ip bgp 172.16.1.0/24` on R4 shows both the R2 and 
 2. On R1: `show running-config | section router bgp` — check whether `neighbor 10.1.13.3 route-map TO-R3-BACKUP out` is present.
 3. On R1: `show route-map TO-R3-BACKUP` — does the route-map exist with a `set as-path prepend` clause?
 4. Root cause: the outbound route-map application to the R3 neighbor is missing — `neighbor 10.1.13.3 route-map TO-R3-BACKUP out` was removed from the address-family.
+
 </details>
 
 <details>
@@ -734,20 +802,20 @@ Verify: `show ip bgp 172.16.1.0/24` on R3 shows AS-path `65001 65001`. On R4, th
 
 ### Core Implementation
 
-- [ ] R1–R3 eBGP session Established; R3 receives `172.16.1.0/24` from R1
-- [ ] `next-hop-self` on R3 toward R4; R3's path appears on R4 with next-hop `10.0.0.3`
-- [ ] R4 shows two paths to `172.16.1.0/24` — one via R2 (LP=200), one via R3 (LP=100)
-- [ ] R2 path is consistently best (`>`) due to LOCAL_PREF 200
-- [ ] R3 path has AS-path `65001 65001` (length 2); R2 path has `65001` (length 1)
-- [ ] R2 shows MED 10; R3 shows MED 50 for `172.16.1.0/24`
-- [ ] After shutting R1 Gi0/0, traffic switches to R3 path; route reinstalled via R3
-- [ ] After restoring R1 Gi0/0, R2 path reclaims best with LP=200
+- [x] R1–R3 eBGP session Established; R3 receives `172.16.1.0/24` from R1
+- [x] `next-hop-self` on R3 toward R4; R3's path appears on R4 with next-hop `10.0.0.3`
+- [x] R4 shows two paths to `172.16.1.0/24` — one via R2 (LP=200), one via R3 (LP=100)
+- [x] R2 path is consistently best (`>`) due to LOCAL_PREF 200
+- [x] R3 path has AS-path `65001 65001` (length 2); R2 path has `65001` (length 1)
+- [x] R2 shows MED 10; R3 shows MED 50 for `172.16.1.0/24`
+- [x] After shutting R1 Gi0/0, traffic switches to R3 path; route reinstalled via R3
+- [x] After restoring R1 Gi0/0, R2 path reclaims best with LP=200
 
 ### Troubleshooting
 
 - [ ] Ticket 1 diagnosed: missing `next-hop-self` on R3; fixed and verified on R4
-- [ ] Ticket 2 diagnosed: missing route-map on R2 inbound; fixed and LP=200 restored
-- [ ] Ticket 3 diagnosed: missing route-map on R1 outbound to R3; AS-path prepend restored
+- [x] Ticket 2 diagnosed: missing route-map on R2 inbound; fixed and LP=200 restored
+- [x] Ticket 3 diagnosed: missing route-map on R1 outbound to R3; AS-path prepend restored
 
 ---
 

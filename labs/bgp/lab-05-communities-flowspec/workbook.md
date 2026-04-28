@@ -262,10 +262,13 @@ The following is **pre-loaded** via `setup_lab.py`:
 - Use the `additive` keyword so existing policy attributes are preserved
 - Enable `send-community both` on R2's iBGP neighbors (R4 and the legacy R5 session) so the community propagates through the SP core
 - On R4, enable `send-community both` toward all three RR clients (R2, R3, R5) — the RR must carry communities transparently
-- Verify the community appears on R5 using `show ip bgp 172.16.1.0/24`
+- Verify the community appears on R5 using `show ip bgp` (table view shows community in the Path column) or `show ip bgp 172.16.1.0/24` (detailed view shows community attribute on separate line)
 - Demonstrate filtering: create an `ip community-list` on R5 matching `65100:100` and use it in `show ip bgp community 65100:100` to confirm the tag is visible
 
-**Verification:** `show ip bgp 172.16.1.0/24` on R5 must show `Community: 65100:100`; `show ip bgp community 65100:100` on R5 must include 172.16.1.0/24.
+**Verification:** 
+- `show ip bgp` on R5 must show 172.16.1.0/24 with community visible (or detailed view)
+- `show ip bgp 172.16.1.0/24` on R5 must show `Community: 65100:100` (appears as a separate labeled line in detailed output)
+- `show ip bgp community 65100:100` on R5 must include 172.16.1.0/24
 
 ---
 
@@ -276,7 +279,7 @@ The following is **pre-loaded** via `setup_lab.py`:
 - On R7, apply a route-map outbound toward R5 that tags 172.16.7.0/24 with `no-advertise`
 - Verify propagation boundaries: 172.16.6.0/24 must appear in R4's BGP table but must NOT be sent to R1 or R3 via eBGP; 172.16.7.0/24 must appear in R5's BGP table but must NOT be forwarded to any other BGP peer including iBGP.
 
-**Verification:** `show ip bgp 172.16.6.0/24` on R5 must show `Community: no-export`; `show ip bgp 172.16.7.0/24` on R5 must show `Community: no-advertise`; these prefixes must NOT appear in R2's BGP table.
+**Verification:** Use `show ip bgp 172.16.6.0/24` on R5 (detailed view — Community appears as a labeled line in the path block) to verify `Community: no-export`; use `show ip bgp 172.16.7.0/24` on R5 to verify `Community: no-advertise` (also labeled line format). Confirm these prefixes do NOT appear in R2's BGP table (well-known communities block re-advertisement to external peers).
 
 ---
 
@@ -287,7 +290,7 @@ The following is **pre-loaded** via `setup_lab.py`:
 - Apply the same SoO stamp on R3 inbound from R1 (L2 backup path)
 - Confirm that if the RR reflects Customer A's prefix back toward R3, R3 discards the route because the SoO matches — preventing the backup PE from re-advertising a route that originated from its own site
 
-**Verification:** `show ip bgp 172.16.1.0/24` on R5 must show an extended community entry containing `SoO:65001:1`. On R3, `show ip bgp 172.16.1.0/24` received from R4 must show the SoO attribute; the route is accepted but the SoO prevents re-advertisement back toward R1 on L2.
+**Verification:** Use `show ip bgp 172.16.1.0/24` on R5 (detailed view — Extended Community appears as a labeled line) to confirm `Extended Community: SoO:65001:1`. On R3, `show ip bgp 172.16.1.0/24` received from R4 must also show the same SoO attribute (labeled line format); the route is accepted but the SoO prevents re-advertisement back toward R1 on L2.
 
 ---
 
@@ -422,13 +425,25 @@ route-map SET-COMMUNITY permit 10
 show ip bgp community <ASN:value>
 show ip bgp <prefix>
 show ip bgp community-list <NAME>
+show ip bgp                          ! table view (if send-community configured)
 ```
+
+**Detailed View (`show ip bgp <prefix>`):**
 
 | Command | What to Look For |
 |---------|-----------------|
-| `show ip bgp 172.16.1.0/24` | `Community: 65100:100` in the prefix entry |
-| `show ip bgp community 65100:100` | Lists all prefixes tagged with that community |
-| `show ip bgp community no-export` | Lists prefixes with no-export community |
+| `show ip bgp 172.16.1.0/24` | `Community: 65100:100` appears as a **separate labeled line** in the path block |
+| `show ip bgp 172.16.6.0/24` | `Community: no-export` (labeled line in detailed output) |
+| `show ip bgp community no-export` | Lists all prefixes with no-export tag |
+
+**Table View (`show ip bgp` with `send-community`):**
+
+| Command | What to Look For |
+|---------|-----------------|
+| `show ip bgp` | Community appears in labeled **Community** column if `send-community` is enabled |
+| `show ip bgp 172.16.1.0/24` from another router | Shows AS-path as unlabeled first line; community as labeled line below |
+
+> **Exam tip:** In detailed view, communities appear as labeled lines BELOW the AS-path (which is the unlabeled first line). Always use detailed view (`show ip bgp <prefix>`) to clearly see community attributes; table view requires the neighbor to have `send-community` configured to display communities in a column.
 
 ### Extended Community (SoO) Operations
 
