@@ -26,10 +26,10 @@ from pathlib import Path
 SCRIPT_DIR = Path(__file__).resolve().parent
 # Depth: scripts/fault-injection -> scripts -> lab-01-route-reflectors -> bgp -> labs/
 sys.path.insert(0, str(SCRIPT_DIR.parents[3] / "common" / "tools"))
-from eve_ng import EveNgError, connect_node, discover_ports, require_host  # noqa: E402
+from eve_ng import EveNgError, connect_node, discover_ports, require_host, resolve_and_discover  # noqa: E402
 
 DEVICE_NAME = "R3"
-DEFAULT_LAB_PATH = "bgp/lab-01-route-reflectors.unl"
+DEFAULT_LAB_PATH = "ccnp-spri/bgp/lab-01-route-reflectors.unl"
 FAULT_COMMANDS = [
     "router bgp 65100",
     "no neighbor 10.0.0.4 update-source Loopback0",
@@ -76,7 +76,7 @@ def main() -> int:
     print("=" * 60)
 
     try:
-        ports = discover_ports(host, args.lab_path)
+        args.lab_path, ports = resolve_and_discover(host, args.lab_path, [DEVICE_NAME])
     except EveNgError as exc:
         print(f"[!] {exc}", file=sys.stderr)
         return 3
@@ -97,7 +97,21 @@ def main() -> int:
         if not args.skip_preflight and not preflight(conn):
             return 4
         print("[*] Injecting fault configuration ...")
-        conn.send_config_set(FAULT_COMMANDS)
+        conn.send_config_set(FAULT_COMMANDS, cmd_verify=False)
+
+        post_check = conn.send_command(PREFLIGHT_CMD)
+        if PREFLIGHT_SOLUTION_MARKER in post_check:
+            print("[!] Verification failed: update-source Loopback0 is still present on R3.")
+            print("    The no-command may have been sent in the wrong config context.")
+            print("    Run apply_solution.py to reset, then retry.")
+            return 4
+
+        # Hard reset forces R3 to reconnect using the physical interface IP
+        # (the fault). A soft reset is not sufficient — the existing TCP session
+        # was established with the loopback IP and stays up until torn down.
+        print("[*] Resetting BGP session to manifest fault on R3 ...")
+        conn.send_command("clear ip bgp 10.0.0.4", expect_string=r"#")
+
         conn.save_config()
     finally:
         conn.disconnect()

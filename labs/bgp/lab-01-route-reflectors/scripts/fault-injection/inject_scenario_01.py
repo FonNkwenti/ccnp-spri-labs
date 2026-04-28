@@ -3,14 +3,19 @@
 Fault Injection: Scenario 01 — R3 BGP Table Empty Despite Established Session
 
 Target:     R4 (Route Reflector — AS 65100)
-Injects:    Removes `neighbor 10.0.0.3 route-reflector-client` from R4's
-            address-family ipv4, demoting R3 from RR client to a regular
-            non-client iBGP peer.
-Fault Type: Missing route-reflector-client designation
+Injects:    Removes `neighbor 10.0.0.3 activate` from R4's address-family ipv4,
+            preventing IPv4 unicast capability from being negotiated for R3.
+Fault Type: Missing address-family activation
 
-Result:     R3's session to R4 stays Established but R4 applies iBGP
-            split-horizon and does not reflect routes to non-client R3.
-            `show ip bgp` on R3 shows no prefixes (PfxRcd = 0).
+Result:     The BGP session between R4 and R3 remains Established at the base
+            level (keepalives still exchanged), but IPv4 unicast is not
+            negotiated — R4 sends no routes to R3.
+            `show ip bgp` on R3 shows no prefixes (PfxRcd = 0 on R4).
+
+Note:       Removing route-reflector-client from R3 does NOT produce this
+            symptom. Per RFC 4456, routes received from RR clients (R2, R5)
+            are always forwarded to all non-client iBGP peers as well. Only
+            removing activate fully suppresses route exchange for this AFI.
 
 Before running, ensure the lab is in the SOLUTION state:
     python3 apply_solution.py --host <eve-ng-ip>
@@ -25,26 +30,26 @@ from pathlib import Path
 SCRIPT_DIR = Path(__file__).resolve().parent
 # Depth: scripts/fault-injection -> scripts -> lab-01-route-reflectors -> bgp -> labs/
 sys.path.insert(0, str(SCRIPT_DIR.parents[3] / "common" / "tools"))
-from eve_ng import EveNgError, connect_node, discover_ports, require_host  # noqa: E402
+from eve_ng import EveNgError, connect_node, discover_ports, require_host, resolve_and_discover  # noqa: E402
 
 DEVICE_NAME = "R4"
-DEFAULT_LAB_PATH = "bgp/lab-01-route-reflectors.unl"
+DEFAULT_LAB_PATH = "ccnp-spri/bgp/lab-01-route-reflectors.unl"
 FAULT_COMMANDS = [
     "router bgp 65100",
     "address-family ipv4",
-    "no neighbor 10.0.0.3 route-reflector-client",
+    "no neighbor 10.0.0.3 activate",
     "exit-address-family",
 ]
 
 # Pre-flight: read BGP running config to verify known-good state.
-# Removing route-reflector-client leaves no unique string in the config,
+# Removing activate leaves no unique string in the config,
 # so PREFLIGHT_FAULT_MARKER is a sentinel that is never present; idempotency
 # is enforced by checking the solution marker is still there.
 PREFLIGHT_CMD = "show running-config | section router bgp"
 # Present only in the known-good (solution) state.
-PREFLIGHT_SOLUTION_MARKER = "neighbor 10.0.0.3 route-reflector-client"
+PREFLIGHT_SOLUTION_MARKER = "neighbor 10.0.0.3 activate"
 # Sentinel: this string is never in the running-config.
-PREFLIGHT_FAULT_MARKER = "neighbor 10.0.0.3 route-reflector-client __FAULT_INJECTED__"
+PREFLIGHT_FAULT_MARKER = "neighbor 10.0.0.3 activate __FAULT_INJECTED__"
 
 
 def preflight(conn) -> bool:
@@ -77,7 +82,7 @@ def main() -> int:
     print("=" * 60)
 
     try:
-        ports = discover_ports(host, args.lab_path)
+        args.lab_path, ports = resolve_and_discover(host, args.lab_path, [DEVICE_NAME])
     except EveNgError as exc:
         print(f"[!] {exc}", file=sys.stderr)
         return 3
@@ -98,7 +103,27 @@ def main() -> int:
         if not args.skip_preflight and not preflight(conn):
             return 4
         print("[*] Injecting fault configuration ...")
-        conn.send_config_set(FAULT_COMMANDS)
+        # cmd_verify=False prevents Netmiko racing ahead on nested config-mode
+        # prompt transitions (config -> config-router -> config-router-af).
+        # Without it, address-family commands can land in the wrong context and
+        # silently no-op on IOS telnet consoles.
+        conn.send_config_set(FAULT_COMMANDS, cmd_verify=False)
+
+        # Verify the change actually landed — IOS silently ignores no-commands
+        # issued in the wrong config context, so we must confirm explicitly.
+        post_check = conn.send_command(PREFLIGHT_CMD)
+        if PREFLIGHT_SOLUTION_MARKER in post_check:
+            print("[!] Verification failed: neighbor 10.0.0.3 activate is still present on R4.")
+            print("    The no-command may have been sent in the wrong config context.")
+            print("    Run apply_solution.py to reset, then retry.")
+            return 4
+
+        # Hard reset forces session re-establishment so capability negotiation
+        # runs again without IPv4 unicast for R3 — a soft reset is not enough
+        # since the existing session was established with IPv4 unicast active.
+        print("[*] Resetting BGP session to manifest fault on R3 ...")
+        conn.send_command("clear ip bgp 10.0.0.3", expect_string=r"#")
+
         conn.save_config()
     finally:
         conn.disconnect()

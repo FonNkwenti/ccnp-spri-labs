@@ -175,6 +175,43 @@ def find_open_lab(
     return None
 
 
+def resolve_and_discover(
+    host: str,
+    default_lab_path: str,
+    node_names: list[str],
+    username: str = "admin",
+    password: str = "eve",
+) -> tuple[str, dict[str, int]]:
+    """Resolve the lab on EVE-NG and return (lab_path, port_map).
+
+    Hybrid strategy: try ``default_lab_path`` first as a fast path; on miss
+    (HTTP 404, or the lab does not contain all expected nodes), fall back to
+    :func:`find_open_lab` which walks the EVE-NG folder tree. This insulates
+    callers from how the user organized the lab in EVE-NG (e.g. moved into a
+    different parent folder, renamed the .unl, opened via the GUI from a
+    custom location).
+
+    Raises :class:`EveNgError` if neither the fast path nor the folder walk
+    finds a lab whose running nodes include every name in ``node_names``.
+    """
+    if default_lab_path:
+        try:
+            ports = discover_ports(host, default_lab_path, username, password)
+            if all(n in ports for n in node_names):
+                return default_lab_path, ports
+        except EveNgError:
+            pass
+    found = find_open_lab(host, node_names, username, password)
+    if found:
+        ports = discover_ports(host, found, username, password)
+        return found, ports
+    raise EveNgError(
+        f"No EVE-NG lab found containing nodes {node_names}.\n"
+        f"Tried default path '{default_lab_path}' and folder-tree search.\n"
+        "Ensure the lab is imported and all nodes are started."
+    )
+
+
 def connect_node(host: str, port: int, timeout: int = 30):
     """Open a Netmiko telnet session to an EVE-NG console port in enable mode.
 

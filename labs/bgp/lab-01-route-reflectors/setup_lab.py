@@ -21,13 +21,13 @@ from pathlib import Path
 SCRIPT_DIR = Path(__file__).resolve().parent
 # Depth: lab-01-route-reflectors/ -> bgp/ -> labs/
 sys.path.insert(0, str(SCRIPT_DIR.parents[1] / "common" / "tools"))
-from eve_ng import EveNgError, connect_node, discover_ports, require_host  # noqa: E402
+from eve_ng import EveNgError, connect_node, discover_ports, require_host, resolve_and_discover  # noqa: E402
 
 INITIAL_CONFIGS_DIR = SCRIPT_DIR / "initial-configs"
 
 # Path to the EXISTING, ALREADY-IMPORTED lab in EVE-NG — used only for port
 # discovery via the REST API. This does NOT create or modify the .unl file.
-DEFAULT_LAB_PATH = "bgp/lab-01-route-reflectors.unl"
+DEFAULT_LAB_PATH = "ccnp-spri/bgp/lab-01-route-reflectors.unl"
 
 DEVICES = ["R1", "R2", "R3", "R4", "R5", "R6"]
 
@@ -71,7 +71,7 @@ def main() -> int:
     print("=" * 60)
 
     try:
-        ports = discover_ports(host, args.lab_path)
+        args.lab_path, ports = resolve_and_discover(host, args.lab_path, list(DEVICES))
     except EveNgError as exc:
         print(f"[!] {exc}", file=sys.stderr)
         return 3

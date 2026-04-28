@@ -28,6 +28,7 @@ from eve_ng import (  # noqa: E402
     connect_node,
     discover_ports,
     require_host,
+    resolve_and_discover,
     soft_reset_device,
 )
 
@@ -107,7 +108,7 @@ def main() -> int:
     print("=" * 60)
 
     try:
-        ports = discover_ports(host, args.lab_path)
+        args.lab_path, ports = resolve_and_discover(host, args.lab_path, list(DEVICES))
     except EveNgError as exc:
         print(f"[!] {exc}", file=sys.stderr)
         return 3

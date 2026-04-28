@@ -23,7 +23,7 @@ from pathlib import Path
 SCRIPT_DIR = Path(__file__).resolve().parent
 # Depth: scripts/fault-injection -> scripts -> lab-01-multiarea-ospfv2 -> ospf -> labs/
 sys.path.insert(0, str(SCRIPT_DIR.parents[3] / "common" / "tools"))
-from eve_ng import EveNgError, connect_node, discover_ports, require_host  # noqa: E402
+from eve_ng import EveNgError, connect_node, discover_ports, require_host, resolve_and_discover  # noqa: E402
 
 
 # Path to the EXISTING, ALREADY-IMPORTED lab in EVE-NG — used only for port
@@ -81,7 +81,7 @@ def main() -> int:
     print("=" * 60)
 
     try:
-        ports = discover_ports(host, args.lab_path)
+        args.lab_path, ports = resolve_and_discover(host, args.lab_path, [DEVICE_NAME])
     except EveNgError as exc:
         print(f"[!] {exc}", file=sys.stderr)
         return 3

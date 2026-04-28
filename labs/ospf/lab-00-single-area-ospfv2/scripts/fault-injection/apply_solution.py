@@ -27,7 +27,7 @@ from pathlib import Path
 SCRIPT_DIR = Path(__file__).resolve().parent
 # Depth: scripts/fault-injection -> scripts -> lab-00-single-area-ospfv2 -> ospf -> labs/
 sys.path.insert(0, str(SCRIPT_DIR.parents[3] / "common" / "tools"))
-from eve_ng import EveNgError, connect_node, discover_ports, require_host, soft_reset_device  # noqa: E402
+from eve_ng import EveNgError, connect_node, discover_ports, require_host, resolve_and_discover, soft_reset_device  # noqa: E402
 
 # solutions/ is two levels above this script (lab root: lab-00-single-area-ospfv2/)
 SOLUTIONS_DIR = SCRIPT_DIR.parents[1] / "solutions"
@@ -105,7 +105,7 @@ def main() -> int:
     print("=" * 60)
 
     try:
-        ports = discover_ports(host, args.lab_path)
+        args.lab_path, ports = resolve_and_discover(host, args.lab_path, list(RESTORE_TARGETS))
     except EveNgError as exc:
         print(f"[!] {exc}", file=sys.stderr)
         return 3
