@@ -1,6 +1,7 @@
 ---
 name: tag-lab
 description: Stamps a lab's meta.yaml with the agent and skill that generated or modified it. Use after running an external agent (Gemini, Kimi, etc.) on a lab directory. Invoked as /tag-lab <chapter/lab-slug> <agent-name> <skill-name>.
+model: claude-haiku-4-5-20251001
 ---
 
 # Tag Lab Skill

@@ -26,7 +26,7 @@
 |-------|:----:|:--------------------:|-------|
 | ospf | ✓ | 6/6 | Multiarea OSPFv2/v3, summarization, LSA behavior |
 | isis | ✓ | 0/5 | Multilevel IS-IS, dual-stack, L1/L2 |
-| bgp | ✓ | 2/9 | Scalability, communities, FlowSpec, dampening |
+| bgp | ✓ | 4/9 | Scalability, communities, FlowSpec, dampening |
 | routing-policy | ✓ | 0/7 | RPL vs route-maps, conditional matching, traffic steering |
 | ipv6-transition | ✓ | 0/5 | 6PE, static tunnels, NAT64, MAP-T |
 | fast-convergence | ✓ | 0/6 | BFD, NSF, NSR, LFA/IP-FRR, BGP PIC |
@@ -46,12 +46,15 @@ State legend: `—` not started · `⧗` in progress · `✓` complete · `⚠` 
 - **2026-04-27** — All specs complete for 10 topics; ready to begin isis builds
 - **2026-04-27** — `bgp/lab-00-ebgp-ibgp-foundations` built and approved (Foundation, Sonnet)
 - **2026-04-27** — `bgp/lab-01-route-reflectors` built and approved (Intermediate, Sonnet)
+- **2026-04-27** — `bgp/lab-02-ebgp-multihoming` built and approved (Intermediate, Sonnet)
+- **2026-04-27** — `bgp/lab-03-interdomain-security` built (GTSM, MD5, max-prefix) — pending review
+- **2026-04-28** — `bgp/lab-04-dampening-dynamic` built (dampening, dynamic neighbors, L8 demo link) — pending review
 <!-- recent-activity-end -->
 
 ## Next Step
 
 <!-- next-step-start -->
-Run `/build-lab bgp/lab-02-ebgp-multihoming` (next unbuilt BGP lab).
+Review `bgp/lab-04-dampening-dynamic` (built, pending approval). Next unbuilt: `bgp/lab-05-communities-flowspec` (Advanced — requires Opus).
 <!-- next-step-end -->
 
 ---

@@ -1,6 +1,6 @@
 <mxfile host="65bd71144e">
     <diagram id="KGxLlVsUgy7oe83Eb1KP" name="Page-1">
-        <mxGraphModel dx="1958" dy="612" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" background="#1a1a2e" math="0" shadow="0">
+        <mxGraphModel dx="2198" dy="612" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" background="#1a1a2e" math="0" shadow="0">
             <root>
                 <mxCell id="0"/>
                 <mxCell id="1" parent="0"/>
@@ -98,7 +98,7 @@
                     <mxGeometry x="948" y="328" as="geometry"/>
                 </mxCell>
                 <mxCell id="legend" value="&lt;b&gt;LEGEND&lt;/b&gt;&lt;br&gt;━━━  Physical Link (white)&lt;br&gt;&lt;br&gt;[teal dashed]  AS 65100 (SP Core)&lt;br&gt;[orange dashed]  AS 65001 (Customer A)&lt;br&gt;[pink dashed]  AS 65002 (External SP)&lt;br&gt;&lt;br&gt;eBGP: R1↔R2 (L1), R5↔R6 (L7)&lt;br&gt;iBGP: R2↔R5 on loopbacks&lt;br&gt;L2 (R1↔R3): IP-only in lab-00&lt;br&gt;OSPF Area 0: R2, R3, R4, R5&lt;br&gt;BGP Router-ID = Lo0 address" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#000000;strokeColor=#FFFFFF;fontColor=#FFFFFF;fontSize=10;align=left;verticalAlign=top;spacingLeft=8;spacingTop=8;arcSize=3;" parent="1" vertex="1">
-                    <mxGeometry x="900" y="530" width="310" height="165" as="geometry"/>
+                    <mxGeometry x="900" y="450" width="310" height="165" as="geometry"/>
                 </mxCell>
             </root>
         </mxGraphModel>

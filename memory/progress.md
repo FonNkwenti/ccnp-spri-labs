@@ -1,12 +1,12 @@
 # Lab Build Progress — CCNP SPRI (300-510)
 
-Last updated: 2026-04-27 (lab-01-route-reflectors approved)
+Last updated: 2026-04-28 (lab-07-capstone-config built)
 
 ## Build Order
 
-1. ospf ← **active**
+1. ospf
 2. isis
-3. bgp
+3. bgp ← **active**
 4. routing-policy
 5. ipv6-transition
 6. fast-convergence
@@ -44,10 +44,10 @@ Last updated: 2026-04-27 (lab-01-route-reflectors approved)
 |-----|-------|--------|
 | lab-00-ebgp-ibgp-foundations | eBGP and iBGP Foundations | Built ✓ |
 | lab-01-route-reflectors | iBGP Route Reflectors and Cluster IDs | Built ✓ |
-| lab-02-ebgp-multihoming | eBGP Multihoming and Traffic Engineering | Not Started |
-| lab-03-interdomain-security | Inter-Domain Security and Maximum-Prefix | Not Started |
-| lab-04-dampening-dynamic | Route Dampening and Dynamic Neighbors | Not Started |
-| lab-05-communities-flowspec | BGP Communities and FlowSpec | Not Started |
-| lab-06-confederations | BGP Confederations | Not Started |
-| lab-07-capstone-config | BGP Full Protocol Mastery — Capstone I | Not Started |
+| lab-02-ebgp-multihoming | eBGP Multihoming and Traffic Engineering | Built ✓ |
+| lab-03-interdomain-security | Inter-Domain Security and Maximum-Prefix | Review Needed |
+| lab-04-dampening-dynamic | Route Dampening and Dynamic Neighbors | Review Needed |
+| lab-05-communities-flowspec | BGP Communities and FlowSpec | Review Needed |
+| lab-06-confederations | BGP Confederations | Review Needed |
+| lab-07-capstone-config | BGP Full Protocol Mastery — Capstone I | Review Needed |
 | lab-08-capstone-troubleshooting | BGP Comprehensive Troubleshooting — Capstone II | Not Started |

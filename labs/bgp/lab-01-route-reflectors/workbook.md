@@ -7,6 +7,9 @@
 3. [Hardware & Environment Specifications](#3-hardware--environment-specifications)
 4. [Base Configuration](#4-base-configuration)
 5. [Lab Challenge: Core Implementation](#5-lab-challenge-core-implementation)
+   - Task 1: Configure R4 as RR and connect R2/R5 (Part A + Part B)
+   - Task 2: Bring R3 into the iBGP Fabric
+   - Task 3: Verify End-to-End Reachability and Inspect RR Attributes
 6. [Verification & Analysis](#6-verification--analysis)
 7. [Verification Cheatsheet](#7-verification-cheatsheet)
 8. [Solutions (Spoiler Alert!)](#8-solutions-spoiler-alert)
@@ -259,16 +262,26 @@ The following is **pre-loaded** via `setup_lab.py`:
 
 ## 5. Lab Challenge: Core Implementation
 
-### Task 1: Configure R4 as the Route Reflector
+### Task 1: Configure R4 as the Route Reflector and Connect Existing PEs
 
-Configure a BGP process on R4 in AS 65100. R4 will serve as the Route Reflector for the entire SP core iBGP fabric.
+Configure a BGP process on R4 in AS 65100 and wire up the two PEs already running BGP (R2 and R5). R3 joins in Task 2.
+
+#### Part A — Configure R4 as Route Reflector
 
 - Set R4's BGP router-id to its Loopback0 address and enable neighbor state-change logging.
 - Configure R4 with a cluster-id equal to its own Loopback0 address (10.0.0.4).
 - Establish iBGP sessions to R2 (10.0.0.2), R3 (10.0.0.3), and R5 (10.0.0.5), all sourced from Loopback0.
 - In the IPv4 unicast address family, designate all three peers as route-reflector clients.
 
-**Verification:** `show ip bgp summary` on R4 must show three iBGP peers (R2, R3, R5) in `Estab` state. `show ip bgp` on R4 must show routes from R1 (172.16.1.0/24) and R6 (172.16.6.0/24).
+#### Part B — Connect R2 and R5 to R4
+
+BGP sessions require both sides to configure each other. R4 is now waiting for R2 and R5 to reciprocate.
+
+- On R2: add R4 (10.0.0.4) as an iBGP peer, sourced from Loopback0. Apply `next-hop-self` toward R4 in the IPv4 unicast address family.
+- On R5: add R4 (10.0.0.4) as an iBGP peer, sourced from Loopback0. Apply `next-hop-self` toward R4 in the IPv4 unicast address family.
+- Do not remove or modify the existing R2↔R5 direct iBGP session on either router.
+
+**Verification:** `show ip bgp summary` on R4 must show R2 and R5 in `Estab` state, and R3 in `Active` state — R3 has no BGP process yet; this is expected and will be resolved in Task 2. `show ip bgp summary` on R2 must show R4 (10.0.0.4) as Established. `show ip bgp summary` on R5 must show R4 (10.0.0.4) as Established.
 
 ---
 
@@ -280,50 +293,36 @@ Configure a BGP process on R3 in AS 65100. R3's only iBGP peer will be R4 (the R
 - Establish an iBGP session to R4 (10.0.0.4), sourced from Loopback0.
 - Activate the session in the IPv4 unicast address family.
 
-**Verification:** `show ip bgp summary` on R3 must show R4 (10.0.0.4) in `Estab` state. `show ip bgp` on R3 must show 172.16.1.0/24 (Customer A prefix, reflected via R4) and 172.16.6.0/24 (external SP peer prefix, reflected via R4).
+**Verification:** `show ip bgp summary` on R3 must show R4 (10.0.0.4) in `Estab` state. `show ip bgp` on R3 must show 172.16.1.0/24 (Customer A prefix, reflected via R4) and 172.16.6.0/24 (external SP peer prefix, reflected via R4). `show ip bgp summary` on R4 must now show all three peers (R2, R3, R5) in `Estab` state — R3 moving from `Active` to `Estab` confirms the Task 2 session is complete.
 
 ---
 
-### Task 3: Connect R2 and R5 to the Route Reflector
+### Task 3: Verify End-to-End Reachability and Inspect RR Attributes
 
-Add iBGP sessions from R2 and R5 toward R4, keeping the existing legacy direct session between R2 and R5.
+With the full fabric established, confirm prefix propagation through the RR and observe how BGP loop-prevention attributes are added to reflected routes.
 
-- On R2: add R4 (10.0.0.4) as an iBGP peer, sourced from Loopback0. Apply `next-hop-self` toward R4 in the IPv4 unicast address family.
-- On R5: add R4 (10.0.0.4) as an iBGP peer, sourced from Loopback0. Apply `next-hop-self` toward R4 in the IPv4 unicast address family.
-- Do not remove or modify the existing R2↔R5 direct iBGP session on either router.
-
-**Verification:** `show ip bgp summary` on R2 must show both R4 (10.0.0.4) and R5 (10.0.0.5) as established iBGP peers. `show ip bgp summary` on R5 must show both R4 (10.0.0.4) and R2 (10.0.0.2) as established iBGP peers.
-
----
-
-### Task 4: Verify End-to-End Reachability via the RR Fabric
-
-Confirm that prefix advertisement reaches all expected endpoints through the RR, not just through the legacy direct session.
+#### Part A — End-to-End Reachability
 
 - On R3, verify that 172.16.1.0/24 (Customer A) and 172.16.6.0/24 (external peer) are both present in the BGP table and installed in the routing table.
 - On R5, verify that 172.16.1.0/24 shows a next-hop of 10.0.0.2 (R2's loopback) — not 10.1.12.1 (R1's physical IP). This confirms `next-hop-self` is working.
-- Confirm `ping 172.16.1.1` from R6 succeeds (end-to-end path: R6 → R5 → R4 → R2 → R1).
+- Confirm `ping 172.16.1.1 source 172.16.6.1` from R6 succeeds (end-to-end path: R6 → R5 → R4 → R2 → R1). The source must be Loopback1 (172.16.6.1) — R1 has a BGP return path to 172.16.6.0/24, but no route to R6's physical interface address.
 
-**Verification:** `show ip route bgp` on R3 must include both prefixes. `show ip bgp 172.16.1.0` on R5 must show `Next Hop: 10.0.0.2`.
-
----
-
-### Task 5: Inspect RR Attributes and Analyze the Legacy Session
-
-Use BGP show commands to observe how the RR adds loop-prevention attributes to reflected routes, and document the design implication of the legacy session.
+#### Part B — RR Attribute Inspection
 
 - On R5, run `show ip bgp 172.16.1.0` and locate the `Originator` and `Cluster list` fields.
 - On R3, run `show ip bgp 172.16.6.0` and locate the same fields.
 - Identify which value represents R2's router-id and which represents R4's cluster-id.
 - In your lab notes, write a one-sentence answer: why does the legacy R2↔R5 direct session persist, and what would need to happen before it could be safely removed in production?
 
-**Verification:** `show ip bgp 172.16.1.0` on R5 shows `Originator: 10.0.0.2` and `Cluster list: 10.0.0.4`. `show ip bgp 172.16.6.0` on R3 shows `Originator: 10.0.0.5` and `Cluster list: 10.0.0.4`.
+**Verification:** `show ip route bgp` on R3 must include both prefixes. `show ip bgp 172.16.1.0` on R5 must show `Next Hop: 10.0.0.2`. `show ip bgp 172.16.1.0` on R5 shows `Originator: 10.0.0.2` and `Cluster list: 10.0.0.4`. `show ip bgp 172.16.6.0` on R3 shows `Originator: 10.0.0.5` and `Cluster list: 10.0.0.4`.
 
 ---
 
 ## 6. Verification & Analysis
 
-### Task 1 — R4 as Route Reflector
+### Task 1 — R4 as Route Reflector + R2/R5 Connected
+
+After Part A and Part B are complete, R4 sees R2 and R5 Established. R3 stays `Active` because it has no BGP process yet — this is intentional and expected at this stage.
 
 ```
 R4# show ip bgp summary
@@ -331,32 +330,9 @@ BGP router identifier 10.0.0.4, local AS number 65100
 ...
 Neighbor        V    AS MsgRcvd MsgSent   TblVer  InQ OutQ Up/Down  State/PfxRcd
 10.0.0.2        4 65100      12      12        4    0    0 00:04:21  1       ! ← R2 Estab, 1 prefix (172.16.1.0/24)
-10.0.0.3        4 65100       8       8        4    0    0 00:03:10  0       ! ← R3 Estab, 0 prefixes (R3 has no eBGP yet)
+10.0.0.3        4 65100       0       5        0    0    0 00:01:03  Active  ! ← R3 not yet configured — normal
 10.0.0.5        4 65100      10      10        4    0    0 00:03:55  1       ! ← R5 Estab, 1 prefix (172.16.6.0/24)
 
-R4# show ip bgp
-BGP table version is 4, local router ID is 10.0.0.4
-     Network          Next Hop            Metric LocPrf Weight Path
- *>i 172.16.1.0/24   10.0.0.2                 0    100      0 65001 i  ! ← via R2 (iBGP client)
- *>i 172.16.6.0/24   10.0.0.5                 0    100      0 65002 i  ! ← via R5 (iBGP client)
-```
-
-### Task 2 — R3 in the iBGP Fabric
-
-```
-R3# show ip bgp summary
-Neighbor        V    AS MsgRcvd MsgSent   TblVer  InQ OutQ Up/Down  State/PfxRcd
-10.0.0.4        4 65100      10      10        4    0    0 00:03:20  2       ! ← R4 Estab; 2 prefixes reflected
-
-R3# show ip bgp
-     Network          Next Hop            Metric LocPrf Weight Path
- *>i 172.16.1.0/24   10.0.0.2                 0    100      0 65001 i  ! ← next-hop = R2 loopback (OSPF-reachable)
- *>i 172.16.6.0/24   10.0.0.5                 0    100      0 65002 i  ! ← next-hop = R5 loopback (OSPF-reachable)
-```
-
-### Task 3 — R2 and R5 Connected to RR
-
-```
 R2# show ip bgp summary
 Neighbor        V    AS MsgRcvd MsgSent   TblVer  InQ OutQ Up/Down  State/PfxRcd
 10.1.12.1       4 65001      10       9        4    0    0 00:05:11  1       ! ← R1 eBGP Estab
@@ -368,9 +344,36 @@ Neighbor        V    AS MsgRcvd MsgSent   TblVer  InQ OutQ Up/Down  State/PfxRcd
 10.1.56.6       4 65002      10       9        4    0    0 00:05:20  1       ! ← R6 eBGP Estab
 10.0.0.4        4 65100       9       9        4    0    0 00:03:55  1       ! ← R4 (RR) iBGP Estab
 10.0.0.2        4 65100       8       8        4    0    0 00:04:10  1       ! ← R2 legacy iBGP Estab
+
+R4# show ip bgp
+BGP table version is 4, local router ID is 10.0.0.4
+     Network          Next Hop            Metric LocPrf Weight Path
+ *>i 172.16.1.0/24   10.0.0.2                 0    100      0 65001 i  ! ← via R2 (iBGP client)
+ *>i 172.16.6.0/24   10.0.0.5                 0    100      0 65002 i  ! ← via R5 (iBGP client)
 ```
 
-### Task 4 — End-to-End Reachability
+### Task 2 — R3 in the iBGP Fabric
+
+Once R3's BGP process is configured, R4's pending `Active` session to R3 establishes immediately.
+
+```
+R3# show ip bgp summary
+Neighbor        V    AS MsgRcvd MsgSent   TblVer  InQ OutQ Up/Down  State/PfxRcd
+10.0.0.4        4 65100      10      10        4    0    0 00:03:20  2       ! ← R4 Estab; 2 prefixes reflected
+
+R3# show ip bgp
+     Network          Next Hop            Metric LocPrf Weight Path
+ *>i 172.16.1.0/24   10.0.0.2                 0    100      0 65001 i  ! ← next-hop = R2 loopback (OSPF-reachable)
+ *>i 172.16.6.0/24   10.0.0.5                 0    100      0 65002 i  ! ← next-hop = R5 loopback (OSPF-reachable)
+
+R4# show ip bgp summary
+Neighbor        V    AS MsgRcvd MsgSent   TblVer  InQ OutQ Up/Down  State/PfxRcd
+10.0.0.2        4 65100      14      14        4    0    0 00:06:10  1       ! ← R2 Estab
+10.0.0.3        4 65100      10      10        4    0    0 00:03:20  0       ! ← R3 Estab (was Active in Task 1)
+10.0.0.5        4 65100      12      12        4    0    0 00:05:44  1       ! ← R5 Estab
+```
+
+### Task 3 — End-to-End Reachability and RR Attribute Inspection
 
 ```
 R3# show ip route bgp
@@ -380,22 +383,16 @@ B        172.16.6.0 [200/0] via 10.0.0.5, 00:03:10   ! ← installed, AD=200 (iB
 
 R5# show ip bgp 172.16.1.0
 BGP routing table entry for 172.16.1.0/24, version 3
-Paths: (2 available, best #1, table default)
-  Advertised to update-groups:
-     1
-  Refresh Epoch 1
+Paths: (2 available, best #2, table default)
   65001
-    10.0.0.2 (metric 3) from 10.0.0.4 (10.0.0.4)   ! ← path via RR (10.0.0.4)
-      Origin IGP, metric 0, localpref 100, valid, internal, best
-      Originator: 10.0.0.2, Cluster list: 10.0.0.4  ! ← RR attributes: originator=R2, cluster=R4
-  65001
-    10.0.0.2 (metric 3) from 10.0.0.2 (10.0.0.2)   ! ← path via legacy direct R2 session
+    10.0.0.2 (metric 3) from 10.0.0.4 (10.0.0.4)   ! ← path via RR; NOT best
       Origin IGP, metric 0, localpref 100, valid, internal
-```
+      Originator: 10.0.0.2, Cluster list: 10.0.0.4  ! ← cluster-list length 1 loses tiebreaker
+  65001
+    10.0.0.2 (metric 3) from 10.0.0.2 (10.0.0.2)   ! ← path via legacy direct session; best
+      Origin IGP, metric 0, localpref 100, valid, internal, best
+      ! ← no cluster-list (length 0) wins over RR path at final tiebreaker
 
-### Task 5 — RR Attribute Inspection
-
-```
 R3# show ip bgp 172.16.6.0
 BGP routing table entry for 172.16.6.0/24, version 4
 Paths: (1 available, best #1, table default)
@@ -405,7 +402,7 @@ Paths: (1 available, best #1, table default)
       Originator: 10.0.0.5, Cluster list: 10.0.0.4  ! ← R5 originated; R4 reflected
 ```
 
-> **Design note — legacy R2↔R5 session:** The direct session persists in this lab because the progressive build rule disallows removing config. In production, you would remove it once the RR is verified stable — the RR provides the same connectivity with fewer sessions and without requiring `next-hop-self` to be tuned separately on each PE pair.
+> **Design note — legacy R2↔R5 session and best-path behavior:** The direct session persists in this lab because the progressive build rule disallows removing config. Notice that `best #2` above is the direct R2 path, not the RR-reflected path. Both paths are otherwise identical (same next-hop, metric, localpref, AS_PATH), so BGP reaches the cluster-list tiebreaker: the direct path has no cluster-list (length 0) and the RR-reflected path carries `Cluster list: 10.0.0.4` (length 1). Shorter wins. This means the legacy session is not just coexisting — it is actively preempting the RR for routes R5 receives directly from R2. In production, removing the legacy session forces all paths through the RR as intended, and the RR-reflected path (with its ORIGINATOR_ID and CLUSTER_LIST attributes visible) becomes the only and best path.
 
 ---
 
@@ -468,7 +465,8 @@ router bgp 65100
 
 | Symptom | Likely Cause |
 |---------|-------------|
-| Client has Estab session to RR but BGP table empty | `route-reflector-client` missing on RR for that client |
+| Client has Estab session to RR but BGP table empty | `neighbor X activate` missing in RR's `address-family ipv4` — IPv4 unicast not negotiated |
+| Client has Estab session, receives routes, but cannot share its own routes with other clients | `route-reflector-client` missing on RR for that client — RR applies split-horizon and does not reflect the client's advertisements |
 | RR session stays in Active | `update-source Loopback0` missing on client or RR; loopback not in OSPF |
 | Prefix in BGP table but not RIB (`r` status) | `next-hop-self` missing on ingress PE — next-hop is a physical IP not in OSPF |
 | Routes present but ORIGINATOR_ID is own router-id | Route reflecting loop — check CLUSTER_LIST for own cluster-id |
@@ -480,10 +478,10 @@ router bgp 65100
 
 > Try to complete the lab challenge without looking at these steps first!
 
-### Task 1: R4 Route Reflector Configuration
+### Task 1: R4 Route Reflector Configuration + R2/R5 Connected
 
 <details>
-<summary>Click to view R4 Configuration</summary>
+<summary>Click to view R4 Configuration (Part A)</summary>
 
 ```bash
 ! R4 — add BGP process as Route Reflector
@@ -514,12 +512,55 @@ router bgp 65100
 </details>
 
 <details>
+<summary>Click to view R2 Configuration (Part B)</summary>
+
+```bash
+! R2 — add iBGP session toward R4 (keep existing R5 session)
+router bgp 65100
+ neighbor 10.0.0.4 remote-as 65100
+ neighbor 10.0.0.4 description iBGP-RR-R4
+ neighbor 10.0.0.4 update-source Loopback0
+ !
+ address-family ipv4
+  neighbor 10.0.0.4 activate
+  neighbor 10.0.0.4 next-hop-self
+ exit-address-family
+```
+
+</details>
+
+<details>
+<summary>Click to view R5 Configuration (Part B — IOS-XE)</summary>
+
+```bash
+! R5 — add iBGP session toward R4 (keep existing R2 session)
+router bgp 65100
+ neighbor 10.0.0.4 remote-as 65100
+ neighbor 10.0.0.4 description iBGP-RR-R4
+ neighbor 10.0.0.4 update-source Loopback0
+ !
+ address-family ipv4
+  neighbor 10.0.0.4 activate
+  neighbor 10.0.0.4 next-hop-self
+ exit-address-family
+```
+
+</details>
+
+<details>
 <summary>Click to view Verification</summary>
 
 ```bash
-show ip bgp summary                   ! three peers Estab
-show ip bgp                           ! 172.16.1.0/24 and 172.16.6.0/24 present
-show run | section router bgp         ! confirm cluster-id and route-reflector-client
+! On R4
+show ip bgp summary     ! R2 Estab, R3 Active (expected), R5 Estab
+show ip bgp             ! 172.16.1.0/24 and 172.16.6.0/24 present
+show run | section router bgp   ! confirm cluster-id and route-reflector-client
+
+! On R2
+show ip bgp summary     ! R4 (10.0.0.4) and R5 (10.0.0.5) both Estab
+
+! On R5
+show ip bgp summary     ! R4 (10.0.0.4) and R2 (10.0.0.2) both Estab
 ```
 
 </details>
@@ -560,60 +601,9 @@ show ip route bgp                     ! both prefixes in RIB with [200/0]
 
 ---
 
-### Task 3: R2 and R5 — Add RR Sessions
+### Task 3: End-to-End Reachability and RR Attribute Inspection
 
-<details>
-<summary>Click to view R2 Configuration</summary>
-
-```bash
-! R2 — add iBGP session toward R4 (keep existing R5 session)
-router bgp 65100
- neighbor 10.0.0.4 remote-as 65100
- neighbor 10.0.0.4 description iBGP-RR-R4
- neighbor 10.0.0.4 update-source Loopback0
- !
- address-family ipv4
-  neighbor 10.0.0.4 activate
-  neighbor 10.0.0.4 next-hop-self
- exit-address-family
-```
-
-</details>
-
-<details>
-<summary>Click to view R5 Configuration (IOS-XE)</summary>
-
-```bash
-! R5 — add iBGP session toward R4 (keep existing R2 session)
-router bgp 65100
- neighbor 10.0.0.4 remote-as 65100
- neighbor 10.0.0.4 description iBGP-RR-R4
- neighbor 10.0.0.4 update-source Loopback0
- !
- address-family ipv4
-  neighbor 10.0.0.4 activate
-  neighbor 10.0.0.4 next-hop-self
- exit-address-family
-```
-
-</details>
-
-<details>
-<summary>Click to view Verification</summary>
-
-```bash
-! On R2
-show ip bgp summary     ! R4 (10.0.0.4) and R5 (10.0.0.5) both Estab
-
-! On R5
-show ip bgp summary     ! R4 (10.0.0.4) and R2 (10.0.0.2) both Estab
-```
-
-</details>
-
----
-
-### Task 4: End-to-End Reachability
+No new configuration — this task is verification and analysis only.
 
 <details>
 <summary>Click to view Verification Commands</summary>
@@ -624,28 +614,14 @@ show ip route bgp
 
 ! On R5 — confirm next-hop of reflected route is R2's loopback, not R1's physical IP
 show ip bgp 172.16.1.0
-
-! On R6 — confirm end-to-end path
-ping 172.16.1.1 source 172.16.6.1
-```
-
-</details>
-
----
-
-### Task 5: RR Attribute Inspection
-
-<details>
-<summary>Click to view Verification Commands</summary>
-
-```bash
-! On R5 — view ORIGINATOR_ID and CLUSTER_LIST for Customer A prefix
-show ip bgp 172.16.1.0
-! Expected: Originator: 10.0.0.2, Cluster list: 10.0.0.4
+! Expected: Next Hop 10.0.0.2, Originator: 10.0.0.2, Cluster list: 10.0.0.4
 
 ! On R3 — view RR attributes for the external SP peer prefix
 show ip bgp 172.16.6.0
 ! Expected: Originator: 10.0.0.5, Cluster list: 10.0.0.4
+
+! On R6 — confirm end-to-end path
+ping 172.16.1.1 source 172.16.6.1
 ```
 
 **Design note — legacy session removal:**
@@ -680,25 +656,28 @@ The NOC reports that R3 was recently brought into the iBGP fabric but `show ip b
 <details>
 <summary>Click to view Diagnosis Steps</summary>
 
-1. `show ip bgp summary` on R3 — session with R4 is `Estab` but `PfxRcd = 0`. Session is up but R4 is not sending any routes.
-2. `show ip bgp summary` on R4 — R3 shows as `Estab` with `0` prefixes sent/received from R3. On R4, run `show ip bgp neighbors 10.0.0.3 | include reflector`. If the output is empty (no `Route-Reflector Client` line), R3 has NOT been designated as a client.
-3. `show running-config | section router bgp` on R4 — check whether `neighbor 10.0.0.3 route-reflector-client` is present in the `address-family ipv4` stanza.
-4. The fault: the `route-reflector-client` statement is missing for neighbor 10.0.0.3 on R4. Because R3 is treated as a non-client iBGP peer, R4 applies split-horizon and does not re-advertise iBGP-learned routes to R3 (non-clients only receive routes from eBGP sources and from clients, not from other non-clients).
+1. `show ip bgp summary` on R3 — session with R4 is `Estab` but `PfxRcd = 0`. Session is up but R4 is sending no routes.
+2. `show ip bgp summary` on R4 — R3 shows `Estab` with `PfxRcd = 0`. Confirms R4 is not sending any prefixes to R3.
+3. `show ip bgp neighbors 10.0.0.4` on R3 — look for the address-family lines. A healthy session shows `Address family IPv4 Unicast: advertised and received`. If it shows `not advertised and not received`, IPv4 unicast capability was not negotiated — R4 is not participating in IPv4 unicast for this session.
+4. `show running-config | section router bgp` on R4 — inspect the `address-family ipv4` stanza. R3 (10.0.0.3) should appear as `neighbor 10.0.0.3 activate`. If that line is absent, R4 has not activated IPv4 unicast for R3's session.
+5. The fault: `neighbor 10.0.0.3 activate` is missing from R4's `address-family ipv4` block. The BGP session establishes at the base level (OPEN and KEEPALIVE messages still exchange, so state shows `Estab`), but without `activate`, R4 does not negotiate IPv4 unicast capability for R3 and sends no IPv4 routes.
+
+> **Exam trap — route-reflector-client vs. activate:** A common assumption is that removing `route-reflector-client` from R3 would cause an empty BGP table. This is incorrect. Per RFC 4456, routes received from RR clients (R2, R5) are always forwarded to all non-client iBGP peers as well. Only removing `activate` suppresses all route exchange for this address family.
 
 </details>
 
 <details>
 <summary>Click to view Fix</summary>
 
-On R4, add the missing `route-reflector-client` designation for R3:
+On R4, restore the missing `activate` for R3 in address-family ipv4:
 
 ```bash
 router bgp 65100
  address-family ipv4
-  neighbor 10.0.0.3 route-reflector-client
+  neighbor 10.0.0.3 activate
 ```
 
-Verify: `show ip bgp` on R3 now shows both prefixes. `show ip bgp neighbors 10.0.0.3 | include reflector` on R4 shows `Route-Reflector Client`.
+Verify: `show ip bgp` on R3 now shows both prefixes with `*>i` status. `show ip bgp neighbors 10.0.0.4` on R3 shows `Address family IPv4 Unicast: advertised and received`.
 
 </details>
 

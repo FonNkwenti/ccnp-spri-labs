@@ -1,0 +1,81 @@
+# Auto-generated — do not edit manually. Use /tag-lab to stamp external agent runs.
+lab: lab-04-capstone-config
+chapter: ospf
+exam: "300-510"
+devices:
+  - name: R1
+    platform: iosv
+    role: Area 1 internal router
+  - name: R2
+    platform: iosv
+    role: ABR (Area 0 / Area 1) with inter-area summarization
+  - name: R3
+    platform: iosv
+    role: Triple ABR + ASBR (Area 0 / Area 2 / Area 3 + External)
+  - name: R4
+    platform: iosv
+    role: Area 2 internal router (totally stubby)
+  - name: R5
+    platform: iosv
+    role: Area 3 NSSA internal router + ASBR
+  - name: R6
+    platform: iosv
+    role: External AS router (no OSPF)
+created:
+  date: "2026-04-26"
+  agent: claude-sonnet-4-6
+  skill: lab-assembler
+  skill_version: "2026-04-26"
+  files:
+    - decisions.md
+    - workbook.md
+    - README.md
+    - setup_lab.py
+    - topology/topology.drawio
+    - topology/README.md
+    - initial-configs/R1.cfg
+    - initial-configs/R2.cfg
+    - initial-configs/R3.cfg
+    - initial-configs/R4.cfg
+    - initial-configs/R5.cfg
+    - initial-configs/R6.cfg
+    - solutions/R1.cfg
+    - solutions/R2.cfg
+    - solutions/R3.cfg
+    - solutions/R4.cfg
+    - solutions/R5.cfg
+    - solutions/R6.cfg
+    - scripts/fault-injection/inject_scenario_01.py
+    - scripts/fault-injection/inject_scenario_02.py
+    - scripts/fault-injection/inject_scenario_03.py
+    - scripts/fault-injection/apply_solution.py
+    - scripts/fault-injection/README.md
+updated:
+  - date: "2026-04-26"
+    agent: claude-sonnet-4-6
+    skill: lab-assembler
+    skill_version: "2026-04-26"
+    files:
+      - decisions.md
+      - initial-configs/R1.cfg
+      - initial-configs/R2.cfg
+      - initial-configs/R3.cfg
+      - initial-configs/R4.cfg
+      - initial-configs/R5.cfg
+      - initial-configs/R6.cfg
+      - README.md
+      - scripts/fault-injection/apply_solution.py
+      - scripts/fault-injection/inject_scenario_01.py
+      - scripts/fault-injection/inject_scenario_02.py
+      - scripts/fault-injection/inject_scenario_03.py
+      - scripts/fault-injection/README.md
+      - setup_lab.py
+      - solutions/R1.cfg
+      - solutions/R2.cfg
+      - solutions/R3.cfg
+      - solutions/R4.cfg
+      - solutions/R5.cfg
+      - solutions/R6.cfg
+      - topology/README.md
+      - topology/topology.drawio
+      - workbook.md
