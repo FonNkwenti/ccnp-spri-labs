@@ -1,0 +1,245 @@
+topic: bgp-dual-ce
+topic_name: "BGP Dual-CE Multihoming"
+exam: "300-510"
+version: 1.0
+
+meta:
+  created:
+    date: "2026-04-28"
+    agent: claude-sonnet-4-6
+    skill: spec-creator
+    skill_version: "2026-04-28"
+  updated: []
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Core topology — two-ISP, dual-CE customer setup.
+#
+# AS 65001  = Customer (both CEs share this AS number)
+# AS 65100  = ISP-A (PE: R3, internal peer: R5 optional)
+# AS 65200  = ISP-B (PE: R4, internal peer: R6 optional)
+#
+# R1 (CE1) peers eBGP with R3 (ISP-A). R2 (CE2) peers eBGP with R4 (ISP-B).
+# R1 and R2 run iBGP between themselves across L3 — this is the structural
+# prerequisite for all dual-CE labs in this series.
+#
+# Customer PI prefix: 192.168.1.0/24
+#   R1 Lo1 (192.168.1.1/24) is the physical interface representing the /24.
+#   R2 advertises the same /24 via `ip route 192.168.1.0 255.255.255.0 Null0`
+#   + `network 192.168.1.0 mask 255.255.255.0` in BGP (standard dual-CE PI).
+#   In lab-03 both CEs additionally originate /25 more-specifics from Null0
+#   routes for selective prefix advertisement (no additional interfaces needed).
+#
+# ISP representative prefixes (for path selection verification):
+#   R3 Lo1 = 10.100.1.1/24  (ISP-A prefix)
+#   R4 Lo1 = 10.200.1.1/24  (ISP-B prefix)
+# ──────────────────────────────────────────────────────────────────────────────
+core_topology:
+  devices:
+    - name: R1
+      platform: iosv
+      role: "Customer CE1 (AS 65001); eBGP to ISP-A (R3), iBGP to CE2 (R2)"
+      asn: 65001
+      loopback0: "10.0.0.1/32"
+      loopback1: "192.168.1.1/24"     # Customer PI prefix — physical representation
+      console_port: null
+
+    - name: R2
+      platform: iosv
+      role: "Customer CE2 (AS 65001); eBGP to ISP-B (R4), iBGP to CE1 (R1)"
+      asn: 65001
+      loopback0: "10.0.0.2/32"
+      # No Lo1 — R2 originates 192.168.1.0/24 via Null0 static + network statement
+      console_port: null
+
+    - name: R3
+      platform: iosv
+      role: "ISP-A PE (AS 65100); eBGP to CE1 (R1)"
+      asn: 65100
+      loopback0: "10.0.0.3/32"
+      loopback1: "10.100.1.1/24"      # ISP-A representative prefix
+      console_port: null
+
+    - name: R4
+      platform: iosv
+      role: "ISP-B PE (AS 65200); eBGP to CE2 (R2)"
+      asn: 65200
+      loopback0: "10.0.0.4/32"
+      loopback1: "10.200.1.1/24"      # ISP-B representative prefix
+      console_port: null
+
+  links:
+    # ── Customer-to-ISP eBGP links ────────────────────────────────────────────
+    - id: L1
+      source: "R1:GigabitEthernet0/0"
+      target: "R3:GigabitEthernet0/0"
+      subnet: "10.1.13.0/30"
+      purpose: "eBGP AS 65001 ↔ AS 65100 (CE1 to ISP-A)"
+      # R1=10.1.13.1, R3=10.1.13.2
+
+    - id: L2
+      source: "R2:GigabitEthernet0/0"
+      target: "R4:GigabitEthernet0/0"
+      subnet: "10.1.24.0/30"
+      purpose: "eBGP AS 65001 ↔ AS 65200 (CE2 to ISP-B)"
+      # R2=10.1.24.1, R4=10.1.24.2
+
+    # ── CE-to-CE iBGP link ───────────────────────────────────────────────────
+    - id: L3
+      source: "R1:GigabitEthernet0/1"
+      target: "R2:GigabitEthernet0/1"
+      subnet: "10.1.12.0/30"
+      purpose: "iBGP AS 65001 — CE1 ↔ CE2 route exchange"
+      # R1=10.1.12.1, R2=10.1.12.2
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Optional topology — ISP-internal peers activated from lab-02.
+# R5 simulates additional ISP-A network prefixes; R6 simulates ISP-B.
+# Their presence provides more realistic prefix diversity for inbound TE
+# and selective advertisement verification.
+# ──────────────────────────────────────────────────────────────────────────────
+optional_devices:
+  - name: R5
+    platform: iosv
+    role: "ISP-A internal peer (AS 65100); iBGP/eBGP within ISP-A, additional prefix originator"
+    asn: 65100
+    loopback0: "10.0.0.5/32"
+    loopback1: "10.100.2.1/24"        # Additional ISP-A prefix for path diversity
+    console_port: null
+    available_from: lab-02-inbound-traffic-engineering
+    purpose: "Provides additional ISP-A prefixes so students can verify inbound TE effects beyond the single R3 PE prefix"
+
+  - name: R6
+    platform: iosv
+    role: "ISP-B internal peer (AS 65200); iBGP/eBGP within ISP-B, additional prefix originator"
+    asn: 65200
+    loopback0: "10.0.0.6/32"
+    loopback1: "10.200.2.1/24"        # Additional ISP-B prefix for path diversity
+    console_port: null
+    available_from: lab-02-inbound-traffic-engineering
+    purpose: "Provides additional ISP-B prefixes so students can verify inbound TE effects beyond the single R4 PE prefix"
+
+optional_links:
+  - id: L4
+    source: "R3:GigabitEthernet0/1"
+    target: "R5:GigabitEthernet0/0"
+    subnet: "10.1.35.0/30"
+    purpose: "ISP-A internal link; R3 and R5 run iBGP within AS 65100"
+    # R3=10.1.35.1, R5=10.1.35.2
+    available_from: lab-02-inbound-traffic-engineering
+
+  - id: L5
+    source: "R4:GigabitEthernet0/1"
+    target: "R6:GigabitEthernet0/0"
+    subnet: "10.1.46.0/30"
+    purpose: "ISP-B internal link; R4 and R6 run iBGP within AS 65200"
+    # R4=10.1.46.1, R6=10.1.46.2
+    available_from: lab-02-inbound-traffic-engineering
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Labs
+# ──────────────────────────────────────────────────────────────────────────────
+labs:
+  - number: 0
+    folder: lab-00-dual-ce-ibgp-baseline
+    title: "Dual-CE iBGP Architecture and Baseline"
+    difficulty: Foundation
+    type: progressive
+    time_minutes: 60
+    devices: [R1, R2, R3, R4]
+    blueprint_refs: ["1.5.d"]
+    objectives:
+      - "Configure eBGP: R1↔R3 (CE1 to ISP-A, AS 65001↔65100) and R2↔R4 (CE2 to ISP-B, AS 65001↔65200)"
+      - "Advertise customer prefix 192.168.1.0/24 from both CEs: R1 via Lo1, R2 via Null0 static + network statement"
+      - "Demonstrate the routing gap without CE-to-CE iBGP: R1 cannot reach ISP-B prefix 10.200.1.0/24 and R2 cannot reach ISP-A prefix 10.100.1.0/24"
+      - "Configure iBGP between R1 and R2 across L3 (10.1.12.0/30) with update-source Loopback0 and next-hop-self"
+      - "Verify that after CE-to-CE iBGP, each CE has routes from both ISPs and both advertise the customer prefix upstream"
+      - "State why next-hop-self is required on the CE-CE iBGP session: eBGP-learned next-hops point to ISP interfaces, which are unreachable from the other CE's perspective"
+
+  - number: 1
+    folder: lab-01-transit-prevention
+    title: "Transit Prevention Policy"
+    difficulty: Intermediate
+    type: progressive
+    time_minutes: 75
+    devices: [R1, R2, R3, R4]
+    extends: lab-00-dual-ce-ibgp-baseline
+    blueprint_refs: ["1.5.d"]
+    objectives:
+      - "Demonstrate the transit problem: verify that ISP-A route 10.100.1.0/24 (learned on R1 from R3) is re-advertised to ISP-B via R2 — making the customer AS a free transit path"
+      - "Identify the affected sessions: the transit leak occurs on CE-CE iBGP and from CE2 outbound to ISP-B PE"
+      - "Implement outbound route-maps on R1 (toward R2) and R2 (toward R4) permitting only customer-originated prefixes (192.168.1.0/24) using ip prefix-list"
+      - "Verify that 10.100.1.0/24 no longer appears in R4's BGP table and 10.200.1.0/24 no longer appears in R3's BGP table"
+      - "Confirm the customer prefix 192.168.1.0/24 is still reachable from both ISPs after filtering"
+      - "Troubleshoot a planted fault: transit filter applied inbound on the CE-CE session instead of outbound — prefix-list blocks routes before CE2 can use them for its own routing"
+
+  - number: 2
+    folder: lab-02-inbound-traffic-engineering
+    title: "Inbound Traffic Engineering Across Two ISPs"
+    difficulty: Intermediate
+    type: progressive
+    time_minutes: 75
+    devices: [R1, R2, R3, R4, R5, R6]
+    extends: lab-01-transit-prevention
+    blueprint_refs: ["1.5.d"]
+    objectives:
+      - "Activate R5 (ISP-A) and R6 (ISP-B); bring up iBGP R3↔R5 (within AS 65100) and R4↔R6 (within AS 65200) with next-hop-self"
+      - "Explain why MED cannot steer inbound traffic across two different provider ASes: RFC 4271 requires same-AS comparison and most ISPs do not honor inter-AS MEDs"
+      - "Configure AS-path prepending on R2 (outbound toward R4): prepend 65001 once — ISP-B now sees AS-path length 2 vs ISP-A's length 1, preferring ISP-A for inbound to 192.168.1.0/24"
+      - "Verify: R3/R5 (ISP-A) see AS-path 65001 for 192.168.1.0/24; R4/R6 (ISP-B) see AS-path 65001 65001"
+      - "Simulate primary link failure (shut R1 Gi0/0): confirm ISP-A traffic shifts to ISP-B path; restore and verify ISP-A re-takes primary"
+      - "Troubleshoot: prepend applied on R2 toward R2 (CE-CE iBGP) instead of toward R4 — ISP-B sees no prepend, ISP-A sees double prepend, path selection inverts"
+
+  - number: 3
+    folder: lab-03-selective-advertisement
+    title: "Outbound Policy and Selective Prefix Advertisement"
+    difficulty: Intermediate
+    type: progressive
+    time_minutes: 90
+    devices: [R1, R2, R3, R4, R5, R6]
+    extends: lab-02-inbound-traffic-engineering
+    blueprint_refs: ["1.5.d", "1.5.a"]
+    objectives:
+      - "Configure LOCAL_PREF on R1 (prefer ISP-A for outbound, set 200 for routes from R3) and R2 (prefer ISP-B for outbound, set 200 for routes from R4); use next-hop-self so both CEs use their own preferences on shared routes"
+      - "Explain the CE-CE iBGP LOCAL_PREF interaction: LOCAL_PREF is propagated in iBGP — whichever CE learns a route with higher LOCAL_PREF wins for the customer AS, causing asymmetric outbound"
+      - "Configure selective prefix advertisement — split inbound traffic across ISPs: R1 originates 192.168.1.0/25 (first half) via Null0 + network toward ISP-A in addition to the /24 aggregate; R2 originates 192.168.1.128/25 (second half) via Null0 + network toward ISP-B in addition to the /24 aggregate"
+      - "Verify ISP-A routes return traffic destined to 192.168.1.0-127 via R3 (matching /25 more-specific from R1); ISP-B routes return traffic destined to 192.168.1.128-255 via R4 (matching /25 more-specific from R2); both ISPs fall back to the /24 for the other half"
+      - "Troubleshoot: the /25 more-specific is present in R3's BGP table but absent from R5 — R3 is missing `next-hop-self` or `send-community` toward R5 (student must diagnose which)"
+
+  - number: 4
+    folder: lab-04-capstone-config
+    title: "BGP Dual-CE Full Protocol Mastery — Capstone I"
+    difficulty: Advanced
+    type: capstone_i
+    clean_slate: true
+    time_minutes: 120
+    devices: [R1, R2, R3, R4, R5, R6]
+    blueprint_refs: all
+    objectives:
+      - "From interfaces-only baseline (IP addressing assigned, no BGP), build the complete dual-CE dual-ISP BGP topology"
+      - "CE-to-CE iBGP: R1↔R2 with update-source Loopback0 and next-hop-self on both ends"
+      - "eBGP sessions: R1↔R3 (ISP-A) and R2↔R4 (ISP-B); ISP-internal iBGP: R3↔R5 and R4↔R6 with next-hop-self"
+      - "Customer prefix advertisement: 192.168.1.0/24 from both CEs; confirm both ISPs receive it"
+      - "Transit prevention: outbound route-maps on R1 (toward R2) and R2 (toward R4) — only 192.168.1.0/24 and its more-specifics permitted"
+      - "Inbound TE: AS-path prepend one extra 65001 on R2 outbound toward R4 — ISP-A becomes preferred for 192.168.1.0/24"
+      - "LOCAL_PREF: R1 sets 200 inbound from R3; R2 sets 200 inbound from R4 — each CE prefers its own ISP for outbound"
+      - "Selective advertisement: R1 originates 192.168.1.0/25 toward ISP-A; R2 originates 192.168.1.128/25 toward ISP-B"
+      - "Verify: full reachability (R3↔R4 bidirectional via customer AS excluded — no transit), correct path selection, /25 traffic split visible on both ISP PEs"
+
+  - number: 5
+    folder: lab-05-capstone-troubleshooting
+    title: "BGP Dual-CE Comprehensive Troubleshooting — Capstone II"
+    difficulty: Advanced
+    type: capstone_ii
+    clean_slate: true
+    time_minutes: 120
+    devices: [R1, R2, R3, R4, R5, R6]
+    blueprint_refs: all
+    objectives:
+      - "Diagnose and repair 5 concurrent planted faults in a pre-configured dual-CE dual-ISP topology"
+      - "Fault 1 — CE-CE iBGP missing: R1 and R2 have no iBGP session; each CE is routing-blind to the other ISP's prefixes"
+      - "Fault 2 — Transit leak: outbound route-map on R2 toward R4 is absent — R3's ISP-A prefixes are re-advertised to ISP-B through the customer AS"
+      - "Fault 3 — LOCAL_PREF direction: R1 applies LOCAL_PREF 200 outbound toward R3 (ISP-A) instead of inbound from R3 — has no effect on R1's path selection; R1 equally prefers both ISPs"
+      - "Fault 4 — AS-path prepend on wrong neighbor: prepend is configured on R2 toward R2 (CE-CE iBGP session) instead of toward R4 — ISP-B sees no prepend, ISP-A sees the prepend and treats itself as backup"
+      - "Fault 5 — Missing aggregate route: R2 is originating 192.168.1.128/25 toward ISP-B but not the 192.168.1.0/24 aggregate — ISP-B has no fallback for the first /25 when R1 fails"
+      - "Restore: bidirectional reachability between both ISPs and the customer, correct path preference (ISP-A primary), correct traffic split (/25s), no transit between ISP-A and ISP-B"
+      - "Document the show/debug commands that isolated each fault (minimum one per fault)"

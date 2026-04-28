@@ -60,6 +60,24 @@ topics:
     dependencies: []
     build_order: 3
 
+  - topic_id: bgp-dual-ce
+    topic_name: "BGP Dual-CE Multihoming"
+    blueprint_refs:
+      - "1.5.d"
+      - "1.5.a"
+    estimated_labs: 6
+    scope_notes: >
+      Supplemental extension of the bgp topic. Covers the architecturally distinct case
+      where a customer deploys two CE routers (same AS) connecting to two different ISPs.
+      Topics: CE-to-CE iBGP, transit prevention, inbound TE via AS-path prepend (MED
+      irrelevance across provider ASes), outbound policy with LOCAL_PREF, and selective
+      prefix advertisement (/25 split for inbound traffic engineering). Inter-domain
+      security (GTSM, MD5, max-prefix) is excluded — fully covered in bgp/lab-03.
+    dependencies:
+      - bgp
+    build_order: 3
+    supplemental: true
+
   - topic_id: routing-policy
     topic_name: "Routing Policy and Manipulation"
     blueprint_refs:
@@ -318,12 +336,13 @@ coverage_matrix:
   "4.4.d": srv6
 
 summary:
-  total_topics: 10
-  total_estimated_labs: 64
+  total_topics: 11
+  total_estimated_labs: 70
   build_order:
     - ospf
     - isis
     - bgp
+    - bgp-dual-ce
     - routing-policy
     - ipv6-transition
     - fast-convergence

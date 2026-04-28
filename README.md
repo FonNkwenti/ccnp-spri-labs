@@ -69,6 +69,7 @@ See [`.agent/skills/README.md`](.agent/skills/) for the full skill catalogue and
 1. **ospf** — multiarea OSPFv2/v3, summarization, LSA behavior
 2. **isis** — multilevel IS-IS, dual-stack, L1/L2 boundaries
 3. **bgp** — scalability, communities, FlowSpec, dampening
+3a. **bgp-dual-ce** — dual-CE multihoming: transit prevention, inbound TE, selective advertisement · *supplements bgp*
 4. **routing-policy** — RPL vs route-maps, traffic steering · *needs ospf, isis, bgp*
 5. **ipv6-transition** — 6PE, static tunnels, NAT64, MAP-T · *needs bgp*
 6. **fast-convergence** — BFD, NSF, NSR, LFA/IP-FRR, BGP PIC · *needs ospf, isis, bgp*
