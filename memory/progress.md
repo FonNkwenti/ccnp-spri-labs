@@ -1,13 +1,13 @@
 # Lab Build Progress — CCNP SPRI (300-510)
 
-Last updated: 2026-04-28 (lab-07-capstone-config built)
+Last updated: 2026-04-28 (BGP workbooks clarified: show command output formats; routing-policy lab-01-tags-regex-communities built)
 
 ## Build Order
 
 1. ospf
 2. isis
-3. bgp ← **active**
-4. routing-policy
+3. bgp
+4. routing-policy ← **active**
 5. ipv6-transition
 6. fast-convergence
 7. mpls
@@ -50,4 +50,22 @@ Last updated: 2026-04-28 (lab-07-capstone-config built)
 | lab-05-communities-flowspec | BGP Communities and FlowSpec | Review Needed |
 | lab-06-confederations | BGP Confederations | Review Needed |
 | lab-07-capstone-config | BGP Full Protocol Mastery — Capstone I | Review Needed |
-| lab-08-capstone-troubleshooting | BGP Comprehensive Troubleshooting — Capstone II | Not Started |
+| lab-08-capstone-troubleshooting | BGP Comprehensive Troubleshooting — Capstone II | Review Needed |
+
+**Note (2026-04-28):** All BGP workbooks (lab-00 through lab-08) have been reviewed and improved for clarity:
+- Clarified `show ip bgp <prefix>` (detailed view) vs `show ip bgp` (table view) command output formats
+- Explained where AS-path appears in each format (unlabeled first line in detailed view, Path column in table view)
+- Standardized terminology and added exam tips across all labs
+- Addresses student confusion about AS-path visibility in detailed output
+
+## routing-policy
+
+| Lab | Title | Status |
+|-----|-------|--------|
+| lab-00-route-maps-foundations | Route-Maps, Prefix-Lists, and ACL Matching | Review Needed |
+| lab-01-tags-regex-communities | Tags, Route Types, Regex, and BGP Communities | Review Needed |
+| lab-02-rpl-vs-route-maps | RPL vs Route-Maps — Policy Sets and Hierarchical Policies | Not Started |
+| lab-03-igp-route-manipulation | Route Manipulation for IS-IS and OSPF | Not Started |
+| lab-04-bgp-filtering-steering | BGP Route Filtering and Traffic Steering | Not Started |
+| lab-05-capstone-config | Routing Policy Full Mastery — Capstone I | Not Started |
+| lab-06-capstone-troubleshooting | Routing Policy Comprehensive Troubleshooting — Capstone II | Not Started |
