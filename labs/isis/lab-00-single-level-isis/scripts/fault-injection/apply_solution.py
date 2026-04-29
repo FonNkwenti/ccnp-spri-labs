@@ -1,21 +1,21 @@
 #!/usr/bin/env python3
 """
-Solution Restoration -- Lab 01: iBGP Route Reflectors and Cluster IDs
+Solution Restoration — IS-IS Lab 00: Single-Level IS-IS Foundations
 
 Reads per-device configs from solutions/ and pushes them to all affected
 devices, returning the lab to the known-good state after fault injection.
 
 Usage:
     python3 apply_solution.py --host <eve-ng-ip>
-    python3 apply_solution.py --host <eve-ng-ip> --reset          # soft-reset before restore
-    python3 apply_solution.py --host <eve-ng-ip> --node R4        # restore one device
-    python3 apply_solution.py --host <eve-ng-ip> --reset --node R2  # soft-reset + restore one device
+    python3 apply_solution.py --host <eve-ng-ip> --reset
+    python3 apply_solution.py --host <eve-ng-ip> --node R3
+    python3 apply_solution.py --host <eve-ng-ip> --reset --node R2
 
 Exit codes:
-    0 -- all devices restored
-    1 -- one or more devices failed to restore
-    2 -- --host not set (placeholder value detected)
-    3 -- EVE-NG connectivity or port discovery error
+    0 — all devices restored
+    1 — one or more devices failed to restore
+    2 — --host not set (placeholder value detected)
+    3 — EVE-NG connectivity or port discovery error
 """
 
 from __future__ import annotations
@@ -25,38 +25,31 @@ import sys
 from pathlib import Path
 
 SCRIPT_DIR = Path(__file__).resolve().parent
-# Depth: scripts/fault-injection -> scripts -> lab-01-route-reflectors -> bgp -> labs/
 sys.path.insert(0, str(SCRIPT_DIR.parents[3] / "common" / "tools"))
 from eve_ng import EveNgError, connect_node, discover_ports, require_host, resolve_and_discover, soft_reset_device  # noqa: E402
 
-# solutions/ is two levels above this script (lab root)
 SOLUTIONS_DIR = SCRIPT_DIR.parents[1] / "solutions"
 
-DEFAULT_LAB_PATH = "ccnp-spri/bgp/lab-01-route-reflectors.unl"
+DEFAULT_LAB_PATH = "ccnp-spri/isis/lab-00-single-level-isis.unl"
 
-# All devices in the lab -- restored in order.
-# Scenario 01 targets R4, Scenario 02 targets R3, Scenario 03 targets R2.
-# All six devices are included so a full domain restore returns every router
-# to the known-good state.
+# All devices affected by any troubleshooting scenario.
+# Scenario 01 targets R3, Scenario 02 targets R1, Scenario 03 targets R2.
 RESTORE_TARGETS = [
     "R1",
     "R2",
     "R3",
-    "R4",
-    "R5",
-    "R6",
 ]
 
 
 def restore_device(host: str, ports: dict, name: str, *, reset: bool) -> bool:
     port = ports.get(name)
     if port is None:
-        print(f"[!] {name} not found in lab ports -- skipping.")
+        print(f"[!] {name} not found in lab ports — skipping.")
         return False
 
     cfg_file = SOLUTIONS_DIR / f"{name}.cfg"
     if not cfg_file.exists():
-        print(f"[!] {cfg_file} not found -- skipping {name}.")
+        print(f"[!] {cfg_file} not found — skipping {name}.")
         return False
 
     print(f"[*] Restoring {name} on {host}:{port} ...")
@@ -89,7 +82,7 @@ def main() -> int:
     parser.add_argument("--reset", action="store_true",
                         help="Soft-reset before restoring: default all interfaces and remove routing protocols")
     parser.add_argument("--node", default=None,
-                        help="Restore a single device only (e.g. R4). Omit to restore all targets.")
+                        help="Restore a single device only (e.g. R1). Omit to restore all targets.")
     args = parser.parse_args()
 
     host = require_host(args.host)

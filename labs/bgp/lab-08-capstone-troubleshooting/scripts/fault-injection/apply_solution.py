@@ -1,15 +1,15 @@
 #!/usr/bin/env python3
 """
-Solution Restoration -- Lab 01: iBGP Route Reflectors and Cluster IDs
+Solution Restoration -- BGP Lab 08: BGP Comprehensive Troubleshooting -- Capstone II
 
-Reads per-device configs from solutions/ and pushes them to all affected
-devices, returning the lab to the known-good state after fault injection.
+Reads per-device configs from solutions/ and pushes them to all 7 affected
+devices, returning the lab to the known-good state after the troubleshooting exercise.
 
 Usage:
     python3 apply_solution.py --host <eve-ng-ip>
-    python3 apply_solution.py --host <eve-ng-ip> --reset          # soft-reset before restore
-    python3 apply_solution.py --host <eve-ng-ip> --node R4        # restore one device
-    python3 apply_solution.py --host <eve-ng-ip> --reset --node R2  # soft-reset + restore one device
+    python3 apply_solution.py --host <eve-ng-ip> --reset
+    python3 apply_solution.py --host <eve-ng-ip> --node R5
+    python3 apply_solution.py --host <eve-ng-ip> --reset --node R5
 
 Exit codes:
     0 -- all devices restored
@@ -25,19 +25,15 @@ import sys
 from pathlib import Path
 
 SCRIPT_DIR = Path(__file__).resolve().parent
-# Depth: scripts/fault-injection -> scripts -> lab-01-route-reflectors -> bgp -> labs/
+# Depth: scripts/fault-injection -> scripts -> lab-08 -> bgp -> labs/
 sys.path.insert(0, str(SCRIPT_DIR.parents[3] / "common" / "tools"))
 from eve_ng import EveNgError, connect_node, discover_ports, require_host, resolve_and_discover, soft_reset_device  # noqa: E402
 
 # solutions/ is two levels above this script (lab root)
 SOLUTIONS_DIR = SCRIPT_DIR.parents[1] / "solutions"
 
-DEFAULT_LAB_PATH = "ccnp-spri/bgp/lab-01-route-reflectors.unl"
+DEFAULT_LAB_PATH = "ccnp-spri/bgp/lab-08-capstone-troubleshooting.unl"
 
-# All devices in the lab -- restored in order.
-# Scenario 01 targets R4, Scenario 02 targets R3, Scenario 03 targets R2.
-# All six devices are included so a full domain restore returns every router
-# to the known-good state.
 RESTORE_TARGETS = [
     "R1",
     "R2",
@@ -45,6 +41,7 @@ RESTORE_TARGETS = [
     "R4",
     "R5",
     "R6",
+    "R7",
 ]
 
 
@@ -89,7 +86,7 @@ def main() -> int:
     parser.add_argument("--reset", action="store_true",
                         help="Soft-reset before restoring: default all interfaces and remove routing protocols")
     parser.add_argument("--node", default=None,
-                        help="Restore a single device only (e.g. R4). Omit to restore all targets.")
+                        help="Restore a single device only (e.g. R5). Omit to restore all targets.")
     args = parser.parse_args()
 
     host = require_host(args.host)
@@ -104,7 +101,7 @@ def main() -> int:
         targets = RESTORE_TARGETS
 
     print("=" * 60)
-    print("Solution Restoration: Removing All Faults")
+    print("Solution Restoration: Removing All Faults (Lab 08)")
     print("=" * 60)
 
     try:

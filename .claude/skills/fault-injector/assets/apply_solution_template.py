@@ -59,9 +59,9 @@ def restore_device(host: str, ports: dict, name: str, *, reset: bool) -> bool:
         commands = [
             line.strip()
             for line in cfg_file.read_text().splitlines()
-            if line.strip() and not line.startswith("!")
+            if line.strip() and not line.startswith("!") and line.strip() != "end"
         ]
-        conn.send_config_set(commands)
+        conn.send_config_set(commands, cmd_verify=False)
         conn.save_config()
         conn.disconnect()
         print(f"[+] {name} restored.")

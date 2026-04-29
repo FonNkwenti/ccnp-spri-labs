@@ -1,15 +1,19 @@
 #!/usr/bin/env python3
 """
-Solution Restoration -- Lab 01: iBGP Route Reflectors and Cluster IDs
+Solution Restoration -- RPL vs Route-Maps Lab (lab-02-rpl-vs-route-maps)
 
 Reads per-device configs from solutions/ and pushes them to all affected
 devices, returning the lab to the known-good state after fault injection.
 
+XR1 and XR2 use the cisco_xr_telnet driver. R1/R2/R3/R4 use cisco_ios_telnet.
+soft_reset_device() is only called on IOS devices (R1/R2/R3/R4); XR devices
+do not support the IOS 'default interface' command set.
+
 Usage:
     python3 apply_solution.py --host <eve-ng-ip>
-    python3 apply_solution.py --host <eve-ng-ip> --reset          # soft-reset before restore
-    python3 apply_solution.py --host <eve-ng-ip> --node R4        # restore one device
-    python3 apply_solution.py --host <eve-ng-ip> --reset --node R2  # soft-reset + restore one device
+    python3 apply_solution.py --host <eve-ng-ip> --reset          # soft-reset IOS devices before restore
+    python3 apply_solution.py --host <eve-ng-ip> --node R1        # restore one device
+    python3 apply_solution.py --host <eve-ng-ip> --reset --node R2  # soft-reset + restore one IOS device
 
 Exit codes:
     0 -- all devices restored
@@ -25,27 +29,18 @@ import sys
 from pathlib import Path
 
 SCRIPT_DIR = Path(__file__).resolve().parent
-# Depth: scripts/fault-injection -> scripts -> lab-01-route-reflectors -> bgp -> labs/
+# Depth: scripts/fault-injection -> scripts -> lab-02-rpl-vs-route-maps -> routing-policy -> labs/
 sys.path.insert(0, str(SCRIPT_DIR.parents[3] / "common" / "tools"))
-from eve_ng import EveNgError, connect_node, discover_ports, require_host, resolve_and_discover, soft_reset_device  # noqa: E402
+from eve_ng import EveNgError, connect_node, discover_ports, find_open_lab, require_host, soft_reset_device  # noqa: E402
 
 # solutions/ is two levels above this script (lab root)
 SOLUTIONS_DIR = SCRIPT_DIR.parents[1] / "solutions"
 
-DEFAULT_LAB_PATH = "ccnp-spri/bgp/lab-01-route-reflectors.unl"
+# All devices affected by the troubleshooting scenarios -- restored in order.
+RESTORE_TARGETS = ["R1", "R2", "R3", "R4", "XR1", "XR2"]
 
-# All devices in the lab -- restored in order.
-# Scenario 01 targets R4, Scenario 02 targets R3, Scenario 03 targets R2.
-# All six devices are included so a full domain restore returns every router
-# to the known-good state.
-RESTORE_TARGETS = [
-    "R1",
-    "R2",
-    "R3",
-    "R4",
-    "R5",
-    "R6",
-]
+# XR devices use a different Netmiko driver and do not support IOS soft-reset commands.
+XR_DEVICES = {"XR1", "XR2"}
 
 
 def restore_device(host: str, ports: dict, name: str, *, reset: bool) -> bool:
@@ -61,10 +56,12 @@ def restore_device(host: str, ports: dict, name: str, *, reset: bool) -> bool:
 
     print(f"[*] Restoring {name} on {host}:{port} ...")
     try:
-        if reset:
+        # soft_reset_device only supports IOS -- skip for XR nodes.
+        if reset and name not in XR_DEVICES:
             soft_reset_device(host, port)
 
-        conn = connect_node(host, port)
+        device_type = "cisco_xr_telnet" if name in XR_DEVICES else "cisco_ios_telnet"
+        conn = connect_node(host, port, device_type=device_type)
         commands = [
             line.strip()
             for line in cfg_file.read_text().splitlines()
@@ -84,12 +81,12 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="Restore lab to known-good state")
     parser.add_argument("--host", default="192.168.x.x",
                         help="EVE-NG server IP (required)")
-    parser.add_argument("--lab-path", default=DEFAULT_LAB_PATH,
-                        help=f"Lab .unl path in EVE-NG (default: {DEFAULT_LAB_PATH})")
+    parser.add_argument("--lab-path", default=None,
+                        help="Lab .unl path in EVE-NG (auto-discovered if omitted)")
     parser.add_argument("--reset", action="store_true",
-                        help="Soft-reset before restoring: default all interfaces and remove routing protocols")
+                        help="Soft-reset IOS devices before restoring (default all interfaces, remove routing protocols). Not applied to XR devices.")
     parser.add_argument("--node", default=None,
-                        help="Restore a single device only (e.g. R4). Omit to restore all targets.")
+                        help="Restore a single device only (e.g. R1). Omit to restore all targets.")
     args = parser.parse_args()
 
     host = require_host(args.host)
@@ -107,8 +104,17 @@ def main() -> int:
     print("Solution Restoration: Removing All Faults")
     print("=" * 60)
 
+    if args.lab_path:
+        lab_path = args.lab_path
+    else:
+        print("[*] Detecting open lab in EVE-NG...")
+        lab_path = find_open_lab(host, node_names=RESTORE_TARGETS)
+        if lab_path is None:
+            print("[!] No running lab found. Start all nodes in EVE-NG first.", file=sys.stderr)
+            return 3
+
     try:
-        args.lab_path, ports = resolve_and_discover(host, args.lab_path, list(RESTORE_TARGETS))
+        ports = discover_ports(host, lab_path)
     except EveNgError as exc:
         print(f"[!] {exc}", file=sys.stderr)
         return 3
