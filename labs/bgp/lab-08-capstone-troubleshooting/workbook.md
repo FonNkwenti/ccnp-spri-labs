@@ -10,17 +10,17 @@
 
 ## Table of Contents
 
-1. Lab Overview
-2. Topology
-3. Addressing Table
-4. Prerequisites
-5. Lab Challenge: Comprehensive Troubleshooting
-6. Blueprint Coverage
-7. Verification
-8. Reference Solutions
-9. Fault Tickets
-10. Grading Criteria
-11. Key Takeaways
+1. [Lab Overview](#1-lab-overview)
+2. [Topology](#2-topology)
+3. [Addressing Table](#3-addressing-table)
+4. [Prerequisites](#4-prerequisites)
+5. [Lab Challenge: Comprehensive Troubleshooting](#5-lab-challenge-comprehensive-troubleshooting)
+6. [Blueprint Coverage](#6-blueprint-coverage)
+7. [Verification](#7-verification)
+8. [Reference Solutions](#8-reference-solutions)
+9. [Fault Tickets](#9-fault-tickets)
+10. [Grading Criteria](#10-grading-criteria)
+11. [Key Takeaways](#11-key-takeaways)
 
 ---
 
@@ -147,7 +147,7 @@ Isolate root causes before applying fixes. Verify each fix before moving on.
 3. R5↔R6 eBGP session is up and stable; `show ip bgp neighbors 10.1.56.6` shows MD5 active.
 4. R5↔R7 eBGP session is up and stable; `show ip bgp summary` does not show flapping.
 5. R4 (RR) and R5 see community `65100:100` on `172.16.1.0/24` — not just R2.
-6. R5 receives at least one FlowSpec NLRI from R7 in `show bgp ipv4 flowspec`.
+6. R5↔R7 FlowSpec AF reaches `Established` with `0` prefixes received (rule origination requires IOS-XR; IOS-XE 17.3.x peers and enforces but cannot originate).
 7. From R1, the path to 172.16.6.0/24 prefers AS-path via R2, not R3.
 8. R2's `show ip bgp summary` shows neighbor `10.1.12.1` in `Established` (not idle, not in
    max-prefix shutdown).
@@ -230,10 +230,16 @@ Expected: `Established` with non-zero uptime and stable received-prefix count fo
 unicast SAFI.
 
 ```
-R5# show bgp ipv4 flowspec
+R5# show bgp ipv4 flowspec summary
 ```
 
-Expected: at least one NLRI matching destination 172.16.1.0/24, protocol TCP, dest-port 22.
+Expected: R7 (10.1.57.7) listed as `Established` with `0` prefixes received.
+
+> **IOS-XE 17.3.x platform note.** `class-map type traffic` and `policy-map type traffic`
+> exist only on IOS-XR; CSR1000v 17.3.x cannot originate FlowSpec rules. The testable
+> deliverable on this platform is FlowSpec AF peering plus enforcement readiness on R5
+> (the global `flowspec / address-family ipv4 / local-install interface-all` block, which
+> is part of the baseline — not a fault).
 
 ### 7.5 R1 outbound path selection
 
@@ -255,32 +261,486 @@ Expected: `Established`, not stuck in max-prefix shutdown nor flapping.
 
 ## 8. Reference Solutions
 
-The full clean-state configurations for all 7 devices live in `solutions/`. Run
-`scripts/fault-injection/apply_solution.py --host <eve-ng-ip>` to push them. The summary
-of what each device should be doing is in `topology/README.md` and `decisions.md`.
+The full clean-state configurations for all 7 devices are inlined below. Run
+`scripts/fault-injection/apply_solution.py --host <eve-ng-ip>` to push them. Resist
+peeking until you have attempted diagnosis from the symptoms alone.
 
-A condensed snapshot of the most-relevant correct lines per device:
+<details>
+<summary>R1 — Customer-A CE (AS 65001)</summary>
 
 ```
-R5  router bgp 65100
-      neighbor 10.0.0.4  next-hop-self     <-- required for RR-learned paths
-      address-family ipv4 flowspec
-        bgp flowspec local-install interface-all
-        neighbor 10.1.57.7 activate
-
-R2  router bgp 65100
-      address-family ipv4
-        neighbor 10.1.12.1 route-map FROM-CUST-A-PRIMARY in     <-- direction = in
-        neighbor 10.1.12.1 maximum-prefix 100 75 restart 5      <-- limit = 100
-        neighbor 10.0.0.4 send-community both                   <-- both std + ext
-
-R6  router bgp 65002
-      neighbor 10.1.56.5 password CISCO_SP                      <-- shared key
-
-R7  router bgp 65003
-      address-family ipv4 flowspec
-        neighbor 10.1.57.5 activate                             <-- AFI must be activated
+hostname R1
+!
+no ip domain-lookup
+!
+interface Loopback0
+ ip address 10.0.0.1 255.255.255.255
+ no shutdown
+!
+interface Loopback1
+ ip address 172.16.1.1 255.255.255.0
+ no shutdown
+!
+interface GigabitEthernet0/0
+ description Link to R2 PE-East-1 (L1 eBGP primary)
+ ip address 10.1.12.1 255.255.255.0
+ no shutdown
+!
+interface GigabitEthernet0/1
+ description Link to R3 PE-East-2 (L2 eBGP backup)
+ ip address 10.1.13.1 255.255.255.0
+ no shutdown
+!
+interface GigabitEthernet0/2
+ description Dynamic-Neighbor demo link to R2 (L8)
+ ip address 10.99.0.1 255.255.255.252
+ no shutdown
+!
+ip prefix-list CUST-A seq 5 permit 172.16.1.0/24
+!
+route-map TO-R2-PRIMARY permit 10
+ match ip address prefix-list CUST-A
+ set metric 10
+!
+route-map TO-R2-PRIMARY permit 20
+!
+route-map TO-R3-BACKUP permit 10
+ match ip address prefix-list CUST-A
+ set metric 50
+ set as-path prepend 65001 65001
+!
+route-map TO-R3-BACKUP permit 20
+!
+router bgp 65001
+ bgp router-id 10.0.0.1
+ bgp log-neighbor-changes
+ neighbor 10.1.12.2 remote-as 65100
+ neighbor 10.1.12.2 description PE-East-1-R2-eBGP-primary
+ neighbor 10.1.12.2 ttl-security hops 1
+ neighbor 10.1.13.3 remote-as 65100
+ neighbor 10.1.13.3 description PE-East-2-R3-eBGP-backup
+ neighbor 10.1.13.3 ttl-security hops 1
+ neighbor 10.99.0.2 remote-as 65100
+ neighbor 10.99.0.2 description R2-DynamicRange-listen-port
+ !
+ address-family ipv4
+  network 172.16.1.0 mask 255.255.255.0
+  neighbor 10.1.12.2 activate
+  neighbor 10.1.12.2 route-map TO-R2-PRIMARY out
+  neighbor 10.1.13.3 activate
+  neighbor 10.1.13.3 route-map TO-R3-BACKUP out
+  neighbor 10.99.0.2 activate
+ exit-address-family
+!
+end
 ```
+
+</details>
+
+<details>
+<summary>R2 — PE-East-1 / Customer-A primary / dynamic-neighbor listener (AS 65100)</summary>
+
+```
+hostname R2
+!
+no ip domain-lookup
+!
+interface Loopback0
+ ip address 10.0.0.2 255.255.255.255
+ no shutdown
+!
+interface GigabitEthernet0/0
+ description Link to R1 Customer-A-CE (L1 eBGP primary)
+ ip address 10.1.12.2 255.255.255.0
+ no shutdown
+!
+interface GigabitEthernet0/1
+ description Link to R4 P-router/RR (L3 OSPF/iBGP)
+ ip address 10.1.24.2 255.255.255.0
+ no shutdown
+!
+interface GigabitEthernet0/2
+ description Link to R3 PE-East-2 (L6 OSPF IGP)
+ ip address 10.1.23.2 255.255.255.0
+ no shutdown
+!
+interface GigabitEthernet0/3
+ description Dynamic-Customer range link to R1 (L8)
+ ip address 10.99.0.2 255.255.255.252
+ no shutdown
+!
+router ospf 1
+ router-id 10.0.0.2
+ network 10.0.0.2 0.0.0.0 area 0
+ network 10.1.24.0 0.0.0.255 area 0
+ network 10.1.23.0 0.0.0.255 area 0
+!
+ip prefix-list CUST-A seq 5 permit 172.16.1.0/24
+!
+ip extcommunity-list standard SOO_CUSTA permit soo 65001:1
+!
+route-map FROM-CUST-A-PRIMARY permit 10
+ match ip address prefix-list CUST-A
+ set local-preference 200
+ set community 65100:100 additive
+ set extcommunity soo 65001:1
+!
+route-map FROM-CUST-A-PRIMARY permit 20
+!
+router bgp 65100
+ bgp router-id 10.0.0.2
+ bgp log-neighbor-changes
+ bgp listen limit 10
+ bgp listen range 10.99.0.0/24 peer-group DYN_CUST
+ neighbor DYN_CUST peer-group
+ neighbor DYN_CUST remote-as 65001
+ neighbor DYN_CUST description Dynamic-Customer-AS65001
+ neighbor 10.1.12.1 remote-as 65001
+ neighbor 10.1.12.1 description Customer-A-CE-R1
+ neighbor 10.1.12.1 ttl-security hops 1
+ neighbor 10.0.0.4 remote-as 65100
+ neighbor 10.0.0.4 description iBGP-RR-R4
+ neighbor 10.0.0.4 update-source Loopback0
+ !
+ address-family ipv4
+  neighbor DYN_CUST activate
+  neighbor DYN_CUST route-map FROM-CUST-A-PRIMARY in
+  neighbor 10.1.12.1 activate
+  neighbor 10.1.12.1 route-map FROM-CUST-A-PRIMARY in
+  neighbor 10.1.12.1 maximum-prefix 100 75 restart 5
+  neighbor 10.0.0.4 activate
+  neighbor 10.0.0.4 next-hop-self
+  neighbor 10.0.0.4 send-community both
+ exit-address-family
+!
+end
+```
+
+</details>
+
+<details>
+<summary>R3 — PE-East-2 / Customer-A backup (AS 65100)</summary>
+
+```
+hostname R3
+!
+no ip domain-lookup
+!
+interface Loopback0
+ ip address 10.0.0.3 255.255.255.255
+ no shutdown
+!
+interface GigabitEthernet0/0
+ description Link to R1 Customer-A-CE (L2 eBGP backup)
+ ip address 10.1.13.3 255.255.255.0
+ no shutdown
+!
+interface GigabitEthernet0/1
+ description Link to R4 P-router/RR (L4 OSPF/iBGP)
+ ip address 10.1.34.3 255.255.255.0
+ no shutdown
+!
+interface GigabitEthernet0/2
+ description Link to R2 PE-East-1 (L6 OSPF IGP)
+ ip address 10.1.23.3 255.255.255.0
+ no shutdown
+!
+router ospf 1
+ router-id 10.0.0.3
+ network 10.0.0.3 0.0.0.0 area 0
+ network 10.1.34.0 0.0.0.255 area 0
+ network 10.1.23.0 0.0.0.255 area 0
+!
+ip prefix-list CUST-A-BACKUP seq 5 permit 172.16.1.0/24
+!
+ip extcommunity-list standard SOO_CUSTA permit soo 65001:1
+!
+route-map FROM-CUST-A-BACKUP permit 10
+ match ip address prefix-list CUST-A-BACKUP
+ set community 65100:200 additive
+ set extcommunity soo 65001:1
+!
+route-map FROM-CUST-A-BACKUP permit 20
+!
+router bgp 65100
+ bgp router-id 10.0.0.3
+ bgp log-neighbor-changes
+ neighbor 10.1.13.1 remote-as 65001
+ neighbor 10.1.13.1 description Customer-A-CE-R1-backup
+ neighbor 10.1.13.1 ttl-security hops 1
+ neighbor 10.0.0.4 remote-as 65100
+ neighbor 10.0.0.4 description iBGP-RR-R4
+ neighbor 10.0.0.4 update-source Loopback0
+ !
+ address-family ipv4
+  neighbor 10.1.13.1 activate
+  neighbor 10.1.13.1 route-map FROM-CUST-A-BACKUP in
+  neighbor 10.1.13.1 maximum-prefix 100 75 restart 5
+  neighbor 10.0.0.4 activate
+  neighbor 10.0.0.4 next-hop-self
+  neighbor 10.0.0.4 send-community both
+ exit-address-family
+!
+end
+```
+
+</details>
+
+<details>
+<summary>R4 — P-router / Route Reflector (AS 65100, cluster-id 10.0.0.4)</summary>
+
+```
+hostname R4
+!
+no ip domain-lookup
+!
+interface Loopback0
+ ip address 10.0.0.4 255.255.255.255
+ no shutdown
+!
+interface GigabitEthernet0/0
+ description Link to R2 PE-East-1 (L3 OSPF/iBGP)
+ ip address 10.1.24.4 255.255.255.0
+ no shutdown
+!
+interface GigabitEthernet0/1
+ description Link to R3 PE-East-2 (L4 OSPF/iBGP)
+ ip address 10.1.34.4 255.255.255.0
+ no shutdown
+!
+interface GigabitEthernet0/2
+ description Link to R5 PE-West (L5 OSPF/iBGP)
+ ip address 10.1.45.4 255.255.255.0
+ no shutdown
+!
+router ospf 1
+ router-id 10.0.0.4
+ network 10.0.0.4 0.0.0.0 area 0
+ network 10.1.24.0 0.0.0.255 area 0
+ network 10.1.34.0 0.0.0.255 area 0
+ network 10.1.45.0 0.0.0.255 area 0
+!
+router bgp 65100
+ bgp router-id 10.0.0.4
+ bgp log-neighbor-changes
+ bgp cluster-id 10.0.0.4
+ neighbor 10.0.0.2 remote-as 65100
+ neighbor 10.0.0.2 description iBGP-RR-client-R2
+ neighbor 10.0.0.2 update-source Loopback0
+ neighbor 10.0.0.3 remote-as 65100
+ neighbor 10.0.0.3 description iBGP-RR-client-R3
+ neighbor 10.0.0.3 update-source Loopback0
+ neighbor 10.0.0.5 remote-as 65100
+ neighbor 10.0.0.5 description iBGP-RR-client-R5
+ neighbor 10.0.0.5 update-source Loopback0
+ !
+ address-family ipv4
+  neighbor 10.0.0.2 activate
+  neighbor 10.0.0.2 route-reflector-client
+  neighbor 10.0.0.2 send-community both
+  neighbor 10.0.0.3 activate
+  neighbor 10.0.0.3 route-reflector-client
+  neighbor 10.0.0.3 send-community both
+  neighbor 10.0.0.5 activate
+  neighbor 10.0.0.5 route-reflector-client
+  neighbor 10.0.0.5 send-community both
+ exit-address-family
+!
+end
+```
+
+</details>
+
+<details>
+<summary>R5 — PE-West / dampening / FlowSpec enforcer (AS 65100)</summary>
+
+```
+hostname R5
+!
+no ip domain-lookup
+!
+interface Loopback0
+ ip address 10.0.0.5 255.255.255.255
+ no shutdown
+!
+interface GigabitEthernet2
+ description Link to R4 P-router/RR (L5 OSPF/iBGP)
+ ip address 10.1.45.5 255.255.255.0
+ no shutdown
+!
+interface GigabitEthernet3
+ description Link to R6 External-SP-Peer (L7 eBGP)
+ ip address 10.1.56.5 255.255.255.0
+ no shutdown
+!
+interface GigabitEthernet4
+ description Link to R7 External-Peer-AS65003 (L8 eBGP FlowSpec)
+ ip address 10.1.57.5 255.255.255.0
+ no shutdown
+!
+router ospf 1
+ router-id 10.0.0.5
+ network 10.0.0.5 0.0.0.0 area 0
+ network 10.1.45.0 0.0.0.255 area 0
+!
+ip prefix-list EXT-PEER-R6 seq 5 permit 172.16.6.0/24
+!
+route-map FROM-R6-APPLY-NOEXP permit 10
+ match ip address prefix-list EXT-PEER-R6
+ set community no-export additive
+!
+route-map FROM-R6-APPLY-NOEXP permit 20
+!
+router bgp 65100
+ bgp router-id 10.0.0.5
+ bgp log-neighbor-changes
+ bgp dampening 15 750 2000 60
+ neighbor 10.1.56.6 remote-as 65002
+ neighbor 10.1.56.6 description External-SP-Peer-R6
+ neighbor 10.1.56.6 ttl-security hops 1
+ neighbor 10.1.56.6 password CISCO_SP
+ neighbor 10.1.57.7 remote-as 65003
+ neighbor 10.1.57.7 description External-Peer-R7-AS65003-FlowSpec
+ neighbor 10.1.57.7 ttl-security hops 1
+ neighbor 10.1.57.7 password CISCO_SP
+ neighbor 10.0.0.4 remote-as 65100
+ neighbor 10.0.0.4 description iBGP-RR-R4
+ neighbor 10.0.0.4 update-source Loopback0
+ !
+ address-family ipv4
+  neighbor 10.1.56.6 activate
+  neighbor 10.1.56.6 route-map FROM-R6-APPLY-NOEXP in
+  neighbor 10.1.56.6 maximum-prefix 100 75 restart 5
+  neighbor 10.1.56.6 send-community both
+  neighbor 10.1.57.7 activate
+  neighbor 10.1.57.7 maximum-prefix 100 75 restart 5
+  neighbor 10.1.57.7 send-community both
+  neighbor 10.0.0.4 activate
+  neighbor 10.0.0.4 next-hop-self
+  neighbor 10.0.0.4 send-community both
+ exit-address-family
+ !
+ address-family ipv4 flowspec
+  neighbor 10.1.57.7 activate
+  neighbor 10.1.57.7 send-community both
+ exit-address-family
+!
+flowspec
+ address-family ipv4
+  local-install interface-all
+ exit-address-family
+!
+end
+```
+
+</details>
+
+<details>
+<summary>R6 — External SP peer (AS 65002, no-export)</summary>
+
+```
+hostname R6
+!
+no ip domain-lookup
+!
+interface Loopback0
+ ip address 10.0.0.6 255.255.255.255
+ no shutdown
+!
+interface Loopback1
+ ip address 172.16.6.1 255.255.255.0
+ no shutdown
+!
+interface GigabitEthernet0/0
+ description Link to R5 PE-West (L7 eBGP)
+ ip address 10.1.56.6 255.255.255.0
+ no shutdown
+!
+ip prefix-list R6-PREFIX seq 5 permit 172.16.6.0/24
+!
+route-map TO-R5-NOEXPORT permit 10
+ match ip address prefix-list R6-PREFIX
+ set community no-export
+!
+route-map TO-R5-NOEXPORT permit 20
+!
+router bgp 65002
+ bgp router-id 10.0.0.6
+ bgp log-neighbor-changes
+ neighbor 10.1.56.5 remote-as 65100
+ neighbor 10.1.56.5 description SP-Core-PE-West-R5
+ neighbor 10.1.56.5 ttl-security hops 1
+ neighbor 10.1.56.5 password CISCO_SP
+ !
+ address-family ipv4
+  network 172.16.6.0 mask 255.255.255.0
+  neighbor 10.1.56.5 activate
+  neighbor 10.1.56.5 route-map TO-R5-NOEXPORT out
+  neighbor 10.1.56.5 maximum-prefix 100 75 restart 5
+  neighbor 10.1.56.5 send-community
+ exit-address-family
+!
+end
+```
+
+</details>
+
+<details>
+<summary>R7 — Specialty external peer (AS 65003, no-advertise + FlowSpec AF)</summary>
+
+```
+hostname R7
+!
+no ip domain-lookup
+!
+interface Loopback0
+ ip address 10.0.0.7 255.255.255.255
+ no shutdown
+!
+interface Loopback1
+ ip address 172.16.7.1 255.255.255.0
+ no shutdown
+!
+interface GigabitEthernet1
+ description Link to R5 PE-West AS65100 (L8 eBGP FlowSpec)
+ ip address 10.1.57.7 255.255.255.0
+ no shutdown
+!
+ip prefix-list R7-PREFIX seq 5 permit 172.16.7.0/24
+!
+route-map TO-R5-NOADVERTISE permit 10
+ match ip address prefix-list R7-PREFIX
+ set community no-advertise
+!
+route-map TO-R5-NOADVERTISE permit 20
+!
+! Note: class-map/policy-map type traffic do not exist on IOS-XE 17.3.x (IOS-XR only).
+! R7 establishes FlowSpec AF peering only. No local rule origination or enforcement.
+router bgp 65003
+ bgp router-id 10.0.0.7
+ bgp log-neighbor-changes
+ neighbor 10.1.57.5 remote-as 65100
+ neighbor 10.1.57.5 description PE-West-R5-AS65100
+ neighbor 10.1.57.5 ttl-security hops 1
+ neighbor 10.1.57.5 password CISCO_SP
+ !
+ address-family ipv4 unicast
+  network 172.16.7.0 mask 255.255.255.0
+  neighbor 10.1.57.5 activate
+  neighbor 10.1.57.5 route-map TO-R5-NOADVERTISE out
+  neighbor 10.1.57.5 maximum-prefix 100 75 restart 5
+  neighbor 10.1.57.5 send-community both
+ exit-address-family
+ !
+ address-family ipv4 flowspec
+  neighbor 10.1.57.5 activate
+  neighbor 10.1.57.5 send-community both
+ exit-address-family
+!
+end
+```
+
+</details>
 
 ---
 
@@ -476,12 +936,13 @@ Expected: community `65100:100` and ext-community `SoO:65001:1` visible on both.
 </details>
 
 <details>
-<summary>Ticket 6 — No FlowSpec NLRIs on R5; R7 shows no FlowSpec peers</summary>
+<summary>Ticket 6 — R5↔R7 FlowSpec AF never reaches Established</summary>
 
-**Symptom:** `show bgp ipv4 flowspec` on R5 returns no entries. R5↔R7 eBGP unicast session
-is `Established` and exchanging IPv4 unicast routes normally — but the FlowSpec SAFI was
-never negotiated. `show bgp all neighbors 10.1.57.5 | include flowspec` on R7 shows no
-flowspec capability advertised.
+**Symptom:** `show bgp ipv4 flowspec summary` on R5 does not list R7 as Established (the
+FlowSpec AF row is missing or stuck Idle/Active). R5↔R7 IPv4 unicast session is
+`Established` and exchanging routes normally — but the FlowSpec SAFI was never negotiated.
+`show bgp all neighbors 10.1.57.5 | include flowspec` on R7 shows no flowspec capability
+advertised.
 
 **Investigation starting point:**
 ```
@@ -507,11 +968,14 @@ R7(config-router-af)# do clear ip bgp 10.1.57.5
 **Verify:**
 ```
 R7# show bgp ipv4 flowspec summary
-R5# show bgp ipv4 flowspec
-R5# show bgp ipv4 flowspec detail | include Local install
+R5# show bgp ipv4 flowspec summary
 ```
-Expected: FlowSpec session up; at least one NLRI matching dst 172.16.1.0/24 / TCP / port 22;
-local install yes on R5.
+Expected: R5 lists R7 (10.1.57.7) as `Established` with `0` prefixes received.
+
+> **IOS-XE 17.3.x note.** No FlowSpec NLRI is expected in `show bgp ipv4 flowspec` because
+> R7 cannot originate rules on this platform (`class-map`/`policy-map type traffic` are
+> IOS-XR-only). AF peering is the testable deliverable here. Lab 07 documents the same
+> platform limitation.
 
 </details>
 
@@ -526,7 +990,7 @@ local install yes on R5.
 | R5↔R6 session Established with MD5 active | 15 |
 | R2↔R1 session stable (no max-prefix bounce loop) | 15 |
 | R4 and R5 receive community 65100:100 on Customer-A's prefix | 15 |
-| FlowSpec NLRI present on R5 for dst 172.16.1.0/24 / TCP / port 22 | 20 |
+| R5↔R7 FlowSpec AF Established with 0 prefixes (origination is IOS-XR-only) | 20 |
 | **Total** | **100** |
 
 ---
