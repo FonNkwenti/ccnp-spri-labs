@@ -69,7 +69,7 @@ def main() -> int:
     host = require_host(args.host)
 
     print("=" * 60)
-    print("Fault Injection: Scenario 01 -- Community 65100:100 Not Visible on R5")
+    print("Fault Injection: Scenario 01")
     print("=" * 60)
 
     if args.lab_path:

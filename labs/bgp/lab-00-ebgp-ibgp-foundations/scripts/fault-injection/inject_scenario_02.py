@@ -70,7 +70,7 @@ def main() -> int:
     host = require_host(args.host)
 
     print("=" * 60)
-    print("Fault Injection: Scenario 02 -- R6 Does Not Learn Customer Prefix")
+    print("Fault Injection: Scenario 02")
     print("=" * 60)
 
     if args.lab_path:

@@ -71,7 +71,7 @@ def main() -> int:
     host = require_host(args.host)
 
     print("=" * 60)
-    print("Fault Injection: Scenario 03 -- 172.16.6.0/24 Visible at R2 (no-export Not Enforced)")
+    print("Fault Injection: Scenario 03")
     print("=" * 60)
 
     if args.lab_path:

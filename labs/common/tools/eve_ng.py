@@ -255,14 +255,16 @@ def connect_node(
         time.sleep(1)
         conn.clear_buffer()
         conn.enable()
-        # A previous session may have left the router in config or config-if mode.
-        # Netmiko's enable() sees '#' in the prompt and considers the device enabled
-        # without checking whether it is also in config mode. Only send 'end' when
-        # check_config_mode() confirms we are in config mode — sending 'end' from
-        # exec mode causes IOS to attempt DNS resolution ("end" treated as hostname),
-        # which hangs on devices that don't yet have 'no ip domain lookup' configured.
-        if conn.check_config_mode():
-            conn.send_command("end", expect_string=r"#", read_timeout=15)
+        # Send Ctrl+Z to exit any lingering config or config-if mode left by a
+        # previous session. Ctrl+Z is a control character: in config mode it exits
+        # to exec; in exec mode it is a no-op. Unlike the text 'end', it never
+        # triggers a DNS lookup on devices without 'no ip domain lookup' configured,
+        # which caused a hang on CSR1000v. Using write_channel directly avoids the
+        # extra buffer reads that check_config_mode() performs, which were causing
+        # 'Failed to enter configuration mode' on IOSv.
+        conn.write_channel("\x1a")
+        time.sleep(0.5)
+        conn.clear_buffer()
         # Silence console logging so that any IOS syslog messages buffered from a
         # previous session (e.g. %SYS-5-CONFIG_I after save_config) do not corrupt
         # subsequent command/prompt matching. cmd_verify=False avoids echo-matching

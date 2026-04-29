@@ -65,7 +65,7 @@ def main() -> int:
     host = require_host(args.host)
 
     print("=" * 60)
-    print("Fault Injection: Scenario 03 -- R4 Cannot Reach R6 Prefix (next-hop unresolvable)")
+    print("Fault Injection: Scenario 03")
     print("=" * 60)
 
     if args.lab_path:

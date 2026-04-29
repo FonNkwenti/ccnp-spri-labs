@@ -74,7 +74,7 @@ def main() -> int:
     host = require_host(args.host)
 
     print("=" * 60)
-    print("Fault Injection: Scenario 02 -- R5-R6 Session Stuck in Active")
+    print("Fault Injection: Scenario 02")
     print("=" * 60)
 
     if args.lab_path:

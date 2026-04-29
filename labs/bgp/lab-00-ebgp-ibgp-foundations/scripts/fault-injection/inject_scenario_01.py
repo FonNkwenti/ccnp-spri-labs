@@ -68,7 +68,7 @@ def main() -> int:
     host = require_host(args.host)
 
     print("=" * 60)
-    print("Fault Injection: Scenario 01 -- iBGP Session Stays in Active")
+    print("Fault Injection: Scenario 01")
     print("=" * 60)
 
     if args.lab_path:

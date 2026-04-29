@@ -67,7 +67,7 @@ def main() -> int:
     host = require_host(args.host)
 
     print("=" * 60)
-    print("Fault Injection: Scenario 02 -- Dynamic Customer Session Stays Active")
+    print("Fault Injection: Scenario 02")
     print("=" * 60)
 
     if args.lab_path:

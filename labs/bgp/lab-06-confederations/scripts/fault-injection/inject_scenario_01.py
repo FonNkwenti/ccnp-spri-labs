@@ -62,7 +62,7 @@ def main() -> int:
     host = require_host(args.host)
 
     print("=" * 60)
-    print("Fault Injection: Scenario 01 -- R1 Sees Sub-AS 65101 in AS-Path")
+    print("Fault Injection: Scenario 01")
     print("=" * 60)
 
     if args.lab_path:

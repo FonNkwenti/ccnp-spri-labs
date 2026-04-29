@@ -65,7 +65,7 @@ def main() -> int:
     host = require_host(args.host)
 
     print("=" * 60)
-    print("Fault Injection: Scenario 02 -- Community 65100:100 Lost on Customer-A Prefix")
+    print("Fault Injection: Scenario 02")
     print("=" * 60)
 
     if args.lab_path:
