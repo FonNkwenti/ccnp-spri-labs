@@ -212,11 +212,20 @@ def resolve_and_discover(
     )
 
 
-def connect_node(host: str, port: int, timeout: int = 30):
+def connect_node(
+    host: str,
+    port: int,
+    timeout: int = 30,
+    device_type: str = "cisco_ios_telnet",
+):
     """Open a Netmiko telnet session to an EVE-NG console port in enable mode.
 
     Returns the connection already in privilege mode so callers can immediately
     call send_config_set() without a separate enable() step.
+
+    Pass device_type="cisco_xr_telnet" for IOS-XR (XRv9k) nodes. XR has no
+    enable mode and uses candidate-config/commit — the IOS-specific enable()
+    and logging-console suppression steps are skipped automatically.
 
     fast_cli=False and global_delay_factor=2 are required for EVE-NG console
     ports: buffered boot/session output in the telnet stream causes Netmiko to
@@ -227,7 +236,7 @@ def connect_node(host: str, port: int, timeout: int = 30):
             "netmiko is not installed. Run: pip install netmiko"
         )
     conn = ConnectHandler(
-        device_type="cisco_ios_telnet",
+        device_type=device_type,
         host=host,
         port=port,
         username="",
@@ -237,17 +246,28 @@ def connect_node(host: str, port: int, timeout: int = 30):
         fast_cli=False,
         global_delay_factor=2,
     )
-    conn.enable()
-    # A previous session may have left the router in config or config-if mode.
-    # Netmiko's enable() sees '#' in the prompt and considers the device enabled
-    # without checking whether it is also in config mode. Send 'end' anchored
-    # on '#' so we fully wait for the privilege prompt before proceeding.
-    conn.send_command("end", expect_string=r"#", read_timeout=15)
-    # Silence console logging so that any IOS syslog messages buffered from a
-    # previous session (e.g. %SYS-5-CONFIG_I after save_config) do not corrupt
-    # subsequent command/prompt matching. cmd_verify=False avoids echo-matching
-    # against potentially stale buffer content.
-    conn.send_config_set(["no logging console"], cmd_verify=False)
+    if not device_type.startswith("cisco_xr"):
+        # Drain any stale telnet buffer from previous sessions before enable()
+        # searches for '#'. EVE-NG telnet ports are persistent — IOS-XE platforms
+        # (CSR1000v) generate more post-save syslog output than IOSv, so without
+        # this drain the buffered %SYS-5-CONFIG_I line causes enable() to time out
+        # with "Pattern not detected: '#'".
+        time.sleep(1)
+        conn.clear_buffer()
+        conn.enable()
+        # A previous session may have left the router in config or config-if mode.
+        # Netmiko's enable() sees '#' in the prompt and considers the device enabled
+        # without checking whether it is also in config mode. Only send 'end' when
+        # check_config_mode() confirms we are in config mode — sending 'end' from
+        # exec mode causes IOS to attempt DNS resolution ("end" treated as hostname),
+        # which hangs on devices that don't yet have 'no ip domain lookup' configured.
+        if conn.check_config_mode():
+            conn.send_command("end", expect_string=r"#", read_timeout=15)
+        # Silence console logging so that any IOS syslog messages buffered from a
+        # previous session (e.g. %SYS-5-CONFIG_I after save_config) do not corrupt
+        # subsequent command/prompt matching. cmd_verify=False avoids echo-matching
+        # against potentially stale buffer content.
+        conn.send_config_set(["no logging console"], cmd_verify=False)
     return conn
 
 
@@ -270,10 +290,16 @@ _LAB_SWEEP_COMMANDS = [
     "default interface Loopback1",
     "default interface Loopback2",
     "default interface Loopback3",
+    # IOSv naming (GigabitEthernet0/x)
     "default interface GigabitEthernet0/0",
     "default interface GigabitEthernet0/1",
     "default interface GigabitEthernet0/2",
     "default interface GigabitEthernet0/3",
+    # CSR1000v naming (GigabitEthernet1-4, no slot prefix)
+    "default interface GigabitEthernet1",
+    "default interface GigabitEthernet2",
+    "default interface GigabitEthernet3",
+    "default interface GigabitEthernet4",
     "no router ospf 1",
     "no router ospfv3 1",
     "no logging console",
