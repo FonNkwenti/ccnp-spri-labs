@@ -1,6 +1,6 @@
 # Lab Build Progress — CCNP SPRI (300-510)
 
-Last updated: 2026-04-28 (BGP workbooks clarified: show command output formats; routing-policy lab-01-tags-regex-communities built)
+Last updated: 2026-04-30 (segment-routing lab-03-sr-te-policies-and-steering built)
 
 ## Build Order
 
@@ -32,9 +32,9 @@ Last updated: 2026-04-28 (BGP workbooks clarified: show command output formats; 
 
 | Lab | Title | Status |
 |-----|-------|--------|
-| lab-00-single-level-isis | Single-Level IS-IS Foundations | Not Started |
-| lab-01-multilevel-isis | Multilevel IS-IS and Route Advertisement | Not Started |
-| lab-02-dual-stack-summarization | Dual-Stack IS-IS with Summarization and Route Leaking | Not Started |
+| lab-00-single-level-isis | Single-Level IS-IS Foundations | Review Needed |
+| lab-01-multilevel-isis | Multilevel IS-IS and Route Advertisement | Review Needed |
+| lab-02-dual-stack-summarization | Dual-Stack IS-IS with Summarization and Route Leaking | Review Needed |
 | lab-03-capstone-config | IS-IS Full Protocol Mastery — Capstone I | Not Started |
 | lab-04-capstone-troubleshooting | IS-IS Comprehensive Troubleshooting — Capstone II | Not Started |
 
@@ -64,8 +64,43 @@ Last updated: 2026-04-28 (BGP workbooks clarified: show command output formats; 
 |-----|-------|--------|
 | lab-00-route-maps-foundations | Route-Maps, Prefix-Lists, and ACL Matching | Review Needed |
 | lab-01-tags-regex-communities | Tags, Route Types, Regex, and BGP Communities | Review Needed |
-| lab-02-rpl-vs-route-maps | RPL vs Route-Maps — Policy Sets and Hierarchical Policies | Not Started |
-| lab-03-igp-route-manipulation | Route Manipulation for IS-IS and OSPF | Not Started |
-| lab-04-bgp-filtering-steering | BGP Route Filtering and Traffic Steering | Not Started |
+| lab-02-rpl-vs-route-maps | RPL vs Route-Maps — Policy Sets and Hierarchical Policies | Built ✓ |
+| lab-03-igp-route-manipulation | Route Manipulation for IS-IS and OSPF | Review Needed |
+| lab-04-bgp-filtering-steering | BGP Route Filtering and Traffic Steering | Review Needed |
 | lab-05-capstone-config | Routing Policy Full Mastery — Capstone I | Not Started |
 | lab-06-capstone-troubleshooting | Routing Policy Comprehensive Troubleshooting — Capstone II | Not Started |
+
+## mpls
+
+| Lab | Title | Status |
+|-----|-------|--------|
+| lab-00-ldp-foundations | MPLS LDP Foundations and Label Distribution | Review Needed |
+| lab-01-lsp-verification-and-troubleshooting | LSP Verification with MPLS OAM | Review Needed |
+| lab-02-bgp-free-core-and-unified-bgp | BGP-Free Core and Unified BGP (Labeled Unicast) | Review Needed |
+| lab-03-rsvp-te-tunnels | RSVP-TE Tunnels with Explicit Paths | Built ✓ |
+| lab-04-capstone-config | MPLS Full Mastery — Capstone I | Not Started |
+| lab-05-capstone-troubleshooting | MPLS Comprehensive Troubleshooting — Capstone II | Not Started |
+
+## bgp-dual-ce (supplemental topic)
+
+| Lab | Title | Status |
+|-----|-------|--------|
+| lab-00-dual-ce-ibgp-baseline | Dual-CE iBGP Architecture and Baseline | Review Needed |
+| lab-01-transit-prevention | Transit Prevention Policy | Review Needed |
+| lab-02-inbound-traffic-engineering | Inbound Traffic Engineering Across Two ISPs | Review Needed |
+| lab-03-selective-advertisement | Outbound Policy and Selective Prefix Advertisement | Review Needed |
+| lab-04-capstone-config | BGP Dual-CE Full Protocol Mastery — Capstone I | Built ✓ |
+| lab-05-capstone-troubleshooting | BGP Dual-CE Comprehensive Troubleshooting — Capstone II | Not Started |
+
+## segment-routing
+
+| Lab | Title | Status |
+|-----|-------|--------|
+| lab-00-sr-foundations-and-srgb | SR-MPLS Foundations, SRGB, and Prefix SIDs | Review Needed |
+| lab-01-ti-lfa | Topology-Independent Loop-Free Alternate (TI-LFA) | Review Needed |
+| lab-02-sr-migration-ldp-coexistence | SR Migration — LDP Coexistence, Mapping Server, SR-Prefer | Built ✓ |
+| lab-03-sr-te-policies-and-steering | SR-TE Policies, Constraints, and Automated Steering | Review Needed |
+| lab-04-pce-srlg-tree-sid | PCE Path Computation, SRLG, and Tree SID | Review Needed |
+| lab-05-ospf-sr-standalone | OSPF Segment Routing Extensions (standalone) | Review Needed |
+| lab-06-capstone-config | SR Full Mastery — Capstone I | Not Started |
+| lab-07-capstone-troubleshooting | SR Comprehensive Troubleshooting — Capstone II | Not Started |

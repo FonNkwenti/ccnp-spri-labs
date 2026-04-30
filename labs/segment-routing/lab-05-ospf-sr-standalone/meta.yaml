@@ -1,0 +1,67 @@
+# Auto-generated — do not edit manually. Use /tag-lab to stamp external agent runs.
+lab: lab-05-ospf-sr-standalone
+chapter: segment-routing
+exam: 300-510
+devices:
+  - name: R1
+    platform: xrv9k
+    role: SP Edge / SR Ingress
+  - name: R2
+    platform: xrv9k
+    role: SP Core
+  - name: R3
+    platform: xrv9k
+    role: SP Edge / SR Egress
+  - name: R4
+    platform: xrv9k
+    role: SP Core
+created:
+  date: "2026-04-30"
+  agent: claude-sonnet-4-6
+  skill: lab-assembler
+  skill_version: "2026-04-30"
+  files:
+    - workbook.md
+    - setup_lab.py
+    - README.md
+    - decisions.md
+    - topology/topology.drawio
+    - topology/README.md
+    - initial-configs/R1.cfg
+    - initial-configs/R2.cfg
+    - initial-configs/R3.cfg
+    - initial-configs/R4.cfg
+    - solutions/R1.cfg
+    - solutions/R2.cfg
+    - solutions/R3.cfg
+    - solutions/R4.cfg
+    - scripts/fault-injection/inject_scenario_01.py
+    - scripts/fault-injection/inject_scenario_02.py
+    - scripts/fault-injection/inject_scenario_03.py
+    - scripts/fault-injection/apply_solution.py
+    - scripts/fault-injection/README.md
+updated:
+  - date: "2026-04-30"
+    agent: claude-opus-4-7
+    skill: build-lab
+    skill_version: "2026-04-30"
+    files:
+      - decisions.md
+      - initial-configs/R1.cfg
+      - initial-configs/R2.cfg
+      - initial-configs/R3.cfg
+      - initial-configs/R4.cfg
+      - README.md
+      - scripts/fault-injection/apply_solution.py
+      - scripts/fault-injection/inject_scenario_01.py
+      - scripts/fault-injection/inject_scenario_02.py
+      - scripts/fault-injection/inject_scenario_03.py
+      - scripts/fault-injection/README.md
+      - setup_lab.py
+      - solutions/R1.cfg
+      - solutions/R2.cfg
+      - solutions/R3.cfg
+      - solutions/R4.cfg
+      - topology/README.md
+      - topology/topology.drawio
+      - workbook.md
