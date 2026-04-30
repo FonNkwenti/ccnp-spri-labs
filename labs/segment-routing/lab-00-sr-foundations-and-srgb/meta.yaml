@@ -1,0 +1,44 @@
+lab: segment-routing/lab-00-sr-foundations-and-srgb
+title: SR-MPLS Foundations, SRGB, and Prefix SIDs
+topic: segment-routing
+difficulty: Foundation
+estimated_time_minutes: 90
+type: progressive
+blueprint_refs:
+  - "4.2"
+  - "4.2.a"
+  - "4.2.b"
+devices:
+  - R1
+  - R2
+  - R3
+  - R4
+platform: xrv9k
+provenance:
+  agent: claude-opus-4-7
+  built_date: "2026-04-30"
+  rebuilt_date: "2026-04-30"
+  rebuilt_reason: "First build (sonnet-4-6) had unopenable drawio + NET inconsistencies + incoherent workbook scenarios"
+  model_gate: PASS
+created:
+  files:
+    - solutions/R1.cfg
+    - solutions/R2.cfg
+    - solutions/R3.cfg
+    - solutions/R4.cfg
+    - initial-configs/R1.cfg
+    - initial-configs/R2.cfg
+    - initial-configs/R3.cfg
+    - initial-configs/R4.cfg
+    - workbook.md
+    - setup_lab.py
+    - topology/topology.drawio
+    - topology/README.md
+    - README.md
+    - scripts/fault-injection/inject_scenario_01.py
+    - scripts/fault-injection/inject_scenario_02.py
+    - scripts/fault-injection/inject_scenario_03.py
+    - scripts/fault-injection/apply_solution.py
+    - scripts/fault-injection/README.md
+    - meta.yaml
+    - decisions.md

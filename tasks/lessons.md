@@ -19,6 +19,57 @@ New entries at the top. Review at the start of each session.
 
 -->
 
+## 2026-04-30 — Workbook topology ASCII: bordered-box style with rich per-router info
+
+**Correction:** First build of `segment-routing/lab-00-sr-foundations-and-srgb`
+shipped a minimal 5-line ASCII topology (just `R1 ──L1── R2`-style edges, no
+bordered boxes, no per-router metadata). The user rejected it as "too minimal"
+and not matching the project's diagram style.
+
+**Rule:** Every workbook Section 2 topology diagram MUST use **bordered router
+boxes with rich metadata inside**. The pattern, established in
+`mpls/lab-03-rsvp-te-tunnels` and refined in
+`segment-routing/lab-00-sr-foundations-and-srgb`:
+
+1. **Box-drawing chars only** — `┌ ┐ └ ┘ ─ │ ├ ┤ ┬ ┴ ═ ║`. Never `+--`, `|`,
+   or `+`.
+2. **Each router box ≥ 5 lines tall** containing:
+   - Router name (centered)
+   - `Lo0   <loopback>/32`
+   - Protocol-specific identifier (NET for IS-IS, RID for OSPF, ASN for BGP)
+   - Per-protocol label/SID/community as relevant
+   - **Interface list mapping** for any links not drawn visually (the diagonal
+     escape hatch — see point 5)
+3. **Inter-box links** drawn explicitly:
+   - Horizontal links: `═════` between `├` and `┤` connectors, with
+     `Gi0/0/0/X ══ Gi0/0/0/Y` interface labels above and `Lₙ — <subnet>` label
+     also above
+   - Vertical links: `║` chars in the side columns aligning with `┬`/`┴`
+     connectors on box edges, with subnet text adjacent
+4. **Header banner** at the top inside the code fence, listing the protocols
+   and key knobs (e.g. `IS-IS Level 2 • SR-MPLS • SRGB 16000-23999`).
+5. **Diagonals** — pure-ASCII cannot draw clean diagonals over the ring lines.
+   Do not try. Instead declare the diagonal link on each endpoint's interface
+   list inside the box (`Gi0/0/0/X → Rn (Lm)`) and add a single labeled
+   callout below the diagram (`Lₙ (RA↔RB diagonal) — <subnet> — Gi0/0/0/X ⇄
+   Gi0/0/0/Y`).
+6. **Verify alignment with `awk '{print length}'`** — every box-row line in
+   the diagram should report the same column count. `gawk` with UTF-8 locale
+   returns display columns, so consistent counts == consistent visual width.
+7. **Always follow the diagram with a prose paragraph** summarizing the
+   topology shape (ring vs. star vs. dual-PE), expected adjacency count, and
+   any link with non-obvious purpose (TI-LFA path, RR client, etc).
+
+**Why:** Minimal edge-only diagrams force the reader to cross-reference the
+device + link tables for every piece of info, which slows comprehension and
+makes the workbook feel under-built. Bordered boxes with metadata give a
+single-glance picture of who-runs-what-where.
+
+**Touched:** `labs/segment-routing/lab-00-sr-foundations-and-srgb/workbook.md`
+Section 2; this lessons file.
+
+---
+
 ## 2026-04-28 — EVE-NG lab path: never hardcode without fallback
 
 **Correction:** BGP labs 01–06 shipped with `DEFAULT_LAB_PATH = "bgp/lab-XX.unl"`,
