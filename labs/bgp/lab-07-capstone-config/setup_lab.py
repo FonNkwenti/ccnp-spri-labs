@@ -29,7 +29,7 @@ DEFAULT_LAB_PATH = "ccnp-spri/bgp/lab-07-capstone-config.unl"
 DEVICES = ["R1", "R2", "R3", "R4", "R5", "R6", "R7"]
 
 
-def push_config(host: str, name: str, port: int) -> bool:
+def push_config(host: str, name: str, port: int, *, reset: bool = False) -> bool:
     cfg_file = INITIAL_CONFIGS_DIR / f"{name}.cfg"
     if not cfg_file.exists():
         print(f"  [!] Config file not found: {cfg_file}")
@@ -37,13 +37,15 @@ def push_config(host: str, name: str, port: int) -> bool:
 
     print(f"[*] Connecting to {name} on {host}:{port} ...")
     try:
+        if reset:
+            soft_reset_device(host, port)
         conn = connect_node(host, port)
         commands = [
             line.strip()
             for line in cfg_file.read_text().splitlines()
-            if line.strip() and not line.startswith("!")
+            if line.strip() and not line.startswith("!") and line.strip() != "end"
         ]
-        conn.send_config_set(commands)
+        conn.send_config_set(commands, cmd_verify=False)
         conn.save_config()
         conn.disconnect()
         print(f"[+] {name} configured.")
@@ -59,6 +61,8 @@ def main() -> int:
                         help="EVE-NG server IP (required)")
     parser.add_argument("--lab-path", default=DEFAULT_LAB_PATH,
                         help=f"Lab .unl path in EVE-NG (default: {DEFAULT_LAB_PATH})")
+    parser.add_argument("--reset", action="store_true",
+                        help="Soft-reset before configuring: default all interfaces and remove routing protocols")
     args = parser.parse_args()
 
     host = require_host(args.host)
@@ -80,7 +84,7 @@ def main() -> int:
             print(f"[!] {name} not found in lab - skipping.")
             failed += 1
             continue
-        if push_config(host, name, port):
+        if push_config(host, name, port, reset=args.reset):
             success += 1
         else:
             failed += 1

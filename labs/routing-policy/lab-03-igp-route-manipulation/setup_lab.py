@@ -1,15 +1,19 @@
 #!/usr/bin/env python3
 """
-Lab Setup — BGP Lab 06: BGP Confederations
+Lab Setup — lab-03-igp-route-manipulation
 
 Pushes initial configs to all lab devices via EVE-NG console ports.
-Ports are discovered at runtime via the EVE-NG REST API — no hardcoded ports needed.
+Ports are discovered at runtime via the EVE-NG REST API.
+
+XR1 and XR2 use the cisco_xr_telnet netmiko driver (candidate-config/commit
+model). IOSv nodes (R1-R4) use the default cisco_ios_telnet driver.
 
 Usage:
     python3 setup_lab.py --host <eve-ng-ip>
 
-The lab .unl must already be imported into EVE-NG and all nodes started before
-running this script.
+All nodes must be started in EVE-NG before running this script.
+XR nodes require ~10 min boot time — wait for the XRv9k boot sequence to
+complete before running setup or the telnet session will be refused.
 """
 
 from __future__ import annotations
@@ -24,28 +28,34 @@ from eve_ng import EveNgError, connect_node, discover_ports, require_host, resol
 
 INITIAL_CONFIGS_DIR = SCRIPT_DIR / "initial-configs"
 
-DEFAULT_LAB_PATH = "ccnp-spri/bgp/lab-06-confederations.unl"
+DEFAULT_LAB_PATH = "ccnp-spri/routing-policy/lab-03-igp-route-manipulation.unl"
 
-DEVICES = ["R1", "R2", "R3", "R4", "R5", "R6"]
+# IOS devices use cisco_ios_telnet (default); XR devices use cisco_xr_telnet.
+DEVICES = {
+    "R1": "cisco_ios_telnet",
+    "R2": "cisco_ios_telnet",
+    "R3": "cisco_ios_telnet",
+    "R4": "cisco_ios_telnet",
+    "XR1": "cisco_xr_telnet",
+    "XR2": "cisco_xr_telnet",
+}
 
 
-def push_config(host: str, name: str, port: int, *, reset: bool = False) -> bool:
+def push_config(host: str, name: str, port: int, device_type: str) -> bool:
     cfg_file = INITIAL_CONFIGS_DIR / f"{name}.cfg"
     if not cfg_file.exists():
         print(f"  [!] Config file not found: {cfg_file}")
         return False
 
-    print(f"[*] Connecting to {name} on {host}:{port} ...")
+    print(f"[*] Connecting to {name} on {host}:{port} ({device_type}) ...")
     try:
-        if reset:
-            soft_reset_device(host, port)
-        conn = connect_node(host, port)
+        conn = connect_node(host, port, device_type=device_type)
         commands = [
             line.strip()
             for line in cfg_file.read_text().splitlines()
-            if line.strip() and not line.startswith("!") and line.strip() != "end"
+            if line.strip() and not line.startswith("!")
         ]
-        conn.send_config_set(commands, cmd_verify=False)
+        conn.send_config_set(commands)
         conn.save_config()
         conn.disconnect()
         print(f"[+] {name} configured.")
@@ -68,7 +78,11 @@ def main() -> int:
     host = require_host(args.host)
 
     print("=" * 60)
-    print(f"Lab Setup: BGP Lab 06 — BGP Confederations (EVE-NG: {host})")
+    print(f"Lab Setup: lab-03-igp-route-manipulation (EVE-NG: {host})")
+    print("=" * 60)
+    print("NOTE: XR1 and XR2 require ~10 min to boot. If this is a fresh")
+    print("      EVE-NG start, wait for the XRv9k boot sequence to finish")
+    print("      before running setup or the telnet session will be refused.")
     print("=" * 60)
 
     try:
@@ -78,13 +92,13 @@ def main() -> int:
         return 3
 
     success, failed = 0, 0
-    for name in DEVICES:
+    for name, device_type in DEVICES.items():
         port = ports.get(name)
         if port is None:
             print(f"[!] {name} not found in lab — skipping.")
             failed += 1
             continue
-        if push_config(host, name, port, reset=args.reset):
+        if push_config(host, name, port, device_type):
             success += 1
         else:
             failed += 1

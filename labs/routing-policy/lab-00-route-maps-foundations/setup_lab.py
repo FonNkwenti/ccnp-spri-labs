@@ -1,17 +1,19 @@
 #!/usr/bin/env python3
 """
-Lab Setup — OSPF Lab 04: OSPF Full Protocol Mastery — Capstone I
+Lab Setup -- Routing-Policy Lab 00: Route-Maps, Prefix-Lists, and ACL Matching
 
-Pushes initial configs to all lab devices via EVE-NG console ports.
-Ports are discovered at runtime via the EVE-NG REST API — no hardcoded ports needed.
+Pushes the IP-only baseline initial-configs to all 4 lab devices via EVE-NG console
+ports. Console ports are discovered at runtime via the EVE-NG REST API.
+
+This is a progressive lab. Initial-configs contain interface IP addressing only --
+no routing protocols, no policy. Students build OSPF/IS-IS/BGP and the route-map
+filter through the workbook tasks. Use scripts/fault-injection/apply_solution.py
+to push the complete known-good solution.
 
 Usage:
     python3 setup_lab.py --host <eve-ng-ip>
-    python3 setup_lab.py --host <eve-ng-ip> --node R1,R2
+    python3 setup_lab.py --host <eve-ng-ip> --node R1,R3
     python3 setup_lab.py --host <eve-ng-ip> --reset --node R1
-
-The lab .unl must already be imported into EVE-NG and all nodes started before
-running this script.
 """
 
 from __future__ import annotations
@@ -21,12 +23,11 @@ import sys
 from pathlib import Path
 
 SCRIPT_DIR = Path(__file__).resolve().parent
-# Depth: lab-04-capstone-config/ -> ospf/ -> labs/
+# Depth: lab-00-route-maps-foundations/ -> routing-policy/ -> labs/
 sys.path.insert(0, str(SCRIPT_DIR.parents[1] / "common" / "tools"))
 from eve_ng import (  # noqa: E402
     EveNgError,
     connect_node,
-    discover_ports,
     require_host,
     resolve_and_discover,
     soft_reset_device,
@@ -34,16 +35,9 @@ from eve_ng import (  # noqa: E402
 
 INITIAL_CONFIGS_DIR = SCRIPT_DIR / "initial-configs"
 
-DEFAULT_LAB_PATH = "ccnp-spri/ospf/lab-04-capstone-config.unl"
+DEFAULT_LAB_PATH = "ccnp-spri/routing-policy/lab-00-route-maps-foundations.unl"
 
-DEVICES = [
-    "R1",
-    "R2",
-    "R3",
-    "R4",
-    "R5",
-    "R6",
-]
+DEVICES = ["R1", "R2", "R3", "R4"]
 
 
 def push_config(host: str, name: str, port: int, reset: bool = False) -> bool:
@@ -82,20 +76,19 @@ def push_config(host: str, name: str, port: int, reset: bool = False) -> bool:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Push initial configs to lab nodes")
+    parser = argparse.ArgumentParser(description="Push IP-only baseline configs to lab nodes")
     parser.add_argument("--host", default="192.168.x.x",
                         help="EVE-NG server IP (required)")
     parser.add_argument("--lab-path", default=DEFAULT_LAB_PATH,
                         help=f"Lab .unl path in EVE-NG (default: {DEFAULT_LAB_PATH})")
     parser.add_argument("--reset", action="store_true",
-                        help="Reset devices (default interfaces, remove routing) before config push")
+                        help="Reset devices before config push")
     parser.add_argument("--node", default=None,
                         help="Comma-separated device names to configure (e.g., R1,R3)")
     args = parser.parse_args()
 
     host = require_host(args.host)
 
-    # Parse --node filter if provided
     target_devices = DEVICES
     if args.node:
         requested = [n.strip() for n in args.node.split(",")]
@@ -107,9 +100,10 @@ def main() -> int:
         target_devices = requested
 
     print("=" * 60)
-    print(f"Lab Setup: OSPF Lab 04 — Capstone I (EVE-NG: {host})")
+    print(f"Lab Setup: routing-policy lab-00 (EVE-NG: {host})")
+    print("Baseline: IP addressing only -- no routing protocols configured.")
     if args.reset:
-        print("[*] Reset mode enabled — interfaces and routing will be cleared first")
+        print("[*] Reset mode enabled")
     if args.node:
         print(f"[*] Targeting devices: {', '.join(target_devices)}")
     print("=" * 60)
@@ -124,7 +118,7 @@ def main() -> int:
     for name in target_devices:
         port = ports.get(name)
         if port is None:
-            print(f"[!] {name} not found in lab — skipping.")
+            print(f"[!] {name} not found in lab -- skipping.")
             failed += 1
             continue
         if push_config(host, name, port, reset=args.reset):

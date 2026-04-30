@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Lab Setup — BGP Lab 06: BGP Confederations
+Lab Setup — MPLS Lab 00: LDP Foundations and Label Distribution
 
 Pushes initial configs to all lab devices via EVE-NG console ports.
 Ports are discovered at runtime via the EVE-NG REST API — no hardcoded ports needed.
@@ -20,13 +20,13 @@ from pathlib import Path
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(SCRIPT_DIR.parents[1] / "common" / "tools"))
-from eve_ng import EveNgError, connect_node, discover_ports, require_host, resolve_and_discover, soft_reset_device  # noqa: E402
+from eve_ng import EveNgError, connect_node, require_host, resolve_and_discover  # noqa: E402
 
 INITIAL_CONFIGS_DIR = SCRIPT_DIR / "initial-configs"
 
-DEFAULT_LAB_PATH = "ccnp-spri/bgp/lab-06-confederations.unl"
+DEFAULT_LAB_PATH = "ccnp-spri/mpls/lab-00-ldp-foundations.unl"
 
-DEVICES = ["R1", "R2", "R3", "R4", "R5", "R6"]
+DEVICES = ["PE1", "P1", "P2", "PE2"]
 
 
 def push_config(host: str, name: str, port: int, *, reset: bool = False) -> bool:
@@ -68,7 +68,7 @@ def main() -> int:
     host = require_host(args.host)
 
     print("=" * 60)
-    print(f"Lab Setup: BGP Lab 06 — BGP Confederations (EVE-NG: {host})")
+    print(f"Lab Setup: MPLS Lab 00 — LDP Foundations (EVE-NG: {host})")
     print("=" * 60)
 
     try:

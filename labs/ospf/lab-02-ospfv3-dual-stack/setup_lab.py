@@ -59,13 +59,15 @@ def push_config(host: str, name: str, port: int, reset: bool = False) -> bool:
 
     print(f"[*] Connecting to {name} on {host}:{port} ...")
     try:
+        if reset:
+            soft_reset_device(host, port)
         conn = connect_node(host, port)
         commands = [
             line.strip()
             for line in cfg_file.read_text().splitlines()
-            if line.strip() and not line.startswith("!")
+            if line.strip() and not line.startswith("!") and line.strip() != "end"
         ]
-        conn.send_config_set(commands)
+        conn.send_config_set(commands, cmd_verify=False)
         conn.save_config()
         conn.disconnect()
         print(f"[+] {name} configured.")
