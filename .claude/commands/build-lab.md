@@ -8,10 +8,15 @@ You are running Phase 3 of the three-phase lab workflow: **lab build** for `$ARG
 ## Argument parsing
 
 1. If `$ARGUMENTS` is empty, ask the user for the full path and STOP until they answer.
-2. Parse `$ARGUMENTS`. The first token must be of the form `<topic-slug>/<lab-id>`.
-   If it is not, ask the user for the full path and STOP.
-3. Detect the `--force-model` flag anywhere in `$ARGUMENTS`. Set `force_model = true` if present.
-   Strip the flag before using `$ARGUMENTS` as a path.
+2. Strip the `--force-model` flag from `$ARGUMENTS` if present. Set `force_model = true`.
+3. Normalize the path: strip any leading `labs/` or `labs\` prefix (with or without trailing
+   separator) from the remaining token. The result must be of the form `<topic-slug>/<lab-id>`
+   (forward or back slashes accepted — normalize to forward slashes internally).
+   If it is not, ask the user for the correct path and STOP.
+   Examples of equivalent inputs that all resolve to `routing-policy/lab-03-igp-route-manipulation`:
+   - `routing-policy/lab-03-igp-route-manipulation`
+   - `labs/routing-policy/lab-03-igp-route-manipulation`
+   - `labs\routing-policy\lab-03-igp-route-manipulation`
 
 ## HARD PRE-FLIGHT GATE — model enforcement (BLOCKING)
 
@@ -63,10 +68,13 @@ You MUST complete this gate before proceeding. Do not skip it.
    If `decisions.md` does not exist, create it with this entry as Section 1.
 
 ## Advisory prerequisite checks (warn, do not block):
-1. If `labs/$ARGUMENTS/` does not exist, warn that the lab folder is missing and ask whether to create it.
-2. If `labs/$ARGUMENTS/spec.md` does not exist, warn that Phase 2 has not run for this lab and suggest `/create-spec <topic-slug>`. Ask whether to proceed anyway.
-3. If `labs/$ARGUMENTS/baseline.yaml` is missing, warn before proceeding.
-4. If the workbook (`labs/$ARGUMENTS/workbook.md` or similar) already exists, warn that re-running will rewrite it and confirm.
+
+Use the normalized `<topic-slug>/<lab-id>` from argument parsing above. Let `TOPIC=<topic-slug>` and `LAB_PATH=labs/<topic-slug>/<lab-id>`.
+
+1. If `LAB_PATH/` does not exist or is empty — **proceed silently**. This is the normal post-Phase 2 state: `/create-spec` scaffolds empty lab folders. No approval needed; `lab-assembler` will populate it.
+2. If `labs/TOPIC/spec.md` does not exist, warn that Phase 2 has not run for this topic and suggest `/create-spec <topic-slug>`. Ask whether to proceed anyway.
+3. If `labs/TOPIC/baseline.yaml` is missing, warn before proceeding.
+4. If `LAB_PATH/workbook.md` already exists, warn that re-running will rewrite it and confirm.
 
 Then read `.agent/skills/lab-assembler/SKILL.md` and execute it for `$ARGUMENTS`. Per `CLAUDE.md`, `lab-assembler` dispatches `drawio` and `fault-injector` as subagents at the appropriate steps - let it handle that; do not invoke those skills directly.
 
