@@ -1,20 +1,6 @@
 #!/usr/bin/env python3
 """
-Fault Injection: Scenario 02 — FlowSpec NLRI Absent from R5's Table
-
-Target:     R5 (PE West — address-family ipv4 flowspec, neighbor 10.1.57.7)
-Injects:    Removes `neighbor 10.1.57.7 activate` and
-            `neighbor 10.1.57.7 send-community both` from R5's
-            address-family ipv4 flowspec configuration.
-Fault Type: FlowSpec AF Neighbor Not Activated (NLRI exchange disabled)
-
-Result:     R7's FlowSpec session toward R5 drops to Idle/Active for the
-            flowspec AF. `show bgp ipv4 flowspec` on R5 returns an empty table
-            even though the unicast session to R7 remains Established.
-            The SSH-drop rule for 172.16.1.0/24 is never installed on R5.
-
-Before running, ensure the lab is in the SOLUTION state:
-    python3 apply_solution.py --host <eve-ng-ip>
+Fault Injection: Scenario 02. Restore with: python3 apply_solution.py --host <eve-ng-ip>
 """
 
 from __future__ import annotations
@@ -49,7 +35,7 @@ PREFLIGHT_FAULT_MARKER = "__FAULT_02_ALREADY_INJECTED__"
 def preflight(conn) -> bool:
     output = conn.send_command(PREFLIGHT_CMD)
     if PREFLIGHT_SOLUTION_MARKER not in output:
-        print(f"[!] Pre-flight failed: '{PREFLIGHT_SOLUTION_MARKER}' not found.")
+        print("[!] Pre-flight failed: lab not in expected pre-injection state.")
         print("    Run apply_solution.py first to restore the known-good config.")
         return False
     if PREFLIGHT_FAULT_MARKER in output:

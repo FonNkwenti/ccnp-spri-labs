@@ -1,18 +1,6 @@
 #!/usr/bin/env python3
 """
-Fault Injection: Scenario 03 — R5's External Route Not Visible Outside Area 3
-
-Target:     R3 (ABR between Area 0 and Area 3 NSSA)
-Injects:    Adds `area 3 nssa no-redistribution` to OSPF process 1, disabling
-            the Type-7 to Type-5 LSA translation that R3 performs as the ABR.
-Fault Type: NSSA no-redistribution (Type-7 to Type-5 translation disabled)
-
-Result:     R5's Type-7 LSA for 192.168.55.0/24 stays within Area 3 and is
-            never translated to a Type-5; R1, R2, and R4 have no route to
-            192.168.55.0/24 even though the Type-7 is present in Area 3.
-
-Before running, ensure the lab is in the SOLUTION state:
-    python3 apply_solution.py --host <eve-ng-ip>
+Fault Injection: Scenario 03. Restore with: python3 apply_solution.py --host <eve-ng-ip>
 """
 
 from __future__ import annotations
@@ -49,13 +37,12 @@ PREFLIGHT_SOLUTION_MARKER = " area 3 nssa\n"
 def preflight(conn) -> bool:
     output = conn.send_command(PREFLIGHT_CMD)
     if PREFLIGHT_SOLUTION_MARKER not in output:
-        print(f"[!] Pre-flight failed: '{PREFLIGHT_SOLUTION_MARKER.strip()}' not found "
-              "(or already has no-redistribution appended).")
+        print("[!] Pre-flight failed: lab not in expected pre-injection state.")
         print("    Run apply_solution.py first to restore the known-good config.")
         return False
     if PREFLIGHT_FAULT_MARKER in output:
-        print(f"[!] Pre-flight failed: '{PREFLIGHT_FAULT_MARKER}' already present.")
-        print("    Scenario 03 appears already injected. Restore with apply_solution.py.")
+        print("[!] Pre-flight failed: scenario appears already injected.")
+        print("    Restore with apply_solution.py.")
         return False
     return True
 

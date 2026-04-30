@@ -1,20 +1,6 @@
 #!/usr/bin/env python3
 """
-Fault Injection: Scenario 02 — R3 Cannot Learn Customer A Routes via R2
-
-Target:     R3 (PE East-2 — router bgp 65101)
-Injects:    Removes `neighbor 10.0.0.2` from R3's router bgp 65101 config,
-            breaking the iBGP session between R3 and R2 within sub-AS 65101.
-Fault Type: iBGP full-mesh session removed — R3 loses visibility into routes
-            received by R2 from external peer R1.
-
-Result:     R3 only sees Customer A's prefix (172.16.1.0/24) via its own direct
-            eBGP session with R1 (10.1.13.1). Routes that entered the SP via R2
-            (the primary path) are invisible to R3. `show ip bgp summary` on R3
-            shows the R2 neighbor (10.0.0.2) as absent or Active.
-
-Before running, ensure the lab is in the SOLUTION state:
-    python3 apply_solution.py --host <eve-ng-ip>
+Fault Injection: Scenario 02. Restore with: python3 apply_solution.py --host <eve-ng-ip>
 """
 
 from __future__ import annotations
@@ -42,7 +28,7 @@ PREFLIGHT_FAULT_MARKER = "__FAULT_02_ALREADY_INJECTED__"
 def preflight(conn) -> bool:
     output = conn.send_command(PREFLIGHT_CMD)
     if PREFLIGHT_SOLUTION_MARKER not in output:
-        print(f"[!] Pre-flight failed: '{PREFLIGHT_SOLUTION_MARKER}' not found on {DEVICE_NAME}.")
+        print("[!] Pre-flight failed: lab not in expected pre-injection state.")
         print("    Run apply_solution.py first to restore the known-good config.")
         return False
     if PREFLIGHT_FAULT_MARKER in output:

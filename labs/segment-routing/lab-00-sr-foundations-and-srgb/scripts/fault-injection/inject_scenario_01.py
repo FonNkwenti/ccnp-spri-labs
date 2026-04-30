@@ -1,18 +1,6 @@
 #!/usr/bin/env python3
 """
-Fault Injection: Scenario 01 -- Prefix SIDs Missing from LFIB on All Routers
-
-Target:     R3 (IS-IS CORE -- address-family ipv4 unicast)
-Injects:    Removes 'segment-routing mpls' from IS-IS address-family ipv4 unicast
-            on R3, disabling SR label advertisement across the entire domain.
-Fault Type: Segment Routing MPLS Disabled on IS-IS
-
-Result:     IS-IS adjacencies remain up and routes appear in the RIB, but
-            'show isis segment-routing label table' returns empty on all routers.
-            No SR labels are installed in any LFIB. MPLS forwarding ceases.
-
-Before running, ensure the lab is in the SOLUTION state:
-    python3 apply_solution.py --host <eve-ng-ip>
+Fault Injection: Scenario 01. Restore with: python3 apply_solution.py --host <eve-ng-ip>
 """
 
 from __future__ import annotations
@@ -47,7 +35,7 @@ PREFLIGHT_FAULT_MARKER = None
 def preflight(conn) -> bool:
     output = conn.send_command(PREFLIGHT_CMD)
     if PREFLIGHT_SOLUTION_MARKER not in output:
-        print(f"[!] Pre-flight failed: '{PREFLIGHT_SOLUTION_MARKER}' not found in IS-IS config.")
+        print("[!] Pre-flight failed: lab not in expected pre-injection state.")
         print("    Run apply_solution.py first to restore the known-good config.")
         return False
     return True

@@ -1,18 +1,6 @@
 #!/usr/bin/env python3
 """
-Fault Injection: Scenario 03 -- Route-Map Bound Inbound Instead of Outbound
-
-Target:     R2 (BGP)
-Injects:    Replaces `neighbor 10.1.24.2 route-map TRANSIT_PREVENT_OUT out`
-            with `neighbor 10.1.24.2 route-map TRANSIT_PREVENT_OUT in`. The
-            outbound updates from R2 to R4 are no longer filtered, so the
-            transit leak (10.100.1.0/24 reaching R4 with AS-path 65001 65100)
-            persists. As a side effect, inbound updates from R4 are dropped
-            unless they match the prefix-list -- removing 10.200.1.0/24 from
-            R2's BGP table.
-Fault Type: Filter direction error (in vs out)
-
-Before running, ensure the lab is in the SOLUTION state.
+Fault Injection: Scenario 03. Restore with: python3 apply_solution.py --host <eve-ng-ip>
 """
 
 from __future__ import annotations
@@ -47,11 +35,11 @@ POST_INJECT_COMMANDS = [
 def preflight(conn) -> bool:
     output = conn.send_command(PREFLIGHT_CMD)
     if PREFLIGHT_SOLUTION_MARKER not in output:
-        print(f"[!] Pre-flight failed: '{PREFLIGHT_SOLUTION_MARKER}' not found.")
+        print("[!] Pre-flight failed: lab not in expected pre-injection state.")
         print("    Run apply_solution.py first to restore the known-good config.")
         return False
     if PREFLIGHT_FAULT_MARKER in output:
-        print(f"[!] Pre-flight failed: '{PREFLIGHT_FAULT_MARKER}' already present.")
+        print("[!] Pre-flight failed: scenario appears already injected.")
         return False
     return True
 

@@ -1,20 +1,6 @@
 #!/usr/bin/env python3
 """
-Fault Injection: Scenario 03 — R5-R7 eBGP Session Continually Flaps (max-prefix)
-
-Target:     R5 (PE — router bgp 65100, IOS-XE CSR1000v)
-Injects:    Replaces the existing `neighbor 10.1.57.7 maximum-prefix 100 75 restart 5`
-            with `neighbor 10.1.57.7 maximum-prefix 1 75 restart 1` so that the very
-            first prefix received from R7 trips the limit and triggers a 1-minute
-            restart timer, causing the eBGP session to perpetually bounce.
-Fault Type: Artificially low maximum-prefix limit on eBGP session with R7.
-
-Result:     `show ip bgp summary` on R5 shows the R7 neighbor (10.1.57.7) cycling
-            between Idle and Active; `show ip bgp 172.16.7.0/24` is never stable.
-            BGP notifications with error "Maximum prefix reached" are logged.
-
-Before running, ensure the lab is in the SOLUTION state:
-    python3 apply_solution.py --host <eve-ng-ip>
+Fault Injection: Scenario 03. Restore with: python3 apply_solution.py --host <eve-ng-ip>
 """
 
 from __future__ import annotations
@@ -45,7 +31,7 @@ PREFLIGHT_FAULT_MARKER = "neighbor 10.1.57.7 maximum-prefix 1 75 restart 1"
 def preflight(conn) -> bool:
     output = conn.send_command(PREFLIGHT_CMD)
     if PREFLIGHT_SOLUTION_MARKER not in output:
-        print(f"[!] Pre-flight failed: '{PREFLIGHT_SOLUTION_MARKER}' not found on {DEVICE_NAME}.")
+        print("[!] Pre-flight failed: lab not in expected pre-injection state.")
         print("    Run apply_solution.py first to restore the known-good config.")
         return False
     if PREFLIGHT_FAULT_MARKER in output:

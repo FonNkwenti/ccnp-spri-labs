@@ -1,24 +1,6 @@
 #!/usr/bin/env python3
 """
-Fault Injection: Scenario 01 -- Implicit-Deny Silent Drop
-
-Target:     R1 (eBGP neighbor 10.1.14.4 / AS 65200)
-Injects:    Removes route-map FILTER_R4_IN sequence 20 (the permit catch-all),
-            leaving only sequence 10 (deny). The implicit deny at the end of the
-            route-map now drops EVERY inbound prefix from R4.
-Fault Type: Route-Map Implicit Deny / Missing Permit Sequence
-
-Result:     R1's BGP table loses BOTH 172.20.4.0/24 AND 172.20.5.0/24 from R4.
-            'show ip bgp neighbors 10.1.14.4 routes' returns 0 entries.
-
-Note on pre-flight duplicate detection: because this fault removes a stanza
-(permit 20), there is no positive marker injected by the fault. Absence of
-PREFLIGHT_SOLUTION_MARKER ("permit 20") covers both the "not-good" and the
-"already-injected" cases. The PREFLIGHT_FAULT_MARKER is set to a sentinel that
-never appears, so the positive duplicate check is intentionally bypassed.
-
-Before running, ensure the lab is in the SOLUTION state:
-    python3 apply_solution.py --host <eve-ng-ip>
+Fault Injection: Scenario 01. Restore with: python3 apply_solution.py --host <eve-ng-ip>
 """
 
 from __future__ import annotations
@@ -54,7 +36,7 @@ PREFLIGHT_FAULT_MARKER = "__SCENARIO_01_FAULT_NEVER_MATCHES__"
 def preflight(conn) -> bool:
     output = conn.send_command(PREFLIGHT_CMD)
     if PREFLIGHT_SOLUTION_MARKER not in output:
-        print(f"[!] Pre-flight failed: 'permit 20' not found in FILTER_R4_IN.")
+        print("[!] Pre-flight failed: lab not in expected pre-injection state.")
         print("    Lab may already have this fault injected, or is not in solution state.")
         print("    Run apply_solution.py first to restore the known-good config.")
         return False

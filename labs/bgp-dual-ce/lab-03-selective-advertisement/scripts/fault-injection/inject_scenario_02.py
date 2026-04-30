@@ -1,17 +1,6 @@
 #!/usr/bin/env python3
 """
-Fault Injection: Scenario 02 -- Overly-tight iBGP egress filter on R3 hides /25 from R5
-
-Target:     R3 (BGP)
-Injects:    Adds prefix-list ONLY_AGGREGATE permitting 192.168.1.0/24 exact
-            match only, then binds it outbound on R3's iBGP session to R5.
-            The aggregate /24 still reaches R5; the more-specific /25-low
-            (192.168.1.0/25) is filtered out. R5's BGP table loses the /25
-            even though R3 has it normally.
-Fault Type: Misconfigured outbound iBGP filter (scope too narrow)
-
-Before running, ensure the lab is in the SOLUTION state:
-    python3 apply_solution.py --host <eve-ng-ip>
+Fault Injection: Scenario 02. Restore with: python3 apply_solution.py --host <eve-ng-ip>
 """
 
 from __future__ import annotations
@@ -42,7 +31,7 @@ POST_INJECT_COMMANDS = ["clear ip bgp 10.0.0.5 soft out"]
 def preflight(conn) -> bool:
     output = conn.send_command(PREFLIGHT_CMD)
     if PREFLIGHT_SOLUTION_MARKER not in output:
-        print(f"[!] Pre-flight failed: '{PREFLIGHT_SOLUTION_MARKER}' not found.")
+        print("[!] Pre-flight failed: lab not in expected pre-injection state.")
         print("    Run apply_solution.py first to restore the known-good config.")
         return False
     return True

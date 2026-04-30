@@ -1,21 +1,6 @@
 #!/usr/bin/env python3
 """
-Fault Injection: Scenario 02 -- L3 (R3<->R4) IS-IS Adjacency Down
-
-Target:     R4 (IS-IS CORE -- GigabitEthernet0/0/0/0 address-family ipv4 unicast)
-Injects:    Removes 'address-family ipv4 unicast' from Gi0/0/0/0 under IS-IS CORE
-            on R4. Gi0/0/0/0 is L3 (R4 <-> R3); the AF removal tears down only that
-            adjacency.
-Fault Type: IS-IS Interface Address-Family Removal
-
-Result:     Total IS-IS adjacencies in the domain drop from 5 to 4. R4 retains
-            its Gi0/0/0/1 (L4) adjacency to R1, so 10.0.0.4 remains reachable
-            via R1. R3 loses its direct neighbor to R4 and reaches it via R2.
-            All prefix-SID labels (16001-16004) remain installed across the
-            domain -- this is an IGP topology fault, not an SR fault.
-
-Before running, ensure the lab is in the SOLUTION state:
-    python3 apply_solution.py --host <eve-ng-ip>
+Fault Injection: Scenario 02. Restore with: python3 apply_solution.py --host <eve-ng-ip>
 """
 
 from __future__ import annotations
@@ -51,14 +36,14 @@ PREFLIGHT_FAULT_MARKER = None  # Checked structurally in preflight() below.
 def preflight(conn) -> bool:
     output = conn.send_command(PREFLIGHT_CMD)
     if PREFLIGHT_SOLUTION_MARKER not in output:
-        print(f"[!] Pre-flight failed: 'GigabitEthernet0/0/0/0' not found under IS-IS CORE.")
+        print("[!] Pre-flight failed: lab not in expected pre-injection state.")
         print("    Run apply_solution.py first to restore the known-good config.")
         return False
     # Check that address-family ipv4 unicast appears after the interface stanza.
     # In XR running-config the interface block appears as a contiguous stanza; we check
     # that both strings co-exist in the output (necessary but not positional).
     if "address-family ipv4 unicast" not in output:
-        print("[!] Pre-flight failed: 'address-family ipv4 unicast' absent under IS-IS CORE.")
+        print("[!] Pre-flight failed: lab not in expected pre-injection state.")
         print("    Scenario 02 may already be injected. Restore with apply_solution.py.")
         return False
     return True

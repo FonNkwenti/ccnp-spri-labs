@@ -1,17 +1,6 @@
 #!/usr/bin/env python3
 """
-Fault Injection: Scenario 01 — R1 Sees Sub-AS 65101 in AS-Path
-
-Target:     R2 (PE East-1 — router bgp 65101)
-Injects:    Removes `bgp confederation identifier 65100` from R2.
-Fault Type: Missing confederation identifier causes R2 to advertise as AS 65101
-            to external eBGP peer R1, leaking the internal sub-AS number.
-
-Result:     R1's `show ip bgp 172.16.6.0/24` shows AS_PATH: 65101 65100 65002
-            instead of 65100 65002. The confederation is no longer opaque to R1.
-
-Before running, ensure the lab is in the SOLUTION state:
-    python3 apply_solution.py --host <eve-ng-ip>
+Fault Injection: Scenario 01. Restore with: python3 apply_solution.py --host <eve-ng-ip>
 """
 
 from __future__ import annotations
@@ -39,7 +28,7 @@ PREFLIGHT_FAULT_MARKER = "__FAULT_01_ALREADY_INJECTED__"
 def preflight(conn) -> bool:
     output = conn.send_command(PREFLIGHT_CMD)
     if PREFLIGHT_SOLUTION_MARKER not in output:
-        print(f"[!] Pre-flight failed: '{PREFLIGHT_SOLUTION_MARKER}' not found on {DEVICE_NAME}.")
+        print("[!] Pre-flight failed: lab not in expected pre-injection state.")
         print("    Run apply_solution.py first to restore the known-good config.")
         return False
     if PREFLIGHT_FAULT_MARKER in output:

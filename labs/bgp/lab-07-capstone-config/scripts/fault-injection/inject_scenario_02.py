@@ -1,18 +1,6 @@
 #!/usr/bin/env python3
 """
-Fault Injection: Scenario 02 — Community 65100:100 Lost on Customer-A Prefix
-
-Target:     R2 (PE — router bgp 65100)
-Injects:    Removes `neighbor 10.0.0.4 send-community both` from R2's address-family ipv4,
-            disabling community propagation on the iBGP session toward route reflector R4.
-Fault Type: Missing send-community; communities are stripped in transit and downstream
-            RR clients (R5) receive the prefix without its policy communities.
-
-Result:     `show ip bgp 172.16.1.0/24` on R5 shows no Communities line for the prefix;
-            policy decisions that depend on community 65100:100 silently stop working.
-
-Before running, ensure the lab is in the SOLUTION state:
-    python3 apply_solution.py --host <eve-ng-ip>
+Fault Injection: Scenario 02. Restore with: python3 apply_solution.py --host <eve-ng-ip>
 """
 
 from __future__ import annotations
@@ -42,7 +30,7 @@ PREFLIGHT_FAULT_MARKER = "__FAULT_02_ALREADY_INJECTED__"
 def preflight(conn) -> bool:
     output = conn.send_command(PREFLIGHT_CMD)
     if PREFLIGHT_SOLUTION_MARKER not in output:
-        print(f"[!] Pre-flight failed: '{PREFLIGHT_SOLUTION_MARKER}' not found on {DEVICE_NAME}.")
+        print("[!] Pre-flight failed: lab not in expected pre-injection state.")
         print("    Run apply_solution.py first to restore the known-good config.")
         return False
     if PREFLIGHT_FAULT_MARKER in output:

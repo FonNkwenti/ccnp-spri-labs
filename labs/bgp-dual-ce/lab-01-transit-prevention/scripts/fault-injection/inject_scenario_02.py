@@ -1,16 +1,6 @@
 #!/usr/bin/env python3
 """
-Fault Injection: Scenario 02 -- Route-Map Defined But Not Bound to Neighbor
-
-Target:     R1 (BGP)
-Injects:    Removes the `neighbor 10.1.13.2 route-map TRANSIT_PREVENT_OUT out`
-            binding under address-family ipv4. The prefix-list and route-map
-            objects remain defined and look correct in the running-config, but
-            no policy is actually applied to the eBGP session, so the leak
-            persists (10.200.1.0/24 still reaches R3 with AS-path 65001 65200).
-Fault Type: Policy framework correct, attachment missing
-
-Before running, ensure the lab is in the SOLUTION state.
+Fault Injection: Scenario 02. Restore with: python3 apply_solution.py --host <eve-ng-ip>
 """
 
 from __future__ import annotations
@@ -41,7 +31,7 @@ POST_INJECT_COMMANDS = ["clear ip bgp 10.1.13.2 soft out"]
 def preflight(conn) -> bool:
     output = conn.send_command(PREFLIGHT_CMD)
     if PREFLIGHT_SOLUTION_MARKER not in output:
-        print(f"[!] Pre-flight failed: '{PREFLIGHT_SOLUTION_MARKER}' not found.")
+        print("[!] Pre-flight failed: lab not in expected pre-injection state.")
         print("    Run apply_solution.py first to restore the known-good config.")
         return False
     if PREFLIGHT_FAULT_MARKER in output:

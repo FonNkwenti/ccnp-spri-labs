@@ -1,18 +1,6 @@
 #!/usr/bin/env python3
 """
-Fault Injection: Scenario 02 -- Prepend Uses the Neighbor's AS
-
-Target:     R2 (BGP route-map)
-Injects:    Replaces `set as-path prepend 65001 65001` (self-AS) with
-            `set as-path prepend 65200 65200` (the neighbor's AS, ISP-B).
-            R4 receives an update whose AS-path contains its own AS (65200)
-            and applies eBGP loop prevention -- the update is silently
-            discarded. Symptom: 192.168.1.0/24 disappears entirely from
-            R4's BGP table; R3 still sees it normally.
-Fault Type: Prepend value uses neighbor-AS (loop-prevention drop)
-
-Before running, ensure the lab is in the SOLUTION state:
-    python3 apply_solution.py --host <eve-ng-ip>
+Fault Injection: Scenario 02. Restore with: python3 apply_solution.py --host <eve-ng-ip>
 """
 
 from __future__ import annotations
@@ -43,11 +31,11 @@ POST_INJECT_COMMANDS = ["clear ip bgp 10.1.24.2 soft out"]
 def preflight(conn) -> bool:
     output = conn.send_command(PREFLIGHT_CMD)
     if PREFLIGHT_SOLUTION_MARKER not in output:
-        print(f"[!] Pre-flight failed: '{PREFLIGHT_SOLUTION_MARKER}' not found.")
+        print("[!] Pre-flight failed: lab not in expected pre-injection state.")
         print("    Run apply_solution.py first to restore the known-good config.")
         return False
     if PREFLIGHT_FAULT_MARKER in output:
-        print(f"[!] Pre-flight failed: '{PREFLIGHT_FAULT_MARKER}' already present.")
+        print("[!] Pre-flight failed: scenario appears already injected.")
         return False
     return True
 

@@ -1,18 +1,6 @@
 #!/usr/bin/env python3
 """
-Fault Injection: Scenario 01 — Community 65100:100 Not Visible on R5
-
-Target:     R4 (P / Route Reflector — address-family ipv4, neighbor 10.0.0.5)
-Injects:    Removes `neighbor 10.0.0.5 send-community both` from R4's
-            address-family ipv4 configuration.
-Fault Type: Missing send-community on RR toward RR client (community stripped in transit)
-
-Result:     R5 receives 172.16.1.0/24 via the RR but the Community attribute
-            (65100:100) is absent. Community-based policies on R5 stop firing.
-            `show ip bgp community 65100:100` on R5 returns no entries.
-
-Before running, ensure the lab is in the SOLUTION state:
-    python3 apply_solution.py --host <eve-ng-ip>
+Fault Injection: Scenario 01. Restore with: python3 apply_solution.py --host <eve-ng-ip>
 """
 
 from __future__ import annotations
@@ -46,7 +34,7 @@ PREFLIGHT_FAULT_MARKER = "__FAULT_01_ALREADY_INJECTED__"
 def preflight(conn) -> bool:
     output = conn.send_command(PREFLIGHT_CMD)
     if PREFLIGHT_SOLUTION_MARKER not in output:
-        print(f"[!] Pre-flight failed: '{PREFLIGHT_SOLUTION_MARKER}' not found.")
+        print("[!] Pre-flight failed: lab not in expected pre-injection state.")
         print("    Run apply_solution.py first to restore the known-good config.")
         return False
     if PREFLIGHT_FAULT_MARKER in output:

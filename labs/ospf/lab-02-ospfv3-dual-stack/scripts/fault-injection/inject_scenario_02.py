@@ -1,18 +1,6 @@
 #!/usr/bin/env python3
 """
-Fault Injection: Scenario 02 — R1 Cannot Reach R5 via IPv6
-
-Target:     R5 (GigabitEthernet0/0 — link to R3)
-Injects:    Removes the OSPFv3 IPv6 area 3 assignment from R5 GigabitEthernet0/0,
-            causing R5 to stop forming an OSPFv3 adjacency with R3.
-Fault Type: Missing OSPFv3 Interface Area Assignment
-
-Result:     'show ospfv3 neighbor' on R3 shows R5 absent. R5's loopback prefix
-            2001:db8::5/128 is not redistributed into OSPFv3. Pings from R1 to
-            2001:db8::5 fail while IPv4 reachability to R5 remains unaffected.
-
-Before running, ensure the lab is in the SOLUTION state:
-    python3 apply_solution.py --host <eve-ng-ip>
+Fault Injection: Scenario 02. Restore with: python3 apply_solution.py --host <eve-ng-ip>
 """
 
 from __future__ import annotations
@@ -58,7 +46,7 @@ def preflight(conn) -> bool:
     """
     output = conn.send_command(PREFLIGHT_CMD)
     if PREFLIGHT_SOLUTION_MARKER not in output:
-        print(f"[!] Pre-flight failed: '{PREFLIGHT_SOLUTION_MARKER}' not found.")
+        print("[!] Pre-flight failed: lab not in expected pre-injection state.")
         print("    Scenario 02 may already be injected, or the lab is not in the")
         print("    solution state. Run apply_solution.py to restore and retry.")
         return False

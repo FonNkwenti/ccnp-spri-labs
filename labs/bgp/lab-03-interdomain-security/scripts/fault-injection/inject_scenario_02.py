@@ -1,20 +1,6 @@
 #!/usr/bin/env python3
 """
-Fault Injection: Scenario 02 -- R5-R6 External Session Stuck in Active
-
-Target:     R6 (AS 65002 External SP -- Gi0/0 link to R5)
-Injects:    Changes R6's BGP MD5 password for neighbor 10.1.56.5 from
-            CISCO_SP to WRONG_KEY, creating a password mismatch with R5.
-Fault Type: MD5 TCP Authentication Password Mismatch
-
-Result:     R5's eBGP session with R6 (10.1.56.6) is stuck in Active state.
-            IP connectivity between R5 and R6 is unaffected (ping succeeds).
-            TCP sessions never complete because R5's MD5 signatures are rejected
-            by R6's wrong key. No BGP NOTIFICATION is sent -- the session simply
-            times out on hold-timer expiry and retries indefinitely.
-
-Before running, ensure the lab is in the SOLUTION state:
-    python3 apply_solution.py --host <eve-ng-ip>
+Fault Injection: Scenario 02. Restore with: python3 apply_solution.py --host <eve-ng-ip>
 """
 
 from __future__ import annotations
@@ -51,12 +37,12 @@ PREFLIGHT_SOLUTION_MARKER = "neighbor 10.1.56.5 ttl-security hops 1"
 def preflight(conn) -> bool:
     output = conn.send_command(PREFLIGHT_CMD)
     if PREFLIGHT_SOLUTION_MARKER not in output:
-        print(f"[!] Pre-flight failed: '{PREFLIGHT_SOLUTION_MARKER}' not found.")
+        print("[!] Pre-flight failed: lab not in expected pre-injection state.")
         print("    Run apply_solution.py first to restore the known-good config.")
         return False
     if PREFLIGHT_FAULT_MARKER in output:
-        print(f"[!] Pre-flight failed: '{PREFLIGHT_FAULT_MARKER}' already present.")
-        print("    Scenario 02 appears already injected. Restore with apply_solution.py.")
+        print("[!] Pre-flight failed: scenario appears already injected.")
+        print("    Restore with apply_solution.py.")
         return False
     return True
 

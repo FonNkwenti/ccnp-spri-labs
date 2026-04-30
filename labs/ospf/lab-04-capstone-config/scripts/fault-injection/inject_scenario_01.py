@@ -1,19 +1,6 @@
 #!/usr/bin/env python3
 """
-Fault Injection: Scenario 01 — Area 2 Stub Behavior Anomaly
-
-Target:     R3 (ABR — Area 0 / Area 2 / Area 3)
-Injects:    Downgrades Area 2 from totally stubby to regular stub on R3
-            (OSPFv2 and OSPFv3). The no-summary keyword is removed so that
-            Type-3 inter-area LSAs flood into Area 2 instead of being blocked.
-Fault Type: Stub Area Misconfiguration (totally stubby vs. regular stub)
-
-Result:     R4 receives full Type-3 inter-area LSAs instead of only a default
-            route; routing table on R4 grows with inter-area prefixes rather
-            than a single 0.0.0.0/0 default.
-
-Before running, ensure the lab is in the SOLUTION state:
-    python3 apply_solution.py --host <eve-ng-ip>
+Fault Injection: Scenario 01. Restore with: python3 apply_solution.py --host <eve-ng-ip>
 """
 
 from __future__ import annotations
@@ -60,7 +47,7 @@ PREFLIGHT_FAULT_MARKER = "__FAULT_01_ALREADY_INJECTED__"
 def preflight(conn) -> bool:
     output = conn.send_command(PREFLIGHT_CMD)
     if PREFLIGHT_SOLUTION_MARKER not in output:
-        print(f"[!] Pre-flight failed: '{PREFLIGHT_SOLUTION_MARKER}' not found.")
+        print("[!] Pre-flight failed: lab not in expected pre-injection state.")
         print("    Run apply_solution.py first to restore the known-good config.")
         return False
     if PREFLIGHT_FAULT_MARKER in output:

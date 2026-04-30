@@ -1,19 +1,6 @@
 #!/usr/bin/env python3
 """
-Fault Injection: Scenario 03 -- R2 Cannot Reach eBGP-Learned Prefix
-
-Target:     R1 (iBGP neighbor 10.0.0.2 toward R2)
-Injects:    Removes `neighbor 10.0.0.2 next-hop-self` from the IPv4 unicast
-            address-family on R1, so R2 receives eBGP-learned routes with
-            an unresolvable next-hop (10.1.13.2 -- R3's interface address).
-Fault Type: Missing next-hop-self (iBGP Next-Hop Propagation Misconfiguration)
-
-Result:     R2 receives 10.100.1.0/24 (or similar eBGP prefix) in its BGP
-            table with next-hop 10.1.13.2, which is not in R2's routing
-            table; the route stays inaccessible (unreachable next-hop).
-
-Before running, ensure the lab is in the SOLUTION state:
-    python3 apply_solution.py --host <eve-ng-ip>
+Fault Injection: Scenario 03. Restore with: python3 apply_solution.py --host <eve-ng-ip>
 """
 
 from __future__ import annotations
@@ -50,12 +37,12 @@ POST_INJECT_COMMANDS = ["clear ip bgp 10.0.0.2 soft out"]
 def preflight(conn) -> bool:
     output = conn.send_command(PREFLIGHT_CMD)
     if PREFLIGHT_SOLUTION_MARKER not in output:
-        print(f"[!] Pre-flight failed: '{PREFLIGHT_SOLUTION_MARKER}' not found.")
+        print("[!] Pre-flight failed: lab not in expected pre-injection state.")
         print("    Run apply_solution.py first to restore the known-good config.")
         return False
     if PREFLIGHT_FAULT_MARKER in output:
-        print(f"[!] Pre-flight failed: '{PREFLIGHT_FAULT_MARKER}' already present.")
-        print("    Scenario 03 appears already injected. Restore with apply_solution.py.")
+        print("[!] Pre-flight failed: scenario appears already injected.")
+        print("    Restore with apply_solution.py.")
         return False
     return True
 

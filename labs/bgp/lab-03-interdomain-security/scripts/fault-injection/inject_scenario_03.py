@@ -1,21 +1,6 @@
 #!/usr/bin/env python3
 """
-Fault Injection: Scenario 03 -- R2 Session to R1 Goes Idle (Silent Shutdown)
-
-Target:     R1 (AS 65001 CE -- BGP address-family ipv4)
-Injects:    Adds 'redistribute connected' under R1's BGP address-family ipv4,
-            flooding R2 with far more than 100 prefixes (all connected routes
-            including loopbacks and transit links), which trips R2's maximum-prefix
-            enforcement (100 restart 5).
-Fault Type: Maximum-Prefix Session Teardown (Silent Shutdown)
-
-Result:     R2's eBGP session with R1 (10.1.12.1) transitions to Idle (PfxCt).
-            All Customer A traffic shifts to the R3 backup path. R2 syslog shows
-            a MAXPFX alert. The session auto-recovers after 5 minutes (restart
-            timer) but immediately re-trips if R1 still redistributes connected.
-
-Before running, ensure the lab is in the SOLUTION state:
-    python3 apply_solution.py --host <eve-ng-ip>
+Fault Injection: Scenario 03. Restore with: python3 apply_solution.py --host <eve-ng-ip>
 """
 
 from __future__ import annotations
@@ -48,12 +33,12 @@ PREFLIGHT_SOLUTION_MARKER = "network 172.16.1.0 mask 255.255.255.0"
 def preflight(conn) -> bool:
     output = conn.send_command(PREFLIGHT_CMD)
     if PREFLIGHT_SOLUTION_MARKER not in output:
-        print(f"[!] Pre-flight failed: '{PREFLIGHT_SOLUTION_MARKER}' not found.")
+        print("[!] Pre-flight failed: lab not in expected pre-injection state.")
         print("    Run apply_solution.py first to restore the known-good config.")
         return False
     if PREFLIGHT_FAULT_MARKER in output:
-        print(f"[!] Pre-flight failed: '{PREFLIGHT_FAULT_MARKER}' already present.")
-        print("    Scenario 03 appears already injected. Restore with apply_solution.py.")
+        print("[!] Pre-flight failed: scenario appears already injected.")
+        print("    Restore with apply_solution.py.")
         return False
     return True
 

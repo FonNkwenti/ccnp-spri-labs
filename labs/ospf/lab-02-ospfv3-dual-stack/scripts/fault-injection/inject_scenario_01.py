@@ -1,17 +1,6 @@
 #!/usr/bin/env python3
 """
-Fault Injection: Scenario 01 — R4 Has No OSPFv3 Neighbors
-
-Target:     R4 (GigabitEthernet0/0 — link to R3)
-Injects:    Removes the OSPFv3 IPv6 area 2 assignment from R4 GigabitEthernet0/0,
-            breaking OSPFv3 adjacency formation between R4 and R3.
-Fault Type: Missing OSPFv3 Interface Area Assignment
-
-Result:     'show ospfv3 neighbor' on R4 shows no neighbors. R4's IPv6 routing
-            table is empty. Pings from R1 to 2001:db8:4::1 fail.
-
-Before running, ensure the lab is in the SOLUTION state:
-    python3 apply_solution.py --host <eve-ng-ip>
+Fault Injection: Scenario 01. Restore with: python3 apply_solution.py --host <eve-ng-ip>
 """
 
 from __future__ import annotations
@@ -57,7 +46,7 @@ def preflight(conn) -> bool:
     """
     output = conn.send_command(PREFLIGHT_CMD)
     if PREFLIGHT_SOLUTION_MARKER not in output:
-        print(f"[!] Pre-flight failed: '{PREFLIGHT_SOLUTION_MARKER}' not found.")
+        print("[!] Pre-flight failed: lab not in expected pre-injection state.")
         print("    Scenario 01 may already be injected, or the lab is not in the")
         print("    solution state. Run apply_solution.py to restore and retry.")
         return False

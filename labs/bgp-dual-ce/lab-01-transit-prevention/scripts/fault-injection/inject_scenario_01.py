@@ -1,18 +1,6 @@
 #!/usr/bin/env python3
 """
-Fault Injection: Scenario 01 -- Transit Filter Applied to the Wrong Session
-
-Target:     R2 (BGP)
-Injects:    Removes the transit-prevention route-map from the eBGP session
-            toward R4 (10.1.24.2) and instead binds it outbound on the iBGP
-            session toward R1 (10.0.0.1). Result: R2 stops sending non-customer
-            prefixes to R1 over iBGP -- so R1 loses its view of 10.200.1.0/24.
-            Meanwhile the eBGP session toward R4 is unfiltered, so the transit
-            leak (10.100.1.0/24 reaching R4 via AS-path 65001 65100) persists.
-Fault Type: Filter on wrong session (placement error)
-
-Before running, ensure the lab is in the SOLUTION state:
-    python3 apply_solution.py --host <eve-ng-ip>
+Fault Injection: Scenario 01. Restore with: python3 apply_solution.py --host <eve-ng-ip>
 """
 
 from __future__ import annotations
@@ -47,12 +35,12 @@ POST_INJECT_COMMANDS = [
 def preflight(conn) -> bool:
     output = conn.send_command(PREFLIGHT_CMD)
     if PREFLIGHT_SOLUTION_MARKER not in output:
-        print(f"[!] Pre-flight failed: '{PREFLIGHT_SOLUTION_MARKER}' not found.")
+        print("[!] Pre-flight failed: lab not in expected pre-injection state.")
         print("    Run apply_solution.py first to restore the known-good config.")
         return False
     if PREFLIGHT_FAULT_MARKER in output:
-        print(f"[!] Pre-flight failed: '{PREFLIGHT_FAULT_MARKER}' already present.")
-        print("    Scenario 01 appears already injected. Restore with apply_solution.py.")
+        print("[!] Pre-flight failed: scenario appears already injected.")
+        print("    Restore with apply_solution.py.")
         return False
     return True
 

@@ -1,17 +1,6 @@
 #!/usr/bin/env python3
 """
-Fault Injection: Scenario 03 — R2 Has Lost Its ABR Designation
-
-Target:     R2 (OSPF process 1)
-Injects:    Reverts the 10.1.12.0/24 network statement on R2 from area 1 to area 0
-Fault Type: OSPF Area Misconfiguration (ABR designation lost)
-
-Result:     R2 belongs to only Area 0; it loses its ABR status and stops
-            originating Type-3 Summary-LSAs for Area 1 prefixes into Area 0.
-            R3 and downstream routers lose reachability to Area 1 prefixes.
-
-Before running, ensure the lab is in the SOLUTION state:
-    python3 apply_solution.py --host <eve-ng-ip>
+Fault Injection: Scenario 03. Restore with: python3 apply_solution.py --host <eve-ng-ip>
 """
 
 from __future__ import annotations
@@ -49,12 +38,12 @@ PREFLIGHT_SOLUTION_MARKER = "network 10.1.12.0 0.0.0.255 area 1"
 def preflight(conn) -> bool:
     output = conn.send_command(PREFLIGHT_CMD)
     if PREFLIGHT_SOLUTION_MARKER not in output:
-        print(f"[!] Pre-flight failed: '{PREFLIGHT_SOLUTION_MARKER}' not found.")
+        print("[!] Pre-flight failed: lab not in expected pre-injection state.")
         print("    Run apply_solution.py first to restore the known-good config.")
         return False
     if PREFLIGHT_FAULT_MARKER in output:
-        print(f"[!] Pre-flight failed: '{PREFLIGHT_FAULT_MARKER}' already present.")
-        print("    Scenario 03 appears already injected. Restore with apply_solution.py.")
+        print("[!] Pre-flight failed: scenario appears already injected.")
+        print("    Restore with apply_solution.py.")
         return False
     return True
 
@@ -72,7 +61,7 @@ def main() -> int:
     host = require_host(args.host)
 
     print("=" * 60)
-    print("Fault Injection: Scenario 03 — R2 Has Lost Its ABR Designation")
+    print("Fault Injection: Scenario 03")
     print("=" * 60)
 
     try:

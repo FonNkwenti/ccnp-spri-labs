@@ -1,19 +1,6 @@
 #!/usr/bin/env python3
 """
-Fault Injection: Scenario 03 -- RPL Prefix-Set Too Broad on XR1
-
-Target:     XR1 (RPL prefix-set P_CUSTOMER)
-Injects:    The P_CUSTOMER prefix-set is widened to 172.0.0.0/8 le 24,
-            inadvertently matching R4's external 172.20.5.0/24 as a customer route.
-Fault Type: RPL Prefix-Set Scope Error
-
-Result:     R4's external 172.20.5.0/24 prefix is incorrectly classified as a
-            customer route. Policy actions intended only for customer prefixes
-            (e.g. local-pref, community tagging) are applied to R4's external
-            prefix, causing incorrect routing policy outcomes across the domain.
-
-Before running, ensure the lab is in the SOLUTION state:
-    python3 apply_solution.py --host <eve-ng-ip>
+Fault Injection: Scenario 03. Restore with: python3 apply_solution.py --host <eve-ng-ip>
 """
 
 from __future__ import annotations
@@ -46,12 +33,12 @@ PREFLIGHT_SOLUTION_MARKER = "172.16.0.0/16 le 24"
 def preflight(conn) -> bool:
     output = conn.send_command(PREFLIGHT_CMD)
     if PREFLIGHT_SOLUTION_MARKER not in output:
-        print(f"[!] Pre-flight failed: '{PREFLIGHT_SOLUTION_MARKER}' not found.")
+        print("[!] Pre-flight failed: lab not in expected pre-injection state.")
         print("    Run apply_solution.py first to restore the known-good config.")
         return False
     if PREFLIGHT_FAULT_MARKER in output:
-        print(f"[!] Pre-flight failed: '{PREFLIGHT_FAULT_MARKER}' already present.")
-        print("    Scenario 03 appears already injected. Restore with apply_solution.py.")
+        print("[!] Pre-flight failed: scenario appears already injected.")
+        print("    Restore with apply_solution.py.")
         return False
     return True
 

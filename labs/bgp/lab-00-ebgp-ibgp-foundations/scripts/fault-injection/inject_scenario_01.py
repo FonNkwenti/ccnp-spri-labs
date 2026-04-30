@@ -1,18 +1,6 @@
 #!/usr/bin/env python3
 """
-Fault Injection: Scenario 01 -- iBGP Session Stays in Active
-
-Target:     R2 (PE East-1 -- iBGP neighbor 10.0.0.5 toward R5)
-Injects:    Removes `neighbor 10.0.0.5 update-source Loopback0` from R2's
-            BGP configuration so the iBGP TCP session sources from the
-            outgoing physical interface instead of Loopback0.
-Fault Type: Missing update-source (iBGP Loopback Peering Misconfiguration)
-
-Result:     R5 sees the iBGP session from R2 stay in Active state permanently.
-            R5's BGP table is empty -- no routes received from R2.
-
-Before running, ensure the lab is in the SOLUTION state:
-    python3 apply_solution.py --host <eve-ng-ip>
+Fault Injection: Scenario 01. Restore with: python3 apply_solution.py --host <eve-ng-ip>
 """
 
 from __future__ import annotations
@@ -45,12 +33,12 @@ PREFLIGHT_SOLUTION_MARKER = "neighbor 10.0.0.5 update-source Loopback0"
 def preflight(conn) -> bool:
     output = conn.send_command(PREFLIGHT_CMD)
     if PREFLIGHT_SOLUTION_MARKER not in output:
-        print(f"[!] Pre-flight failed: '{PREFLIGHT_SOLUTION_MARKER}' not found.")
+        print("[!] Pre-flight failed: lab not in expected pre-injection state.")
         print("    Run apply_solution.py first to restore the known-good config.")
         return False
     if PREFLIGHT_FAULT_MARKER in output:
-        print(f"[!] Pre-flight failed: '{PREFLIGHT_FAULT_MARKER}' already present.")
-        print("    Scenario 01 appears already injected. Restore with apply_solution.py.")
+        print("[!] Pre-flight failed: scenario appears already injected.")
+        print("    Restore with apply_solution.py.")
         return False
     return True
 

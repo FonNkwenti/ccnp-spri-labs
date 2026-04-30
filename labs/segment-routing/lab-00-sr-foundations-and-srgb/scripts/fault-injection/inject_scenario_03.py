@@ -1,18 +1,6 @@
 #!/usr/bin/env python3
 """
-Fault Injection: Scenario 03 -- Label 16004 Absent from LFIB
-
-Target:     R4 (IS-IS CORE -- Loopback0 address-family ipv4 unicast)
-Injects:    Removes 'prefix-sid index 4' from IS-IS Loopback0 on R4, stripping
-            R4's prefix SID from IS-IS advertisements.
-Fault Type: Prefix SID Removed from IS-IS Interface
-
-Result:     All five IS-IS adjacencies remain up. IP reachability to 10.0.0.4
-            works. However, 'show mpls forwarding labels 16004' returns nothing
-            on R1, R2, and R3 -- label 16004 is absent from all LFIBs.
-
-Before running, ensure the lab is in the SOLUTION state:
-    python3 apply_solution.py --host <eve-ng-ip>
+Fault Injection: Scenario 03. Restore with: python3 apply_solution.py --host <eve-ng-ip>
 """
 
 from __future__ import annotations
@@ -49,7 +37,7 @@ PREFLIGHT_FAULT_MARKER = None
 def preflight(conn) -> bool:
     output = conn.send_command(PREFLIGHT_CMD)
     if PREFLIGHT_SOLUTION_MARKER not in output:
-        print(f"[!] Pre-flight failed: '{PREFLIGHT_SOLUTION_MARKER}' not found in IS-IS config.")
+        print("[!] Pre-flight failed: lab not in expected pre-injection state.")
         print("    Run apply_solution.py first to restore the known-good config.")
         return False
     return True

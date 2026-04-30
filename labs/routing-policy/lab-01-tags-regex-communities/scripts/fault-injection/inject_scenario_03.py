@@ -1,23 +1,6 @@
 #!/usr/bin/env python3
 """
-Fault Injection: Scenario 03 — AS-Path ACL Regex Anchor Too Broad on R3
-
-Target:     R3 (eBGP speaker — AS 65100, peer to R4/AS 65200)
-Injects:    Replaces `ip as-path access-list 1 permit _65200$` with
-            `ip as-path access-list 1 permit _65200_` on R3, then soft-clears
-            the inbound eBGP session to activate the new pattern immediately.
-Fault Type: AS-Path Regular Expression Error (missing end anchor)
-
-Result:     `show ip as-path-access-list 1` shows the trailing underscore
-            pattern (_65200_) instead of the end-anchor pattern (_65200$).
-            In production this would match AS 65200 as a transit AS (e.g.
-            AS_PATH "65200 65300"), admitting routes that should be blocked.
-            In this lab topology the observable symptom is the wrong regex
-            shown in the ACL — student must recognise that _ matches start,
-            end, space, or comma but $ anchors to end-of-string only.
-
-Before running, ensure the lab is in the SOLUTION state:
-    python3 apply_solution.py --host <eve-ng-ip>
+Fault Injection: Scenario 03. Restore with: python3 apply_solution.py --host <eve-ng-ip>
 """
 
 from __future__ import annotations
@@ -49,12 +32,12 @@ PREFLIGHT_SOLUTION_MARKER = "permit _65200$"
 def preflight(conn) -> bool:
     output = conn.send_command(PREFLIGHT_CMD)
     if PREFLIGHT_SOLUTION_MARKER not in output:
-        print(f"[!] Pre-flight failed: '{PREFLIGHT_SOLUTION_MARKER}' not found.")
+        print("[!] Pre-flight failed: lab not in expected pre-injection state.")
         print("    Run apply_solution.py first to restore the known-good config.")
         return False
     if PREFLIGHT_FAULT_MARKER in output:
-        print(f"[!] Pre-flight failed: '{PREFLIGHT_FAULT_MARKER}' already present.")
-        print("    Scenario 03 appears already injected. Restore with apply_solution.py.")
+        print("[!] Pre-flight failed: scenario appears already injected.")
+        print("    Restore with apply_solution.py.")
         return False
     return True
 

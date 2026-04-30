@@ -1,21 +1,6 @@
 #!/usr/bin/env python3
 """
-Fault Injection: Scenario 01 — Incorrect Community Value on R1
-
-Target:     R1 (eBGP speaker — AS 65100, peer to R4/AS 65200)
-Injects:    Changes `set community 65100:100` to `set community 65100:200`
-            in route-map FILTER_R4_IN permit 20 on R1, then soft-clears the
-            inbound eBGP session so the bad community propagates immediately.
-Fault Type: Wrong BGP Community Value
-
-Result:     `show ip bgp 172.20.4.0` on R2 shows community 65100:200 for
-            routes received from R4 that should carry 65100:100. Community
-            match policies keyed on COMM_65100_1XX will still hit, but any
-            policy expecting the exact value 65100:100 (COMM_65100_100) will
-            silently miss.
-
-Before running, ensure the lab is in the SOLUTION state:
-    python3 apply_solution.py --host <eve-ng-ip>
+Fault Injection: Scenario 01. Restore with: python3 apply_solution.py --host <eve-ng-ip>
 """
 
 from __future__ import annotations
@@ -49,12 +34,12 @@ PREFLIGHT_SOLUTION_MARKER = "set community 65100:100"
 def preflight(conn) -> bool:
     output = conn.send_command(PREFLIGHT_CMD)
     if PREFLIGHT_SOLUTION_MARKER not in output:
-        print(f"[!] Pre-flight failed: '{PREFLIGHT_SOLUTION_MARKER}' not found.")
+        print("[!] Pre-flight failed: lab not in expected pre-injection state.")
         print("    Run apply_solution.py first to restore the known-good config.")
         return False
     if PREFLIGHT_FAULT_MARKER in output:
-        print(f"[!] Pre-flight failed: '{PREFLIGHT_FAULT_MARKER}' already present.")
-        print("    Scenario 01 appears already injected. Restore with apply_solution.py.")
+        print("[!] Pre-flight failed: scenario appears already injected.")
+        print("    Restore with apply_solution.py.")
         return False
     return True
 

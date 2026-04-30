@@ -1,18 +1,6 @@
 #!/usr/bin/env python3
 """
-Fault Injection: Scenario 01 -- Prepend on the Wrong eBGP Egress
-
-Targets:    R1 and R2 (BGP route-maps)
-Injects:    Removes `set as-path prepend 65001 65001` from R2's route-map
-            TRANSIT_PREVENT_OUT (the correct egress) and adds the same set clause
-            to R1's route-map TRANSIT_PREVENT_OUT (the wrong egress). Result:
-            R3 sees AS-path `65001 65001 65001` (length 3) and R4 sees `65001`
-            (length 1). Inbound preference inverts -- ISP-B becomes the primary
-            inbound path instead of ISP-A.
-Fault Type: Prepend on backup vs. primary inverted (egress placement error)
-
-Before running, ensure the lab is in the SOLUTION state:
-    python3 apply_solution.py --host <eve-ng-ip>
+Fault Injection: Scenario 01. Restore with: python3 apply_solution.py --host <eve-ng-ip>
 """
 
 from __future__ import annotations
@@ -59,7 +47,7 @@ def preflight_r1(conn) -> bool:
     output = conn.send_command(PREFLIGHT_CMD)
     if R1_FAULT_MARKER in output:
         print(f"[!] R1 pre-flight failed: '{R1_FAULT_MARKER}' already present in route-map.")
-        print("    Scenario 01 appears already injected. Restore with apply_solution.py.")
+        print("    Restore with apply_solution.py.")
         return False
     return True
 

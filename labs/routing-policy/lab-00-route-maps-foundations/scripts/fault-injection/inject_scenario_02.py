@@ -1,20 +1,6 @@
 #!/usr/bin/env python3
 """
-Fault Injection: Scenario 02 -- Prefix-List ge/le Wrong Boundary
-
-Target:     R1 (prefix-list PFX_R4_LO2_EXACT, used in FILTER_R4_IN deny 10)
-Injects:    Replaces the exact-match entry in PFX_R4_LO2_EXACT
-            (permit 172.20.5.0/24) with an aggregate match
-            (permit 172.20.0.0/16 le 24), which matches BOTH R4 loopback
-            prefixes (172.20.4.0/24 and 172.20.5.0/24).
-Fault Type: Prefix-List ge/le Over-Match / Too-Wide Boundary
-
-Result:     Route-map FILTER_R4_IN deny 10 now matches both R4 prefixes;
-            the permit 20 catch-all is never reached. R1's BGP table has
-            0 entries from R4.
-
-Before running, ensure the lab is in the SOLUTION state:
-    python3 apply_solution.py --host <eve-ng-ip>
+Fault Injection: Scenario 02. Restore with: python3 apply_solution.py --host <eve-ng-ip>
 """
 
 from __future__ import annotations
@@ -52,12 +38,12 @@ PREFLIGHT_FAULT_MARKER = "permit 172.20.0.0/16 le 24"
 def preflight(conn) -> bool:
     output = conn.send_command(PREFLIGHT_CMD)
     if PREFLIGHT_SOLUTION_MARKER not in output:
-        print(f"[!] Pre-flight failed: '{PREFLIGHT_SOLUTION_MARKER}' not found in PFX_R4_LO2_EXACT.")
+        print("[!] Pre-flight failed: lab not in expected pre-injection state.")
         print("    Run apply_solution.py first to restore the known-good config.")
         return False
     if PREFLIGHT_FAULT_MARKER in output:
-        print(f"[!] Pre-flight failed: '{PREFLIGHT_FAULT_MARKER}' already present.")
-        print("    Scenario 02 appears already injected. Restore with apply_solution.py.")
+        print("[!] Pre-flight failed: scenario appears already injected.")
+        print("    Restore with apply_solution.py.")
         return False
     return True
 

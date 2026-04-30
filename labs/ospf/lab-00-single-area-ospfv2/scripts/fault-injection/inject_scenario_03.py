@@ -1,18 +1,6 @@
 #!/usr/bin/env python3
 """
-Fault Injection: Scenario 03 — Missing Network Statement on R1 Loopback0
-
-Target:     R1 (router ospf 1 process)
-Injects:    Removes the 'network 10.0.0.1 0.0.0.0 area 0' statement from R1's
-            OSPF process, causing Loopback0 (10.0.0.1/32) to be excluded from
-            R1's Router-LSA.
-Fault Type: Missing OSPF Network Statement
-Result:     OSPF adjacencies remain FULL (formed over Gi0/0), but 10.0.0.1/32
-            disappears from the routing tables of R2 and R3. Pings to R1's
-            loopback from remote routers fail.
-
-Before running, ensure the lab is in the SOLUTION state:
-    python3 apply_solution.py --host <eve-ng-ip>
+Fault Injection: Scenario 03. Restore with: python3 apply_solution.py --host <eve-ng-ip>
 """
 
 from __future__ import annotations
@@ -60,7 +48,7 @@ def preflight(conn) -> bool:
     """
     output = conn.send_command(PREFLIGHT_CMD)
     if PREFLIGHT_SOLUTION_MARKER not in output:
-        print(f"[!] Pre-flight failed: '{PREFLIGHT_SOLUTION_MARKER}' not found.")
+        print("[!] Pre-flight failed: lab not in expected pre-injection state.")
         print("    Scenario 03 may already be injected, or the lab is not in the")
         print("    solution state. Run apply_solution.py to restore and retry.")
         return False

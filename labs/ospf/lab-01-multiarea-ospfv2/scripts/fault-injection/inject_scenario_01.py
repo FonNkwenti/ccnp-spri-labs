@@ -1,16 +1,6 @@
 #!/usr/bin/env python3
 """
-Fault Injection: Scenario 01 — R4 Reports No OSPF Neighbors
-
-Target:     R3 (GigabitEthernet0/1 — link to R4)
-Injects:    Moves the 10.1.34.0/24 network statement on R3 from area 2 to area 0
-Fault Type: OSPF Area Mismatch
-
-Result:     R3 Gi0/1 joins Area 0; R4 Gi0/0 remains in Area 2.
-            R4 drops its OSPF adjacency with R3 and shows no OSPF neighbors.
-
-Before running, ensure the lab is in the SOLUTION state:
-    python3 apply_solution.py --host <eve-ng-ip>
+Fault Injection: Scenario 01. Restore with: python3 apply_solution.py --host <eve-ng-ip>
 """
 
 from __future__ import annotations
@@ -48,12 +38,12 @@ PREFLIGHT_SOLUTION_MARKER = "network 10.1.34.0 0.0.0.255 area 2"
 def preflight(conn) -> bool:
     output = conn.send_command(PREFLIGHT_CMD)
     if PREFLIGHT_SOLUTION_MARKER not in output:
-        print(f"[!] Pre-flight failed: '{PREFLIGHT_SOLUTION_MARKER}' not found.")
+        print("[!] Pre-flight failed: lab not in expected pre-injection state.")
         print("    Run apply_solution.py first to restore the known-good config.")
         return False
     if PREFLIGHT_FAULT_MARKER in output:
-        print(f"[!] Pre-flight failed: '{PREFLIGHT_FAULT_MARKER}' already present.")
-        print("    Scenario 01 appears already injected. Restore with apply_solution.py.")
+        print("[!] Pre-flight failed: scenario appears already injected.")
+        print("    Restore with apply_solution.py.")
         return False
     return True
 
@@ -71,7 +61,7 @@ def main() -> int:
     host = require_host(args.host)
 
     print("=" * 60)
-    print("Fault Injection: Scenario 01 — R4 Reports No OSPF Neighbors")
+    print("Fault Injection: Scenario 01")
     print("=" * 60)
 
     try:

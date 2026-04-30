@@ -1,19 +1,6 @@
 #!/usr/bin/env python3
 """
-Fault Injection: Scenario 01 — PE-East-2 Backup Session Fails to Establish
-
-Target:     R1 (AS 65001 CE -- Gi0/1 link to R3)
-Injects:    Removes ttl-security hops 1 from R1 toward 10.1.13.3.
-            Without GTSM, R1 reverts to the eBGP default TTL of 1.
-            R3 retains ttl-security hops 1 (minimum acceptable TTL = 254).
-            BGP packets from R1 arrive at R3 with TTL=1; R3 drops them silently.
-Fault Type: GTSM Misconfiguration — ttl-security absent on one side
-
-Result:     R3's eBGP session with R1 (10.1.13.1) stays in Active state.
-            No BGP NOTIFICATION is sent -- the hold timer expires on both sides.
-
-Before running, ensure the lab is in the SOLUTION state:
-    python3 apply_solution.py --host <eve-ng-ip>
+Fault Injection: Scenario 01. Restore with: python3 apply_solution.py --host <eve-ng-ip>
 """
 
 from __future__ import annotations
@@ -42,7 +29,7 @@ PREFLIGHT_SOLUTION_MARKER = "neighbor 10.1.13.3 ttl-security hops 1"
 def preflight(conn) -> bool:
     output = conn.send_command(PREFLIGHT_CMD)
     if PREFLIGHT_SOLUTION_MARKER not in output:
-        print(f"[!] Pre-flight failed: '{PREFLIGHT_SOLUTION_MARKER}' not found on R1.")
+        print("[!] Pre-flight failed: lab not in expected pre-injection state.")
         print("    Either the fault is already injected or the lab is not in solution state.")
         print("    Run apply_solution.py first to restore the known-good config.")
         return False

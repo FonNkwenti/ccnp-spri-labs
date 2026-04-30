@@ -1,21 +1,6 @@
 #!/usr/bin/env python3
 """
-Fault Injection: Scenario 03 -- Route-Map Applied Outbound Instead of Inbound
-
-Target:     R1 (BGP neighbor 10.1.14.4, address-family ipv4)
-Injects:    Moves FILTER_R4_IN from the inbound direction to the outbound
-            direction on neighbor 10.1.14.4 by issuing:
-              no neighbor 10.1.14.4 route-map FILTER_R4_IN in
-              neighbor 10.1.14.4 route-map FILTER_R4_IN out
-Fault Type: Route-Map Wrong Direction (in vs. out)
-
-Result:     Both 172.20.4.0/24 and 172.20.5.0/24 appear in R1's BGP table
-            because the filter is no longer applied to inbound advertisements.
-            The filter now (incorrectly) restricts R1's outbound updates to R4,
-            blocking R1's 172.16.1.0/24 advertisement toward R4.
-
-Before running, ensure the lab is in the SOLUTION state:
-    python3 apply_solution.py --host <eve-ng-ip>
+Fault Injection: Scenario 03. Restore with: python3 apply_solution.py --host <eve-ng-ip>
 """
 
 from __future__ import annotations
@@ -53,12 +38,12 @@ PREFLIGHT_FAULT_MARKER = "route-map FILTER_R4_IN out"
 def preflight(conn) -> bool:
     output = conn.send_command(PREFLIGHT_CMD)
     if PREFLIGHT_SOLUTION_MARKER not in output:
-        print(f"[!] Pre-flight failed: 'route-map FILTER_R4_IN in' not found.")
+        print("[!] Pre-flight failed: lab not in expected pre-injection state.")
         print("    Run apply_solution.py first to restore the known-good config.")
         return False
     if PREFLIGHT_FAULT_MARKER in output:
-        print(f"[!] Pre-flight failed: 'route-map FILTER_R4_IN out' already present.")
-        print("    Scenario 03 appears already injected. Restore with apply_solution.py.")
+        print("[!] Pre-flight failed: lab not in expected pre-injection state.")
+        print("    Restore with apply_solution.py.")
         return False
     return True
 

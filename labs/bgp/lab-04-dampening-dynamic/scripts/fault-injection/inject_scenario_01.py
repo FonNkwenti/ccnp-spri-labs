@@ -1,22 +1,6 @@
 #!/usr/bin/env python3
 """
-Fault Injection: Scenario 01 — External Prefix Suppressed by Dampening
-
-Target:     R6 (Loopback1 — 172.16.6.1/24, eBGP peer toward R5)
-Injects:    Shuts and re-enables R6's Loopback1 five times in quick succession,
-            generating five BGP withdraw/re-advertise cycles for 172.16.6.0/24.
-            Each withdrawal adds 1000 to the penalty on R5; five flaps accumulate
-            a penalty of ~5000, well above the suppress-limit of 2000.
-Fault Type: BGP Route Dampening (penalty accumulation via repeated interface flap)
-
-Result:     172.16.6.0/24 shows the 'd' (dampened/suppressed) flag on R5 and is
-            absent from the IP routing table of all SP core routers.
-            The student must clear the dampening history to restore reachability.
-
-NOTE: This script does NOT clear the dampening -- that is the student's task.
-
-Before running, ensure the lab is in the SOLUTION state:
-    python3 apply_solution.py --host <eve-ng-ip>
+Fault Injection: Scenario 01. Restore with: python3 apply_solution.py --host <eve-ng-ip>
 """
 
 from __future__ import annotations
@@ -49,7 +33,7 @@ PREFLIGHT_FAULT_MARKER = "__FAULT_01_ALREADY_INJECTED__"
 def preflight(conn) -> bool:
     output = conn.send_command(PREFLIGHT_CMD)
     if PREFLIGHT_SOLUTION_MARKER not in output:
-        print(f"[!] Pre-flight failed: '{PREFLIGHT_SOLUTION_MARKER}' not found.")
+        print("[!] Pre-flight failed: lab not in expected pre-injection state.")
         print("    Run apply_solution.py first to restore the known-good config.")
         return False
     if PREFLIGHT_FAULT_MARKER in output:

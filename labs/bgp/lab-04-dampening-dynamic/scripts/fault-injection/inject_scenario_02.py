@@ -1,18 +1,6 @@
 #!/usr/bin/env python3
 """
-Fault Injection: Scenario 02 — Dynamic Customer Session Stays Active
-
-Target:     R2 (PE East-1 — BGP dynamic neighbor listener)
-Injects:    Removes the `bgp listen range 10.99.0.0/24 peer-group DYN_CUST`
-            statement from R2's router bgp 65100 configuration.
-Fault Type: Missing BGP Listen Range (dynamic neighbor provisioning failure)
-
-Result:     R2 stops accepting incoming BGP connections from the 10.99.0.0/24
-            range. The session from R1 (10.99.0.1) stays in the Active state
-            indefinitely because R2 has no listen range to accept it.
-
-Before running, ensure the lab is in the SOLUTION state:
-    python3 apply_solution.py --host <eve-ng-ip>
+Fault Injection: Scenario 02. Restore with: python3 apply_solution.py --host <eve-ng-ip>
 """
 
 from __future__ import annotations
@@ -44,7 +32,7 @@ PREFLIGHT_FAULT_MARKER = "__FAULT_02_ALREADY_INJECTED__"
 def preflight(conn) -> bool:
     output = conn.send_command(PREFLIGHT_CMD)
     if PREFLIGHT_SOLUTION_MARKER not in output:
-        print(f"[!] Pre-flight failed: '{PREFLIGHT_SOLUTION_MARKER}' not found.")
+        print("[!] Pre-flight failed: lab not in expected pre-injection state.")
         print("    Run apply_solution.py first to restore the known-good config.")
         return False
     if PREFLIGHT_FAULT_MARKER in output:

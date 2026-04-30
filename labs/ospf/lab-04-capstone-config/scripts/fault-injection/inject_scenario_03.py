@@ -1,19 +1,6 @@
 #!/usr/bin/env python3
 """
-Fault Injection: Scenario 03 — Inter-Area Summary Missing on ABR
-
-Target:     R2 (ABR — Area 0 / Area 1)
-Injects:    Removes the 'area 1 range 172.16.0.0 255.255.248.0' summary
-            from router ospf 1, and removes the 'area 1 range 2001:DB8:1::/48'
-            summary from the OSPFv3 IPv6 address-family on R2.
-Fault Type: Missing Inter-Area Route Summarization
-
-Result:     R3, R4, and R5 see three individual /24 routes (172.16.1.0,
-            172.16.2.0, 172.16.3.0) injected as separate Type-3 LSAs into
-            the backbone instead of the single 172.16.0.0/21 aggregate.
-
-Before running, ensure the lab is in the SOLUTION state:
-    python3 apply_solution.py --host <eve-ng-ip>
+Fault Injection: Scenario 03. Restore with: python3 apply_solution.py --host <eve-ng-ip>
 """
 
 from __future__ import annotations
@@ -54,7 +41,7 @@ PREFLIGHT_FAULT_MARKER = "__FAULT_03_ALREADY_INJECTED__"
 def preflight(conn) -> bool:
     output = conn.send_command(PREFLIGHT_CMD)
     if PREFLIGHT_SOLUTION_MARKER not in output:
-        print(f"[!] Pre-flight failed: '{PREFLIGHT_SOLUTION_MARKER}' not found.")
+        print("[!] Pre-flight failed: lab not in expected pre-injection state.")
         print("    Run apply_solution.py first to restore the known-good config.")
         return False
     if PREFLIGHT_FAULT_MARKER in output:

@@ -1,17 +1,6 @@
 #!/usr/bin/env python3
 """
-Fault Injection: Scenario 02 — R4 Loses OSPF Adjacency
-
-Target:     R3 (ABR between Area 0 and Area 2)
-Injects:    Replaces `area 2 stub no-summary` with `area 2 nssa`, creating
-            an area-type mismatch with R4 which is configured for stub area 2.
-Fault Type: OSPF Area Type Mismatch (E-bit conflict in Hello packets)
-
-Result:     R4's OSPF adjacency with R3 drops; R4's routing table empties
-            (no routes received, no default route from stub ABR).
-
-Before running, ensure the lab is in the SOLUTION state:
-    python3 apply_solution.py --host <eve-ng-ip>
+Fault Injection: Scenario 02. Restore with: python3 apply_solution.py --host <eve-ng-ip>
 """
 
 from __future__ import annotations
@@ -48,12 +37,12 @@ PREFLIGHT_SOLUTION_MARKER = "area 2 stub no-summary"
 def preflight(conn) -> bool:
     output = conn.send_command(PREFLIGHT_CMD)
     if PREFLIGHT_SOLUTION_MARKER not in output:
-        print(f"[!] Pre-flight failed: '{PREFLIGHT_SOLUTION_MARKER}' not found.")
+        print("[!] Pre-flight failed: lab not in expected pre-injection state.")
         print("    Run apply_solution.py first to restore the known-good config.")
         return False
     if PREFLIGHT_FAULT_MARKER in output:
-        print(f"[!] Pre-flight failed: '{PREFLIGHT_FAULT_MARKER}' already present.")
-        print("    Scenario 02 appears already injected. Restore with apply_solution.py.")
+        print("[!] Pre-flight failed: scenario appears already injected.")
+        print("    Restore with apply_solution.py.")
         return False
     return True
 

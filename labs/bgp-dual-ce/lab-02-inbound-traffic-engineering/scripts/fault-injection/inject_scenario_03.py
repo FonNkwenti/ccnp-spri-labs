@@ -1,19 +1,6 @@
 #!/usr/bin/env python3
 """
-Fault Injection: Scenario 03 -- Missing next-hop-self on R3's iBGP to R5
-
-Target:     R3 (BGP)
-Injects:    Removes `neighbor 10.0.0.5 next-hop-self` from R3's iBGP
-            configuration toward R5. R3 still advertises 192.168.1.0/24 to R5
-            over iBGP, but the next-hop attribute is preserved as 10.1.13.1
-            (R1's eBGP-facing address) instead of being rewritten to R3's
-            loopback. R5 has no route to 10.1.13.1 inside ISP-A, so the BGP
-            path is marked inaccessible. Symptom: R5 cannot reach
-            192.168.1.0/24 even though its BGP table shows the prefix.
-Fault Type: Missing next-hop-self on iBGP edge
-
-Before running, ensure the lab is in the SOLUTION state:
-    python3 apply_solution.py --host <eve-ng-ip>
+Fault Injection: Scenario 03. Restore with: python3 apply_solution.py --host <eve-ng-ip>
 """
 
 from __future__ import annotations
@@ -43,7 +30,7 @@ POST_INJECT_COMMANDS = ["clear ip bgp 10.0.0.5 soft out"]
 def preflight(conn) -> bool:
     output = conn.send_command(PREFLIGHT_CMD)
     if PREFLIGHT_SOLUTION_MARKER not in output:
-        print(f"[!] Pre-flight failed: '{PREFLIGHT_SOLUTION_MARKER}' not found.")
+        print("[!] Pre-flight failed: lab not in expected pre-injection state.")
         print("    Run apply_solution.py first to restore the known-good config.")
         return False
     return True

@@ -1,20 +1,6 @@
 #!/usr/bin/env python3
 """
-Fault Injection: Scenario 03 — Prefixes in BGP Table Not Installed in RIB
-
-Target:     R2 (PE East-1 — AS 65100)
-Injects:    Removes `neighbor 10.0.0.4 next-hop-self` and
-            `neighbor 10.0.0.5 next-hop-self` from R2's address-family ipv4.
-Fault Type: Missing next-hop-self on ingress PE
-
-Result:     Routes from Customer A (AS 65001) are advertised to iBGP peers
-            with the original eBGP next-hop (10.1.12.1 -- R1's physical IP),
-            which is not in the OSPF domain. On R3, `show ip bgp` shows
-            172.16.1.0/24 with status `r` (next-hop unresolvable) and
-            `show ip route bgp` is empty.
-
-Before running, ensure the lab is in the SOLUTION state:
-    python3 apply_solution.py --host <eve-ng-ip>
+Fault Injection: Scenario 03. Restore with: python3 apply_solution.py --host <eve-ng-ip>
 """
 
 from __future__ import annotations
@@ -52,7 +38,7 @@ PREFLIGHT_FAULT_MARKER = "neighbor 10.0.0.4 next-hop-self __FAULT_INJECTED__"
 def preflight(conn) -> bool:
     output = conn.send_command(PREFLIGHT_CMD)
     if PREFLIGHT_SOLUTION_MARKER not in output:
-        print(f"[!] Pre-flight failed: '{PREFLIGHT_SOLUTION_MARKER}' not found.")
+        print("[!] Pre-flight failed: lab not in expected pre-injection state.")
         print("    Run apply_solution.py first to restore the known-good config.")
         return False
     if PREFLIGHT_FAULT_MARKER in output:

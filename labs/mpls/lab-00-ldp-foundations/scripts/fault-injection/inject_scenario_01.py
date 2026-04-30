@@ -1,12 +1,6 @@
 #!/usr/bin/env python3
 """
-Fault Injection: Scenario 01 — LDP Session Flapping
-
-Symptom:     LDP sessions toggle Oper -> Active -> Oper roughly every 30 s;
-             LFIB entries churn and forwarding briefly interrupts with each
-             reset cycle.
-Expected fix: Restore `mpls ldp router-id Loopback0 force` on the affected
-              core router so the LDP transport address is reachable.
+Fault Injection: Scenario 01. Restore with: python3 apply_solution.py --host <eve-ng-ip>
 """
 
 from __future__ import annotations
@@ -33,7 +27,7 @@ PREFLIGHT_FAULT_MARKER = "mpls ldp router-id Loopback99 force"
 def preflight(conn) -> bool:
     output = conn.send_command(PREFLIGHT_CMD)
     if PREFLIGHT_SOLUTION_MARKER not in output:
-        print(f"[!] Pre-flight failed: '{PREFLIGHT_SOLUTION_MARKER}' not found.")
+        print("[!] Pre-flight failed: lab not in expected pre-injection state.")
         print("    Run apply_solution.py first to restore the known-good config.")
         return False
     if PREFLIGHT_FAULT_MARKER in output:

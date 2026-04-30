@@ -1,19 +1,6 @@
 #!/usr/bin/env python3
 """
-Fault Injection: Scenario 01 -- LP route-map applied outbound instead of inbound on R1
-
-Target:     R1 (BGP)
-Injects:    Removes the inbound binding of LOCAL_PREF_FROM_R3 on neighbor
-            10.1.13.2 and re-applies the same route-map outbound. The result
-            is that R1's eBGP path to 0.0.0.0/0 from R3 is no longer bumped
-            to LP=200 -- it stays at the default LP=100. R2's iBGP-learned
-            default (which carries LP=200 from R2's correctly-bound inbound
-            policy) wins the LP comparison on R1, and R1 prefers ISP-B for
-            its default exit.
-Fault Type: Wrong direction on inbound LOCAL_PREF policy
-
-Before running, ensure the lab is in the SOLUTION state:
-    python3 apply_solution.py --host <eve-ng-ip>
+Fault Injection: Scenario 01. Restore with: python3 apply_solution.py --host <eve-ng-ip>
 """
 
 from __future__ import annotations
@@ -47,7 +34,7 @@ POST_INJECT_COMMANDS = [
 def preflight(conn) -> bool:
     output = conn.send_command(PREFLIGHT_CMD)
     if PREFLIGHT_SOLUTION_MARKER not in output:
-        print(f"[!] Pre-flight failed: '{PREFLIGHT_SOLUTION_MARKER}' not found.")
+        print("[!] Pre-flight failed: lab not in expected pre-injection state.")
         print("    Run apply_solution.py first to restore the known-good config.")
         return False
     return True

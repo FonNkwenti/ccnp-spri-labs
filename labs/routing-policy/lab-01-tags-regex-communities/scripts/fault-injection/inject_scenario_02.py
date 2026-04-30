@@ -1,18 +1,6 @@
 #!/usr/bin/env python3
 """
-Fault Injection: Scenario 02 — IS-IS to OSPF Redistribution Removed on R2
-
-Target:     R2 (redistribution point — OSPF process 1 / IS-IS SP)
-Injects:    Removes `redistribute isis SP level-2 subnets route-map ISIS_TO_OSPF`
-            from router ospf 1 on R2, severing IS-IS route injection into OSPF.
-Fault Type: Missing Redistribution Statement
-
-Result:     IS-IS routes disappear from `show ip route ospf` on R1 and R3.
-            Prefixes learned only via IS-IS (e.g. R4 loopbacks reachable through
-            IS-IS) become unreachable from OSPF-only paths.
-
-Before running, ensure the lab is in the SOLUTION state:
-    python3 apply_solution.py --host <eve-ng-ip>
+Fault Injection: Scenario 02. Restore with: python3 apply_solution.py --host <eve-ng-ip>
 """
 
 from __future__ import annotations
@@ -44,7 +32,7 @@ PREFLIGHT_SOLUTION_MARKER = "redistribute isis SP level-2 subnets route-map ISIS
 def preflight(conn) -> bool:
     output = conn.send_command(PREFLIGHT_CMD)
     if PREFLIGHT_SOLUTION_MARKER not in output:
-        print(f"[!] Pre-flight failed: '{PREFLIGHT_SOLUTION_MARKER}' not found.")
+        print("[!] Pre-flight failed: lab not in expected pre-injection state.")
         print("    Either the lab is not in solution state, or the fault is already active.")
         print("    Run apply_solution.py first to restore the known-good config.")
         return False

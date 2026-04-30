@@ -1,19 +1,6 @@
 #!/usr/bin/env python3
 """
-Fault Injection: Scenario 03 -- R1 eBGP Session to R2 Stays in Active
-
-Target:     R2 (PE East-1 -- eBGP neighbor 10.1.12.1 toward R1)
-Injects:    Replaces `neighbor 10.1.12.1 remote-as 65001` with
-            `neighbor 10.1.12.1 remote-as 65999` on R2, creating an
-            AS number mismatch in the BGP OPEN message.
-Fault Type: Wrong remote-as (eBGP AS Number Mismatch)
-
-Result:     R1 logs `%BGP-3-NOTIFICATION: sent to neighbor 10.1.12.2 2/2
-            (peer in wrong AS)`. R1's eBGP session to R2 stays in Active
-            state permanently and no prefixes are exchanged.
-
-Before running, ensure the lab is in the SOLUTION state:
-    python3 apply_solution.py --host <eve-ng-ip>
+Fault Injection: Scenario 03. Restore with: python3 apply_solution.py --host <eve-ng-ip>
 """
 
 from __future__ import annotations
@@ -45,12 +32,12 @@ PREFLIGHT_SOLUTION_MARKER = "neighbor 10.1.12.1 remote-as 65001"
 def preflight(conn) -> bool:
     output = conn.send_command(PREFLIGHT_CMD)
     if PREFLIGHT_SOLUTION_MARKER not in output:
-        print(f"[!] Pre-flight failed: '{PREFLIGHT_SOLUTION_MARKER}' not found.")
+        print("[!] Pre-flight failed: lab not in expected pre-injection state.")
         print("    Run apply_solution.py first to restore the known-good config.")
         return False
     if PREFLIGHT_FAULT_MARKER in output:
-        print(f"[!] Pre-flight failed: '{PREFLIGHT_FAULT_MARKER}' already present.")
-        print("    Scenario 03 appears already injected. Restore with apply_solution.py.")
+        print("[!] Pre-flight failed: scenario appears already injected.")
+        print("    Restore with apply_solution.py.")
         return False
     return True
 

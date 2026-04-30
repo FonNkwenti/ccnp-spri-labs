@@ -1,20 +1,6 @@
 #!/usr/bin/env python3
 """
-Fault Injection: Scenario 03 — R4 Cannot Reach R6's Prefix
-
-Target:     R5 (PE West — router bgp 65102)
-Injects:    Removes `neighbor 10.0.0.4 next-hop-self` from R5's iBGP config
-            toward R4 within sub-AS 65102.
-Fault Type: Missing next-hop-self on iBGP session; external next-hop (10.1.56.6)
-            is not reachable via OSPF, making the route unusable at R4.
-
-Result:     R4's `show ip bgp 172.16.6.0/24` shows the prefix with next-hop
-            10.1.56.6 (R6's link address). Since 10.1.56.0/24 is NOT in OSPF,
-            R4 cannot resolve this next-hop and the route has no `>` (best) marker.
-            Traffic toward R6's prefix black-holes at R4.
-
-Before running, ensure the lab is in the SOLUTION state:
-    python3 apply_solution.py --host <eve-ng-ip>
+Fault Injection: Scenario 03. Restore with: python3 apply_solution.py --host <eve-ng-ip>
 """
 
 from __future__ import annotations
@@ -42,7 +28,7 @@ PREFLIGHT_FAULT_MARKER = "__FAULT_03_ALREADY_INJECTED__"
 def preflight(conn) -> bool:
     output = conn.send_command(PREFLIGHT_CMD)
     if PREFLIGHT_SOLUTION_MARKER not in output:
-        print(f"[!] Pre-flight failed: '{PREFLIGHT_SOLUTION_MARKER}' not found on {DEVICE_NAME}.")
+        print("[!] Pre-flight failed: lab not in expected pre-injection state.")
         print("    Run apply_solution.py first to restore the known-good config.")
         return False
     if PREFLIGHT_FAULT_MARKER in output:

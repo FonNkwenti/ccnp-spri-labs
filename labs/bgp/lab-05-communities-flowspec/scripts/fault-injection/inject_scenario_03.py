@@ -1,20 +1,6 @@
 #!/usr/bin/env python3
 """
-Fault Injection: Scenario 03 — 172.16.6.0/24 Visible at R2 (no-export Not Enforced)
-
-Target:     R6 (External SP — AS 65002, address-family ipv4, neighbor 10.1.56.5)
-Injects:    Removes `neighbor 10.1.56.5 send-community` from R6's
-            address-family ipv4 configuration.
-Fault Type: Missing send-community on eBGP peer (community tagged but stripped before TX)
-
-Result:     R6 continues to apply the no-export community via its outbound route-map
-            but the community is silently stripped before the UPDATE is sent to R5.
-            R5 receives 172.16.6.0/24 with no community attribute, so the no-export
-            enforcement is absent. The prefix propagates inward via the RR and
-            appears in R2's BGP table, violating the containment requirement.
-
-Before running, ensure the lab is in the SOLUTION state:
-    python3 apply_solution.py --host <eve-ng-ip>
+Fault Injection: Scenario 03. Restore with: python3 apply_solution.py --host <eve-ng-ip>
 """
 
 from __future__ import annotations
@@ -48,7 +34,7 @@ PREFLIGHT_FAULT_MARKER = "__FAULT_03_ALREADY_INJECTED__"
 def preflight(conn) -> bool:
     output = conn.send_command(PREFLIGHT_CMD)
     if PREFLIGHT_SOLUTION_MARKER not in output:
-        print(f"[!] Pre-flight failed: '{PREFLIGHT_SOLUTION_MARKER}' not found.")
+        print("[!] Pre-flight failed: lab not in expected pre-injection state.")
         print("    Run apply_solution.py first to restore the known-good config.")
         return False
     if PREFLIGHT_FAULT_MARKER in output:

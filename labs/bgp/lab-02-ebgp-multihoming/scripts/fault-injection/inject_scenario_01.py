@@ -1,17 +1,6 @@
 #!/usr/bin/env python3
 """
-Fault Injection: Scenario 01 — Missing next-hop-self on R3
-
-Target:     R3 (iBGP neighbor 10.0.0.4 — link to R4)
-Injects:    Removes 'neighbor 10.0.0.4 next-hop-self' from R3's address-family ipv4
-Fault Type: Missing next-hop-self
-
-Result:     R3 forwards the eBGP next-hop (10.1.13.1) into the iBGP fabric.
-            R4 cannot resolve 10.1.13.1 via OSPF, so R3's path to 172.16.1.0/24
-            is marked inaccessible. Only R2's path appears in R4's BGP table.
-
-Before running, ensure the lab is in the SOLUTION state:
-    python3 apply_solution.py --host <eve-ng-ip>
+Fault Injection: Scenario 01. Restore with: python3 apply_solution.py --host <eve-ng-ip>
 """
 
 from __future__ import annotations
@@ -46,12 +35,12 @@ PREFLIGHT_SOLUTION_MARKER = "neighbor 10.0.0.4 next-hop-self"
 def preflight(conn) -> bool:
     output = conn.send_command(PREFLIGHT_CMD)
     if PREFLIGHT_SOLUTION_MARKER not in output:
-        print(f"[!] Pre-flight failed: '{PREFLIGHT_SOLUTION_MARKER}' not found.")
+        print("[!] Pre-flight failed: lab not in expected pre-injection state.")
         print("    Run apply_solution.py first to restore the known-good config.")
         return False
     if PREFLIGHT_FAULT_MARKER in output:
-        print(f"[!] Pre-flight failed: '{PREFLIGHT_FAULT_MARKER}' already present.")
-        print("    Scenario 01 appears already injected. Restore with apply_solution.py.")
+        print("[!] Pre-flight failed: scenario appears already injected.")
+        print("    Restore with apply_solution.py.")
         return False
     return True
 

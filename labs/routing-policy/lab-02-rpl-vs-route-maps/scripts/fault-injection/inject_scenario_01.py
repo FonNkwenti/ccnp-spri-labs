@@ -1,18 +1,6 @@
 #!/usr/bin/env python3
 """
-Fault Injection: Scenario 01 — XR1 Silent Route Drop
-
-Target:     XR1 (IBGP neighbor-group — inbound route-policy)
-Injects:    A broken child policy (no pass at end) is applied inbound on XR1's
-            IBGP neighbor-group, replacing the working IBGP_IN policy.
-Fault Type: BGP Route Policy Misconfiguration
-
-Result:     All inbound IBGP routes are silently dropped on XR1. BGP sessions
-            remain up but no prefixes are received. Peers show XR1 as
-            established with 0 prefixes in the adj-rib-in.
-
-Before running, ensure the lab is in the SOLUTION state:
-    python3 apply_solution.py --host <eve-ng-ip>
+Fault Injection: Scenario 01. Restore with: python3 apply_solution.py --host <eve-ng-ip>
 """
 
 from __future__ import annotations
@@ -54,12 +42,12 @@ def preflight(conn) -> bool:
     # Check running-config for route-policy assignment to detect state.
     output = conn.send_command("show running-config formal | include route-policy IBGP")
     if PREFLIGHT_SOLUTION_MARKER not in output:
-        print(f"[!] Pre-flight failed: '{PREFLIGHT_SOLUTION_MARKER}' not found.")
+        print("[!] Pre-flight failed: lab not in expected pre-injection state.")
         print("    Run apply_solution.py first to restore the known-good config.")
         return False
     if PREFLIGHT_FAULT_MARKER in output:
-        print(f"[!] Pre-flight failed: '{PREFLIGHT_FAULT_MARKER}' already present.")
-        print("    Scenario 01 appears already injected. Restore with apply_solution.py.")
+        print("[!] Pre-flight failed: scenario appears already injected.")
+        print("    Restore with apply_solution.py.")
         return False
     return True
 

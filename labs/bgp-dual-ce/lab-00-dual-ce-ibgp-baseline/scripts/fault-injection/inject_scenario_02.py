@@ -1,19 +1,6 @@
 #!/usr/bin/env python3
 """
-Fault Injection: Scenario 02 -- R3 Stops Receiving IPv4 NLRIs from R1
-
-Target:     R1 (eBGP neighbor 10.1.13.2 toward R3)
-Injects:    Removes `neighbor 10.1.13.2 activate` from the IPv4 unicast
-            address-family on R1, so BGP opens the session to R3 but does
-            not negotiate IPv4 unicast NLRI exchange.
-Fault Type: Missing neighbor activate (Address-Family Misconfiguration)
-
-Result:     R1-R3 eBGP session stays Established but no IPv4 NLRIs are
-            exchanged; R3 stops seeing 192.168.1.0/24 and any other
-            prefixes that R1 would advertise.
-
-Before running, ensure the lab is in the SOLUTION state:
-    python3 apply_solution.py --host <eve-ng-ip>
+Fault Injection: Scenario 02. Restore with: python3 apply_solution.py --host <eve-ng-ip>
 """
 
 from __future__ import annotations
@@ -50,12 +37,12 @@ POST_INJECT_COMMANDS = ["clear ip bgp 10.1.13.2 soft out"]
 def preflight(conn) -> bool:
     output = conn.send_command(PREFLIGHT_CMD)
     if PREFLIGHT_SOLUTION_MARKER not in output:
-        print(f"[!] Pre-flight failed: '{PREFLIGHT_SOLUTION_MARKER}' not found.")
+        print("[!] Pre-flight failed: lab not in expected pre-injection state.")
         print("    Run apply_solution.py first to restore the known-good config.")
         return False
     if PREFLIGHT_FAULT_MARKER in output:
-        print(f"[!] Pre-flight failed: '{PREFLIGHT_FAULT_MARKER}' already present.")
-        print("    Scenario 02 appears already injected. Restore with apply_solution.py.")
+        print("[!] Pre-flight failed: scenario appears already injected.")
+        print("    Restore with apply_solution.py.")
         return False
     return True
 

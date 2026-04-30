@@ -1,24 +1,6 @@
 #!/usr/bin/env python3
 """
-Fault Injection: Scenario 01 — R3 BGP Table Empty Despite Established Session
-
-Target:     R4 (Route Reflector — AS 65100)
-Injects:    Removes `neighbor 10.0.0.3 activate` from R4's address-family ipv4,
-            preventing IPv4 unicast capability from being negotiated for R3.
-Fault Type: Missing address-family activation
-
-Result:     The BGP session between R4 and R3 remains Established at the base
-            level (keepalives still exchanged), but IPv4 unicast is not
-            negotiated — R4 sends no routes to R3.
-            `show ip bgp` on R3 shows no prefixes (PfxRcd = 0 on R4).
-
-Note:       Removing route-reflector-client from R3 does NOT produce this
-            symptom. Per RFC 4456, routes received from RR clients (R2, R5)
-            are always forwarded to all non-client iBGP peers as well. Only
-            removing activate fully suppresses route exchange for this AFI.
-
-Before running, ensure the lab is in the SOLUTION state:
-    python3 apply_solution.py --host <eve-ng-ip>
+Fault Injection: Scenario 01. Restore with: python3 apply_solution.py --host <eve-ng-ip>
 """
 
 from __future__ import annotations
@@ -55,7 +37,7 @@ PREFLIGHT_FAULT_MARKER = "neighbor 10.0.0.3 activate __FAULT_INJECTED__"
 def preflight(conn) -> bool:
     output = conn.send_command(PREFLIGHT_CMD)
     if PREFLIGHT_SOLUTION_MARKER not in output:
-        print(f"[!] Pre-flight failed: '{PREFLIGHT_SOLUTION_MARKER}' not found.")
+        print("[!] Pre-flight failed: lab not in expected pre-injection state.")
         print("    Run apply_solution.py first to restore the known-good config.")
         return False
     if PREFLIGHT_FAULT_MARKER in output:

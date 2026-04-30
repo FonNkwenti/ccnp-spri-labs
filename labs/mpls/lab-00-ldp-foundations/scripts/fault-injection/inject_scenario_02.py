@@ -1,13 +1,6 @@
 #!/usr/bin/env python3
 """
-Fault Injection: Scenario 02 — Asymmetric LDP Bindings
-
-Symptom:     One router's MPLS binding table is missing label entries that all
-             other routers carry; traffic toward a specific destination loses
-             its label and is dropped or falls back to IP forwarding.
-Expected fix: Re-enable MPLS on the affected interface so LDP discovery
-              resumes and bindings are exchanged symmetrically across all
-              label-switching routers.
+Fault Injection: Scenario 02. Restore with: python3 apply_solution.py --host <eve-ng-ip>
 """
 
 from __future__ import annotations
@@ -33,7 +26,7 @@ PREFLIGHT_FAULT_MARKER = "No"           # Tagging column value when disabled
 def preflight(conn) -> bool:
     output = conn.send_command(PREFLIGHT_CMD)
     if PREFLIGHT_SOLUTION_MARKER not in output:
-        print(f"[!] Pre-flight failed: MPLS not enabled on Gi0/2 ('{PREFLIGHT_SOLUTION_MARKER}' absent).")
+        print("[!] Pre-flight failed: lab not in expected pre-injection state.")
         print("    Run apply_solution.py first to restore the known-good config.")
         return False
     return True

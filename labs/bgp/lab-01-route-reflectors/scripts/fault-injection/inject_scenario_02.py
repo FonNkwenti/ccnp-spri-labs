@@ -1,33 +1,6 @@
 #!/usr/bin/env python3
 """
-Fault Injection: Scenario 02 — R3 iBGP Session Stays in Active
-
-Targets:    R3 (PE East-2) and R4 (Route Reflector) — AS 65100
-Injects:    Removes `update-source Loopback0` from BOTH sides of the
-            R3-R4 iBGP neighbor relationship:
-              - R3: no neighbor 10.0.0.4 update-source Loopback0
-              - R4: no neighbor 10.0.0.3 update-source Loopback0
-Fault Type: Missing update-source on both ends of loopback-peered iBGP session
-
-Result:     Both R3 and R4 source their BGP TCP connections from their
-            physical egress interfaces (10.1.34.3 and 10.1.34.4) instead
-            of their loopbacks. Each router has only the loopback address
-            of the other configured as a BGP neighbor, so both connections
-            are rejected. `show ip bgp summary` on both R3 and R4 shows the
-            session permanently in Active state.
-
-Why both sides:
-    `update-source` only affects the OUTGOING TCP connection. It does not
-    restrict which incoming source IPs a router accepts — that is gated
-    solely by the configured `neighbor` IP. Removing update-source from
-    only one side (e.g. R4) leaves the other side (R3) still sourcing
-    from its loopback, which R4's neighbor statement accepts. The session
-    then establishes via R3's outgoing TCP, and the fault is invisible.
-    Both sides must be removed so that BOTH outgoing connections use
-    physical interface IPs that the respective peers reject.
-
-Before running, ensure the lab is in the SOLUTION state:
-    python3 apply_solution.py --host <eve-ng-ip>
+Fault Injection: Scenario 02. Restore with: python3 apply_solution.py --host <eve-ng-ip>
 """
 
 from __future__ import annotations
@@ -60,7 +33,7 @@ def preflight(conn, device: str) -> bool:
     marker = PREFLIGHT_SOLUTION_MARKER[device]
     output = conn.send_command(PREFLIGHT_CMD)
     if marker not in output:
-        print(f"[!] Pre-flight failed on {device}: '{marker}' not found.")
+        print("[!] Pre-flight failed: lab not in expected pre-injection state.")
         print("    Run apply_solution.py first to restore the known-good config.")
         return False
     return True

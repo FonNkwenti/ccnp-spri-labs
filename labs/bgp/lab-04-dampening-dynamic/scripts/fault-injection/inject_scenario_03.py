@@ -1,19 +1,6 @@
 #!/usr/bin/env python3
 """
-Fault Injection: Scenario 03 -- Dynamic Session Up but No Routes Received
-
-Target:     R2 (PE East-1 -- BGP address-family IPv4 configuration)
-Injects:    Removes `neighbor DYN_CUST activate` from the address-family ipv4
-            section of R2's router bgp 65100 configuration.
-Fault Type: BGP Peer-Group Not Activated in Address-Family (NLRI exchange disabled)
-
-Result:     The dynamic BGP session from 10.99.0.1 (R1) remains Established
-            (TCP/OPEN handshake succeeds) but no IPv4 prefixes are exchanged.
-            R2 does not receive 172.16.1.0/24 from the dynamic session.
-            `show ip bgp neighbors 10.99.0.1 received-routes` returns empty.
-
-Before running, ensure the lab is in the SOLUTION state:
-    python3 apply_solution.py --host <eve-ng-ip>
+Fault Injection: Scenario 03. Restore with: python3 apply_solution.py --host <eve-ng-ip>
 """
 
 from __future__ import annotations
@@ -47,7 +34,7 @@ PREFLIGHT_FAULT_MARKER = "__FAULT_03_ALREADY_INJECTED__"
 def preflight(conn) -> bool:
     output = conn.send_command(PREFLIGHT_CMD)
     if PREFLIGHT_SOLUTION_MARKER not in output:
-        print(f"[!] Pre-flight failed: '{PREFLIGHT_SOLUTION_MARKER}' not found.")
+        print("[!] Pre-flight failed: lab not in expected pre-injection state.")
         print("    Run apply_solution.py first to restore the known-good config.")
         return False
     if PREFLIGHT_FAULT_MARKER in output:

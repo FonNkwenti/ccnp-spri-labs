@@ -1,19 +1,6 @@
 #!/usr/bin/env python3
 """
-Fault Injection: Scenario 03 — Missing AS-path prepend route-map on R1
-
-Target:     R1 (eBGP neighbor 10.1.13.3 -- link to R3/backup PE)
-Injects:    Removes 'neighbor 10.1.13.3 route-map TO-R3-BACKUP out'
-            from R1's address-family ipv4
-Fault Type: Missing outbound route-map (AS-path prepend policy removal)
-
-Result:     R1 no longer prepends its AS number when advertising to R3.
-            The AS-path for 172.16.1.0/24 via R3 shortens from '65001 65001'
-            to '65001' (length 1), matching the R2 path. R4 sees equal-length
-            AS-paths on both PE paths, breaking the intended traffic engineering.
-
-Before running, ensure the lab is in the SOLUTION state:
-    python3 apply_solution.py --host <eve-ng-ip>
+Fault Injection: Scenario 03. Restore with: python3 apply_solution.py --host <eve-ng-ip>
 """
 
 from __future__ import annotations
@@ -48,12 +35,12 @@ PREFLIGHT_SOLUTION_MARKER = "neighbor 10.1.13.3 route-map TO-R3-BACKUP out"
 def preflight(conn) -> bool:
     output = conn.send_command(PREFLIGHT_CMD)
     if PREFLIGHT_SOLUTION_MARKER not in output:
-        print(f"[!] Pre-flight failed: '{PREFLIGHT_SOLUTION_MARKER}' not found.")
+        print("[!] Pre-flight failed: lab not in expected pre-injection state.")
         print("    Run apply_solution.py first to restore the known-good config.")
         return False
     if PREFLIGHT_FAULT_MARKER in output:
-        print(f"[!] Pre-flight failed: '{PREFLIGHT_FAULT_MARKER}' already present.")
-        print("    Scenario 03 appears already injected. Restore with apply_solution.py.")
+        print("[!] Pre-flight failed: scenario appears already injected.")
+        print("    Restore with apply_solution.py.")
         return False
     return True
 

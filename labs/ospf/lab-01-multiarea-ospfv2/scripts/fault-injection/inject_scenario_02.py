@@ -1,17 +1,6 @@
 #!/usr/bin/env python3
 """
-Fault Injection: Scenario 02 — R1 Cannot Reach R5 Loopback1
-
-Target:     R5 (OSPF process 1)
-Injects:    Removes the network 172.16.5.0 0.0.0.255 area 3 statement from R5
-Fault Type: Missing OSPF Network Statement (prefix not advertised)
-
-Result:     Lo1 (172.16.5.0/24) is no longer in R5's OSPF process.
-            R5's Type-1 LSA omits the Lo1 stub link; no Type-3 LSA for
-            172.16.5.0/24 is generated; R1 cannot reach 172.16.5.1.
-
-Before running, ensure the lab is in the SOLUTION state:
-    python3 apply_solution.py --host <eve-ng-ip>
+Fault Injection: Scenario 02. Restore with: python3 apply_solution.py --host <eve-ng-ip>
 """
 
 from __future__ import annotations
@@ -51,15 +40,15 @@ PREFLIGHT_SOLUTION_MARKER = "network 172.16.5.0 0.0.0.255 area 3"
 def preflight(conn) -> bool:
     output = conn.send_command(PREFLIGHT_CMD)
     if PREFLIGHT_SOLUTION_MARKER not in output:
-        print(f"[!] Pre-flight failed: '{PREFLIGHT_SOLUTION_MARKER}' not found.")
+        print("[!] Pre-flight failed: lab not in expected pre-injection state.")
         print("    Run apply_solution.py first to restore the known-good config.")
         print("    (Lo1 network statement already absent — scenario may already be active.)")
         return False
     # PREFLIGHT_FAULT_MARKER is a sentinel; this branch is never reached in
     # normal operation but is kept to preserve the standard preflight pattern.
     if PREFLIGHT_FAULT_MARKER in output:
-        print(f"[!] Pre-flight failed: '{PREFLIGHT_FAULT_MARKER}' already present.")
-        print("    Scenario 02 appears already injected. Restore with apply_solution.py.")
+        print("[!] Pre-flight failed: scenario appears already injected.")
+        print("    Restore with apply_solution.py.")
         return False
     return True
 
@@ -77,7 +66,7 @@ def main() -> int:
     host = require_host(args.host)
 
     print("=" * 60)
-    print("Fault Injection: Scenario 02 — R1 Cannot Reach R5 Loopback1")
+    print("Fault Injection: Scenario 02")
     print("=" * 60)
 
     try:

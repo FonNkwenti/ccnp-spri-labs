@@ -1,18 +1,6 @@
 #!/usr/bin/env python3
 """
-Fault Injection: Scenario 01 — External Prefix Vanishes
-
-Target:     R3 (ASBR/ABR — Area 0 / Area 2 / Area 3)
-Injects:    Adds a distribute-list with prefix-list BLOCK_EXT that blocks
-            192.168.66.0/24 from being flooded outbound in OSPF process 1.
-Fault Type: Outbound Distribute-List / Prefix-List Filtering
-
-Result:     192.168.66.0/24 (and its summary 192.168.0.0/16) disappears from
-            the OSPF database on all routers; pings to 192.168.66.1 fail
-            domain-wide.
-
-Before running, ensure the lab is in the SOLUTION state:
-    python3 apply_solution.py --host <eve-ng-ip>
+Fault Injection: Scenario 01. Restore with: python3 apply_solution.py --host <eve-ng-ip>
 """
 
 from __future__ import annotations
@@ -51,12 +39,12 @@ PREFLIGHT_SOLUTION_MARKER = "redistribute static"
 def preflight(conn) -> bool:
     output = conn.send_command(PREFLIGHT_CMD)
     if PREFLIGHT_SOLUTION_MARKER not in output:
-        print(f"[!] Pre-flight failed: '{PREFLIGHT_SOLUTION_MARKER}' not found.")
+        print("[!] Pre-flight failed: lab not in expected pre-injection state.")
         print("    Run apply_solution.py first to restore the known-good config.")
         return False
     if PREFLIGHT_FAULT_MARKER in output:
-        print(f"[!] Pre-flight failed: '{PREFLIGHT_FAULT_MARKER}' already present.")
-        print("    Scenario 01 appears already injected. Restore with apply_solution.py.")
+        print("[!] Pre-flight failed: scenario appears already injected.")
+        print("    Restore with apply_solution.py.")
         return False
     return True
 
