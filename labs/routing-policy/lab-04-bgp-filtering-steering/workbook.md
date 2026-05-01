@@ -1,60 +1,74 @@
 # Lab 04 — BGP Route Filtering and Traffic Steering
 
-**Chapter:** Routing Policy | **Exam:** 300-510 | **Difficulty:** Intermediate | **Time:** 90 min
+## Table of Contents
+
+1. [Concepts & Skills Covered](#1-concepts--skills-covered)
+2. [Topology & Scenario](#2-topology--scenario)
+3. [Hardware & Environment Specifications](#3-hardware--environment-specifications)
+4. [Base Configuration](#4-base-configuration)
+5. [Lab Challenge: Core Implementation](#5-lab-challenge-core-implementation)
+6. [Verification & Analysis](#6-verification--analysis)
+7. [Verification Cheatsheet](#7-verification-cheatsheet)
+8. [Solutions (Spoiler Alert!)](#8-solutions-spoiler-alert)
+9. [Troubleshooting Scenarios](#9-troubleshooting-scenarios)
+10. [Lab Completion Checklist](#10-lab-completion-checklist)
+11. [Appendix: Script Exit Codes](#11-appendix-script-exit-codes)
 
 ---
 
-## Section 1 — Theory
+## 1. Concepts & Skills Covered
 
-### 1.1 BGP Route Filtering
+**Exam Objective:** 3.3 — Implement and troubleshoot BGP route filtering and traffic steering using route-maps, prefix-lists, and IOS-XR RPL
 
-BGP filtering controls which routes are installed in the BGP table and which prefixes are
-advertised to peers. IOS supports three filtering mechanisms that can be applied inbound or
-outbound on a neighbor:
+### BGP Inbound and Outbound Filtering
+
+BGP filtering controls which routes are accepted from a peer and which prefixes are advertised to
+a peer. IOS supports three mechanisms that can be applied per-neighbor in either direction:
 
 | Mechanism | Match basis | Applied via |
 |-----------|-------------|-------------|
-| `ip prefix-list` | Prefix + length (exact, ge, le) | `neighbor X route-map in/out` with `match ip address prefix-list` |
+| `ip prefix-list` | Prefix + length (exact, `ge`, `le`) | `neighbor X route-map in/out` with `match ip address prefix-list` |
 | `ip as-path access-list` | AS-path regex | `neighbor X filter-list N in/out` or `match as-path N` in route-map |
-| `ip community-list` | Community value / regex | `match community N` in route-map |
+| `ip community-list` | Community value / well-known keyword | `match community N` in route-map |
 
-**Inbound filtering** runs before the BGP best-path selection algorithm. A denied prefix is
-not installed and not re-advertised. **Outbound filtering** runs before sending an UPDATE to
-a peer; denied prefixes are suppressed from the advertisement but remain in the local BGP
-table.
+**Inbound filtering** runs before best-path selection — a denied route is neither installed nor
+re-advertised. **Outbound filtering** runs before sending an UPDATE; denied prefixes are
+suppressed but remain in the local BGP table.
 
 **`aggregate-address`** summarizes a block into a single prefix. With `summary-only`, BGP
-automatically suppresses all covered more-specific prefixes. Without `summary-only`, both
-the aggregate and the more-specifics are advertised — the aggregate carries atomic-aggregate
-and aggregator attributes.
+suppresses all covered more-specific prefixes automatically. Without `summary-only`, both the
+aggregate and more-specifics are advertised; the aggregate carries atomic-aggregate and aggregator
+attributes. A null-route (`ip route X.X.X.X Null0`) is required as the covering anchor: IOS will
+not originate the aggregate unless at least one covered prefix exists in the routing table.
 
-### 1.2 Traffic Steering Attributes
+### BGP Traffic Steering Attributes
 
-| Attribute | Scope | Direction | Controlled by |
-|-----------|-------|-----------|---------------|
-| `LOCAL_PREF` | AS-wide (iBGP) | Inbound (ingress selection) | Applied on inbound eBGP; propagated to all iBGP peers |
-| `AS-path prepend` | Inter-AS | Outbound (egress influence at remote AS) | `set as-path prepend` in outbound route-map |
-| `MED` | Between adjacent ASes | Outbound (hint to neighboring AS) | `set metric` in outbound route-map |
-| Conditional advertisement | N/A | Outbound | `advertise-map non-exist-map` on neighbor |
+| Attribute | Scope | Direction | Effect |
+|-----------|-------|-----------|--------|
+| `LOCAL_PREF` | AS-wide (iBGP) | Inbound (exit selection) | Highest value wins; set on inbound eBGP, propagated to all iBGP peers |
+| `AS-path prepend` | Inter-AS | Outbound (ingress influence at remote AS) | Longer path = less preferred; `set as-path prepend` in outbound route-map |
+| `MED` | Adjacent ASes only | Outbound (hint to neighboring AS) | Lowest value wins; only compared when paths come from the same neighbor AS |
+| Conditional advertisement | N/A | Outbound | `advertise-map non-exist-map` surfaces a backup prefix when a tracked prefix disappears |
 
-**LOCAL_PREF tie-breaking:** BGP selects the path with the *highest* LOCAL_PREF. Setting
-LOCAL_PREF 200 on routes received at R3 while R1's default is 150 makes every router in
-AS 65100 prefer R3 as the exit for those destinations.
+**Key gotcha — LOCAL_PREF on eBGP:** LOCAL_PREF is an iBGP attribute and is stripped
+before sending an UPDATE to an eBGP peer. A `set local-preference` in an outbound route-map
+toward an eBGP neighbor is silently ignored at the remote AS; only `set as-path prepend` or
+`set metric` have cross-AS effect.
 
-**MED tie-breaking:** BGP selects the path with the *lowest* MED, but only when comparing
-paths from the same neighbor AS. Setting MED 50 at R3 and MED 100 at R1 signals to AS 65200
-that the R3 path is preferred for inbound traffic.
+### Aggregate with `summary-only` vs. Without
 
-**AS-path prepend** artificially lengthens the AS-path advertised to eBGP peers. A longer
-path is less preferred by default BGP path selection (fewer AS hops = better). Prepending
-3× on R1's advertisement of 172.16.1.0/24 causes R4 to prefer the R3 path for that prefix.
+Setting `summary-only` on R3 while R1 does not use it creates a visible asymmetry at R4:
+R4 sees only the aggregate from R3 but both the aggregate and more-specifics from R1. This
+demonstrates that the two knobs are independent per-router and that BGP aggregate suppression
+is a local decision, not a domain-wide flag.
 
-### 1.3 RPL Equivalents on XR
+### IOS-XR RPL: Community + Prepend in One Policy
 
-IOS-XR RPL uses `set as-path prepend` and `set community` just like route-maps but in a
-structured if/elseif/else block. A single route-policy can combine both operations:
+IOS-XR RPL can combine multiple `set` operations in a single `if` block. A single
+`route-policy` can set community and prepend AS-path simultaneously — no need for two
+separate sequences as in an IOS route-map:
 
-```
+```xr
 route-policy SET_COMMUNITY_AND_PREPEND
   if destination in P_XR1_ORIGINATE then
     set community (65100:300) additive
@@ -64,395 +78,585 @@ route-policy SET_COMMUNITY_AND_PREPEND
 end-policy
 ```
 
-The equivalent IOS route-map would require two separate `set` lines within one sequence
-(which also works in IOS) but the RPL form is more readable for complex conditional logic.
+The trailing `pass` is mandatory in RPL — without it, unmatched routes are implicitly dropped
+(RPL's default drop is the opposite of IOS route-map's implicit permit-all at the end).
 
-### 1.4 Conditional Advertisement
+### Conditional Advertisement
 
-`neighbor X advertise-map BACKUP non-exist-map TRACK` tells IOS: send the prefixes matched
-by `BACKUP` to neighbor X *only when* the prefixes matched by `TRACK` are absent from the
-BGP table. This implements a primary/backup model: the backup route is suppressed while the
-primary (tracked) aggregate is present, and surfaces automatically if the primary disappears.
+`neighbor X advertise-map A non-exist-map B` instructs IOS: send the prefixes matched by `A`
+to neighbor X *only when* the prefixes matched by `B` are absent from the BGP table. This
+implements primary/backup: while the primary aggregate is present, the backup prefix is
+suppressed. If the primary disappears (e.g., R3 goes down), the backup surfaces automatically.
 
----
+**Skills this lab develops:**
 
-## Section 2 — Scenario
-
-AS 65100 (the SP core: R1, R2, R3, XR1, XR2) dual-homes to AS 65200 (R4) via two eBGP
-sessions — R1↔R4 on L4 and R3↔R4 on L3. The IGP (OSPF area 0, IS-IS L2) and redistribution
-policies from lab-03 are already in place.
-
-Lab-04 tasks build BGP filtering and steering on top of the running lab-03 state:
-
-- Inbound filtering at R1 denies one of R4's two Lo prefixes
-- R3 advertises only the 172.16.0.0/16 aggregate outbound (Task 2 demo), then reverts to
-  also allowing specifics (final state) so prepend and MED can be observed
-- Traffic engineering with LOCAL_PREF, AS-path prepend, and MED makes R3 the preferred
-  ingress/egress for 172.20.4.0/24 and 172.16.x/24
-- XR1 demonstrates the RPL equivalent of community + prepend in one compact policy
-- Conditional advertisement on R1 surfaces a backup prefix only when R3's aggregate withdraws
-
-```
-        AS 65200
-           R4
-          / \
-    L4  /   \ L3
-       /     \
-      R1-----R3      AS 65100
-       \     /
-    L1  \   / L2
-         R2
-        /  \
-      L6    L7
-      XR1--XR2
-         L8
-```
+| Skill | Description |
+|-------|-------------|
+| BGP prefix-list inbound filter | Verify FILTER_R4_IN at R1 blocks 172.20.5.0/24 |
+| BGP aggregate origination | `aggregate-address` with and without `summary-only`; null-route anchor |
+| LOCAL_PREF steering | Inbound route-map at R3 elevates 172.20.4.0/24 LOCAL_PREF to 200 AS-wide |
+| AS-path prepend | Outbound route-map at R1 lengthens AS-path for 172.16.1.0/24 toward R4 |
+| MED manipulation | Outbound route-maps at R1 (MED 100) and R3 (MED 50) for 172.16.0.0/16 |
+| IOS-XR RPL community + prepend | Single policy combining two `set` operations on XR1 |
+| Conditional advertisement | Backup prefix surfaces only when primary aggregate is withdrawn |
+| BGP troubleshooting | Diagnose policy misapplication using `show route-map`, `show ip bgp`, soft resets |
 
 ---
 
-## Section 3 — Inventory
+## 2. Topology & Scenario
 
-### 3.1 Device Table
+**Scenario:** SP-CORE's AS 65100 (R1, R2, R3, XR1, XR2) dual-homes to customer AS 65200 (R4)
+via two independent eBGP sessions — R1↔R4 on link L4 and R3↔R4 on link L3. The lab-03 IGP
+(OSPF area 0 on R1/R2/R3, IS-IS L2 across the full core) and redistribution policies are
+already running. Lab-04 builds BGP filtering and traffic-steering policy on top:
+
+- R1 filters R4's 172.20.5.0/24 inbound (verify only — already in place from lab-03)
+- Both R1 and R3 originate the 172.16.0.0/16 aggregate; R3 demonstrates `summary-only`
+- R3 sets LOCAL_PREF 200 for 172.20.4.0/24, making every AS 65100 router prefer R3 as exit
+- R1 prepends AS-path 3× for 172.16.1.0/24 outbound, causing R4 to prefer R3 for that prefix
+- R1 (MED 100) and R3 (MED 50) signal R4 to prefer R3 for the 172.16.0.0/16 aggregate
+- XR1 demonstrates the RPL equivalent: community + prepend in one compact policy
+- R1 conditionally advertises 172.16.100.0/24 to R4 only when R3's aggregate is absent
+
+```
+                         ┌──────────────────────┐
+                         │         R4           │
+                         │    AS 65200          │
+                         │  Lo0: 10.0.0.4/32    │
+                         │  Lo1: 172.20.4.1/24  │
+                         │  Lo2: 172.20.5.1/24  │
+                         └────┬──────────┬──────┘
+                              │          │
+              L4 10.1.14.0/24 │          │ L3 10.1.34.0/24
+              eBGP R1↔R4      │          │ eBGP R3↔R4
+                              │          │
+          ┌───────────────────┘          └───────────────────┐
+          │                                                   │
+┌─────────┴──────────────┐                   ┌───────────────┴─────────┐
+│           R1            │                   │            R3           │
+│   AS 65100 eBGP edge    │                   │    AS 65100 eBGP edge   │
+│   Lo0: 10.0.0.1/32      │                   │    Lo0: 10.0.0.3/32     │
+│   Lo1: 172.16.1.1/24    │                   │                         │
+└────┬────────────────────┘                   └───────┬────────────┬────┘
+     │  L1 10.1.12.0/24    L5 10.1.13.0/24            │            │
+     │  R1-R2              R1-R3 diagonal              │ L2         │ L7
+     │                     ┌───────────────────────────┘ 10.1.23   │ 10.1.36
+     │                     │                                        │ R3-XR2
+┌────┴────────────────────┴──────┐
+│              R2                │                ┌────────────────┐
+│     AS 65100 OSPF ABR          │                │      XR2       │
+│     IS-IS L1-L2 boundary       │                │  IOS-XRv 9000  │
+│     Lo0: 10.0.0.2/32           │                │  Lo0: 10.0.0.6 │
+└────────────────┬───────────────┘                └───────┬────────┘
+                 │ L6 10.1.25.0/24 R2-XR1                 │
+                 │                                L8 10.1.56.0/24
+          ┌──────┴──────────┐                     XR1-XR2 │
+          │      XR1        ├─────────────────────────────┘
+          │  IOS-XRv 9000   │
+          │  Lo0: 10.0.0.5  │
+          │  Lo1: 172.16.11.1/24
+          └─────────────────┘
+```
+
+---
+
+## 3. Hardware & Environment Specifications
+
+### Device Inventory
 
 | Device | Role | Platform | AS |
 |--------|------|----------|----|
 | R1 | SP core / eBGP edge to R4 | IOSv | 65100 |
-| R2 | SP core / OSPF ABR / IS-IS L1-L2 | IOSv | 65100 |
+| R2 | SP core / OSPF ABR / IS-IS L1-L2 boundary | IOSv | 65100 |
 | R3 | SP core / eBGP edge to R4 | IOSv | 65100 |
-| R4 | External AS edge | IOSv | 65200 |
-| XR1 | IOS-XR RPL node / IS-IS L1-2 | XRv9k | 65100 |
-| XR2 | IOS-XR RPL node / IS-IS L2 | XRv9k | 65100 |
+| R4 | External AS edge / dual-homed CE | IOSv | 65200 |
+| XR1 | IOS-XR RPL node / IS-IS L1-2 | IOS-XRv 9000 | 65100 |
+| XR2 | IOS-XR RPL node / IS-IS L2 | IOS-XRv 9000 | 65100 |
 
-### 3.2 Loopback Table
+### Loopback Address Table
 
-| Device | Loopback0 | Loopback1 | Purpose |
-|--------|-----------|-----------|---------|
-| R1 | 10.0.0.1/32 | 172.16.1.1/24 | BGP network statement prefix |
-| R2 | 10.0.0.2/32 | 10.2.1.2/24 | OSPF area-1 ABR demo (lab-03) |
-| R3 | 10.0.0.3/32 | — | |
-| R4 | 10.0.0.4/32 | 172.20.4.1/24 | External prefix 1 (accepted inbound) |
-| R4 | | 172.20.5.1/24 (Lo2) | External prefix 2 (filtered at R1) |
-| XR1 | 10.0.0.5/32 | 172.16.11.1/24 | RPL match demo prefix |
-| XR2 | 10.0.0.6/32 | — | |
+| Device | Interface | Address | Purpose |
+|--------|-----------|---------|---------|
+| R1 | Loopback0 | 10.0.0.1/32 | BGP router-id / iBGP source |
+| R1 | Loopback1 | 172.16.1.1/24 | BGP `network` statement; AS-path prepend target |
+| R2 | Loopback0 | 10.0.0.2/32 | BGP router-id |
+| R2 | Loopback1 | 10.2.1.2/24 | OSPF area 1 ABR demo (lab-03) |
+| R3 | Loopback0 | 10.0.0.3/32 | BGP router-id |
+| R4 | Loopback0 | 10.0.0.4/32 | BGP router-id |
+| R4 | Loopback1 | 172.20.4.1/24 | External prefix 1 — accepted inbound at R1 |
+| R4 | Loopback2 | 172.20.5.1/24 | External prefix 2 — filtered inbound at R1 |
+| XR1 | Loopback0 | 10.0.0.5/32 | BGP router-id |
+| XR1 | Loopback1 | 172.16.11.1/24 | RPL community + prepend demo prefix |
+| XR2 | Loopback0 | 10.0.0.6/32 | BGP router-id |
 
-### 3.3 Cabling Table
+### Cabling Table
 
-| Link | Source | Target | Subnet | Purpose |
-|------|--------|--------|--------|---------|
+| Link | Interface A | Interface B | Subnet | Purpose |
+|------|-------------|-------------|--------|---------|
 | L1 | R1 Gi0/0 | R2 Gi0/0 | 10.1.12.0/24 | Core (OSPF/IS-IS) |
 | L2 | R2 Gi0/1 | R3 Gi0/0 | 10.1.23.0/24 | Core (OSPF/IS-IS) |
 | L3 | R3 Gi0/1 | R4 Gi0/0 | 10.1.34.0/24 | eBGP R3↔R4 |
 | L4 | R1 Gi0/1 | R4 Gi0/1 | 10.1.14.0/24 | eBGP R1↔R4 |
 | L5 | R1 Gi0/2 | R3 Gi0/2 | 10.1.13.0/24 | Core diagonal (OSPF/IS-IS) |
-| L6 | R2 Gi0/2 | XR1 Gi0/0/0/0 | 10.1.25.0/24 | IS-IS L1 (lab-03) |
-| L7 | R3 Gi0/3 | XR2 Gi0/0/0/0 | 10.1.36.0/24 | IS-IS L2 |
+| L6 | R2 Gi0/2 | XR1 Gi0/0/0/0 | 10.1.25.0/24 | IS-IS L1 (R2-XR1) |
+| L7 | R3 Gi0/3 | XR2 Gi0/0/0/0 | 10.1.36.0/24 | IS-IS L2 (R3-XR2) |
 | L8 | XR1 Gi0/0/0/1 | XR2 Gi0/0/0/1 | 10.1.56.0/24 | XR backbone (IS-IS L2) |
 
-### 3.4 BGP Prefixes in Play
+### BGP Prefixes in Play
 
-| Prefix | Origin | Advertised by | Lab-04 Treatment |
-|--------|--------|---------------|-----------------|
-| 172.16.1.0/24 | AS 65100 | R1 | AS-path prepend 3× outbound to R4 (Task 4) |
-| 172.16.11.0/24 | AS 65100 | XR1 | RPL community + prepend demo (Task 6) |
-| 172.16.0.0/16 | AS 65100 | R1, R3 | Aggregate; MED 100 at R1, MED 50 at R3 (Task 5) |
-| 172.16.100.0/24 | AS 65100 | R1 | Backup conditional advertisement (Task 7) |
-| 172.20.4.0/24 | AS 65200 | R4 | Accepted; LOCAL_PREF 200 at R3 (Task 3) |
-| 172.20.5.0/24 | AS 65200 | R4 | Filtered inbound at R1 (Task 1) |
+| Prefix | Origin AS | Advertised by | Lab-04 Treatment |
+|--------|-----------|---------------|-----------------|
+| 172.16.1.0/24 | 65100 | R1 | AS-path prepend 3× outbound to R4 (Task 4) |
+| 172.16.11.0/24 | 65100 | XR1 | RPL community 65100:300 + prepend 3× (Task 6) |
+| 172.16.0.0/16 | 65100 | R1, R3 | Aggregate; MED 100 at R1, MED 50 at R3 (Task 5) |
+| 172.16.100.0/24 | 65100 | R1 | Conditional backup advertisement (Task 7) |
+| 172.20.4.0/24 | 65200 | R4 | Accepted; LOCAL_PREF 200 at R3 (Task 3) |
+| 172.20.5.0/24 | 65200 | R4 | Filtered inbound at R1 (Task 1 — verify only) |
+
+### Console Access
+
+| Device | EVE-NG Node Name | Telnet Port |
+|--------|------------------|-------------|
+| R1 | R1 | auto-discovered by setup_lab.py |
+| R2 | R2 | auto-discovered by setup_lab.py |
+| R3 | R3 | auto-discovered by setup_lab.py |
+| R4 | R4 | auto-discovered by setup_lab.py |
+| XR1 | XR1 | auto-discovered by setup_lab.py |
+| XR2 | XR2 | auto-discovered by setup_lab.py |
 
 ---
 
-## Section 4 — Pre-lab State
+## 4. Base Configuration
 
 ### IS (pre-loaded from lab-03 solutions)
 
-- OSPF area 0 running on R1/R2/R3; IS-IS L2 across all SP core routers
-- Redistribution between OSPF and IS-IS with tag-based loop prevention
-- R2: IS-IS L1-L2 boundary with XR1; selective L1→L2 leak; OSPF distribute-list and ABR
-  filter-list in place
-- iBGP full mesh in AS 65100; eBGP sessions R1↔R4 and R3↔R4 established
-- R1: FILTER_R4_IN denies 172.20.5.0/24 and accepts 172.20.4.0/24 with community/LOCAL_PREF
-- R3: FILTER_R4_ASPATH accepts only AS 65200 originated routes inbound
+- OSPFv2 area 0 on R1, R2, R3 (core links L1, L2, L5)
+- IS-IS Level-2 across all SP core routers; IS-IS Level-1 on R2↔XR1 (L6)
+- Redistribution between OSPF and IS-IS on R2 and R3, tag-based loop prevention
+- OSPF ABR filter-list and distribute-list on R2 (area 1 prefix isolation)
+- iBGP full mesh in AS 65100 (R1, R2, R3, XR1, XR2) using Loopback0 as source
+- eBGP sessions: R1↔R4 (10.1.14.0/24) and R3↔R4 (10.1.34.0/24)
+- R1: `FILTER_R4_IN` route-map applied inbound on R4 neighbor — denies 172.20.5.0/24,
+  permits 172.20.4.0/24 with community 65100:100 and LOCAL_PREF 150
+- R3: `FILTER_R4_ASPATH` route-map applied inbound on R4 neighbor — accepts only
+  routes originated in AS 65200 (`_65200$` regex), denies all others
+- XR1: `SET_LOCAL_PREF_BY_COMMUNITY` route-policy applied inbound on IBGP neighbor-group —
+  matches community 65100:200 and sets local-preference 120
 
-### IS NOT (not yet configured)
+### IS NOT (not yet configured — your tasks)
 
-- No aggregate-address on R1 or R3
+- No `aggregate-address` on R1 or R3
 - No outbound route-maps on R1 or R3 toward R4
-- No LOCAL_PREF 200 for 172.20.4.0/24 at R3
+- No `STEER_R4_IN` on R3 (LOCAL_PREF 200 for 172.20.4.0/24)
 - No AS-path prepend on R1's advertisement to R4
-- No MED on either eBGP session
-- No SET_COMMUNITY_AND_PREPEND policy on XR1
+- No MED set on either eBGP outbound session
+- No `SET_COMMUNITY_AND_PREPEND` policy on XR1
 - No conditional advertisement on R1
 
 ---
 
-## Section 5 — Lab Challenge
+## 5. Lab Challenge: Core Implementation
 
-### Task 1 — Verify Inbound Prefix-List Filtering at R1 (already in place)
+### Task 1 — Verify Inbound Prefix-List Filtering at R1
 
-The initial-config for this lab (lab-03 solutions) already has FILTER_R4_IN on R1 denying
-172.20.5.0/24 inbound from R4. Verify the filter is operational before proceeding.
+The lab-03 initial config already has `FILTER_R4_IN` applied inbound on R1's R4 neighbor.
+Before building anything new, verify the filter is operating correctly.
 
-Confirm that R1 accepts 172.20.4.0/24 but has no entry for 172.20.5.0/24. Confirm R3
-accepts both 172.20.4.0/24 and 172.20.5.0/24. This baseline asymmetry is intentional.
+Enable soft-reconfiguration inbound on R1's R4 neighbor so you can compare received-routes
+vs. accepted-routes. Confirm that R1 accepts 172.20.4.0/24 but has no entry for
+172.20.5.0/24. Confirm R3 accepts both prefixes (R3's inbound filter only checks AS-path, not
+prefix-list). This baseline asymmetry is intentional.
 
-### Task 2 — Originate 172.16.0.0/16 Aggregate
+---
 
-On both R1 and R3, install a null-route for 172.16.0.0/16 and configure BGP to originate
-the 172.16.0.0/16 aggregate. Use `summary-only` on R3 first to demonstrate complete
-more-specific suppression, then verify at R4. After verification, remove `summary-only` from
-R3 so that specific prefixes remain advertised (required for Tasks 4 and 5 to function).
+### Task 2 — Originate 172.16.0.0/16 Aggregate on R1 and R3
 
-The null route (`ip route 172.16.0.0 255.255.0.0 Null0`) is required: IOS will not
-originate the aggregate unless at least one covered prefix is in the routing table.
+On both R1 and R3, install a null-route for 172.16.0.0/16 (required anchor) and configure
+BGP to originate the aggregate.
+
+Use `summary-only` on R3 first to demonstrate complete more-specific suppression — verify at
+R4 that only 172.16.0.0/16 appears from R3 while R1 still sends both the aggregate and
+172.16.1.0/24. After verification, remove `summary-only` from R3 so specific prefixes remain
+in the table (required for Tasks 4 and 5 to produce observable results).
+
+---
 
 ### Task 3 — Set LOCAL_PREF 200 for 172.20.4.0/24 at R3
 
-On R3, replace FILTER_R4_ASPATH with a new inbound route-map `STEER_R4_IN` that:
-1. Matches 172.20.4.0/24 exactly (prefix-list) and sets LOCAL_PREF 200 plus community
-   65100:200
-2. Matches remaining AS 65200 originated routes (as-path ACL 1) and sets community 65100:200
-3. Denies everything else (explicit deny at the end)
+Replace R3's `FILTER_R4_ASPATH` with a new inbound route-map `STEER_R4_IN` that:
+1. Matches 172.20.4.0/24 exactly (via prefix-list `PFX_PREFER_172_20_4`) and sets
+   LOCAL_PREF 200 plus community 65100:200
+2. Matches remaining AS 65200 originated routes (as-path ACL 1, `_65200$`) and sets
+   community 65100:200
+3. Denies everything else (explicit deny sequence at the end)
 
-After applying, verify that R1, R2, XR1, and XR2 all select R3 as the exit for 172.20.4.0/24
-by checking that the best-path next-hop resolves to R3's Loopback0 (10.0.0.3).
+Apply `STEER_R4_IN` inbound on R3's R4 neighbor. After a soft-reset, verify at R1, R2, XR1,
+and XR2 that the best path to 172.20.4.0/24 resolves via R3 (next-hop 10.0.0.3).
+
+---
 
 ### Task 4 — AS-Path Prepend 3× Outbound on R1
 
-On R1, create outbound route-map `R1_TO_R4_OUT` and apply it to the neighbor 10.1.14.4
-session. The route-map should match 172.16.1.0/24 exactly and prepend AS 65100 three times.
-Permit all other prefixes unchanged.
+Create outbound route-map `R1_TO_R4_OUT` on R1 with two sequences:
+- Seq 10: match prefix-list `PFX_16_1_EXACT` (172.16.1.0/24 exact) → set as-path prepend
+  `65100 65100 65100`
+- Seq 30: permit all other prefixes unchanged
 
-After applying, verify at R4: `show ip bgp 172.16.1.0` should show two paths —
-the R3 path with AS-path `65100` (length 1) and the R1 path with AS-path `65100 65100 65100 65100`
-(length 4). The R3 path should be best.
+Apply `R1_TO_R4_OUT` outbound on R1's R4 neighbor (10.1.14.4). After a soft-reset, verify at
+R4 that the R3 path to 172.16.1.0/24 has AS-path `65100` (length 1) and is best, while R1's
+path shows `65100 65100 65100 65100` (length 4) and is not best.
 
-### Task 5 — MED Manipulation
+---
 
-Extend `R1_TO_R4_OUT` on R1 to also match 172.16.0.0/16 (the aggregate) and set metric 100.
-On R3, create outbound route-map `R3_TO_R4_OUT` and apply it to the neighbor 10.1.34.4
-session. Match 172.16.0.0/16 and set metric 50.
+### Task 5 — MED Manipulation for the Aggregate
 
-Verify at R4: `show ip bgp 172.16.0.0/16` should show two paths — R3 with MED 50 marked
-as best, R1 with MED 100. MED comparison is valid here because both paths come from the
-same neighbor AS (65100).
+Extend `R1_TO_R4_OUT` on R1 with a new sequence:
+- Seq 20: match prefix-list `PFX_16_0_AGGREGATE` (172.16.0.0/16 exact) → set metric 100
 
-### Task 6 — RPL Equivalent on XR1
+On R3, create outbound route-map `R3_TO_R4_OUT` with two sequences:
+- Seq 10: match `PFX_16_0_AGGREGATE` → set metric 50
+- Seq 20: permit all other prefixes unchanged
 
-On XR1, create route-policy `SET_COMMUNITY_AND_PREPEND`. The policy should:
-- Match prefixes in `P_XR1_ORIGINATE` (172.16.11.0/24)
-- Set community (65100:300) additive
-- Prepend AS 65100 three times
-- Pass everything else unchanged
+Apply `R3_TO_R4_OUT` outbound on R3's R4 neighbor (10.1.34.4). After soft-resets on both
+sides, verify at R4 that 172.16.0.0/16 shows R3 path (MED 50) as best and R1 path (MED 100).
 
-Apply it as the outbound policy on the IBGP neighbor-group (replacing PASS). Verify on
-R2 that 172.16.11.0/24 arrives with community 65100:300 and AS-path `65100 65100 65100 65100`.
-Compare the RPL policy syntax to R1's R1_TO_R4_OUT route-map — same outcome, different
-structure.
+---
+
+### Task 6 — RPL Community + Prepend on XR1
+
+On XR1, define a prefix-set `P_XR1_ORIGINATE` containing 172.16.11.0/24. Create
+`route-policy SET_COMMUNITY_AND_PREPEND` that:
+- Matches `P_XR1_ORIGINATE` → sets community (65100:300) additive and prepends AS 65100 three times
+- Passes everything else unchanged
+
+Replace the existing `PASS` outbound policy on XR1's IBGP neighbor-group with
+`SET_COMMUNITY_AND_PREPEND`. Verify on R2 that 172.16.11.0/24 arrives with community
+65100:300 and AS-path `65100 65100 65100 65100`.
+
+---
 
 ### Task 7 — Conditional Advertisement on R1
 
-On R1, add `network 172.16.100.0 mask 255.255.255.0` and install `ip route 172.16.100.0
-255.255.255.0 Null0` so the prefix is BGP-reachable. Then configure conditional advertisement
-on the R4 neighbor:
+Install a null-route `ip route 172.16.100.0 255.255.255.0 Null0` and add
+`network 172.16.100.0 mask 255.255.255.0` on R1 so the prefix is BGP-reachable. Then
+configure conditional advertisement on R1's R4 neighbor:
 
 - `advertise-map BACKUP_ADV` matches 172.16.100.0/24
-- `non-exist-map TRACK_PRIMARY` matches 172.16.0.0/16 (the primary aggregate)
+- `non-exist-map TRACK_PRIMARY` matches 172.16.0.0/16 (R3's aggregate is the tracked prefix)
 
-Verify that 172.16.100.0/24 is suppressed at R4 while R3's aggregate is present. Then
-simulate R3 failure (shut down R3's eBGP session or remove the aggregate) and verify that
-172.16.100.0/24 now appears at R4 from R1.
-
-### Task 8 — Troubleshooting Scenario
-
-Inject fault scenario 3 (`python3 scripts/fault-injection/inject_scenario_03.py --host <eve-ng-ip>`).
-Diagnose and repair the faults without looking at the solution configs. The fault targets
-BGP policy behavior — use `show ip bgp`, `show route-map`, `debug ip bgp <neighbor> updates`
-to trace the anomaly.
+Verify that 172.16.100.0/24 is absent at R4 while R3's aggregate exists in R1's BGP table.
+Then remove R3's aggregate temporarily and confirm 172.16.100.0/24 appears at R4 from R1.
+Restore R3's aggregate after verification.
 
 ---
 
-## Section 6 — Verification
+### Task 8 — Troubleshooting: BGP Policy Faults
+
+Run any one of the three fault scenarios and diagnose the anomaly without reading the solution.
+The faults all target BGP policy behavior:
+
+```
+python3 scripts/fault-injection/inject_scenario_01.py --host <eve-ng-ip>
+python3 scripts/fault-injection/inject_scenario_02.py --host <eve-ng-ip>
+python3 scripts/fault-injection/inject_scenario_03.py --host <eve-ng-ip>
+```
+
+Primary tools: `show ip bgp <prefix>`, `show route-map <name>`, `show ip bgp neighbors <x>
+routes`, `show ip bgp neighbors <x> advertised-routes`, `debug ip bgp <neighbor> updates`.
+
+Restore with: `python3 scripts/fault-injection/apply_solution.py --host <eve-ng-ip>`
+
+---
+
+## 6. Verification & Analysis
+
+### Task 1 — Inbound Filter at R1
 
 ```ios
-! ── Task 1 — Inbound filter on R1 ──
-! R1 must not have 172.20.5.0/24 in BGP table
-show ip bgp
-! Expected: no entry for 172.20.5.0/24
-
+! On R1: enable soft-reconfiguration to see pre-filter received routes
 show ip bgp neighbors 10.1.14.4 received-routes
-! Expected: both 172.20.4.0/24 and 172.20.5.0/24 shown (soft-reconfiguration must be enabled)
+! ← Both 172.20.4.0/24 and 172.20.5.0/24 appear here (R4 sends both)
 
 show ip bgp neighbors 10.1.14.4 routes
-! Expected: only 172.20.4.0/24 passes the inbound filter
+! ← Only 172.20.4.0/24 appears here (post-inbound-filter)
 
-! ── Task 2 — Aggregate ──
-! At R4: both aggregate and specifics should appear after removing summary-only
 show ip bgp
-! Expected: 172.16.0.0/16 with atomic-aggregate attribute; 172.16.1.0/24 visible too
+! ← No entry for 172.20.5.0/24 — FILTER_R4_IN deny is effective
 
-! ── Task 3 — LOCAL_PREF 200 at R3 ──
-! At R1: best path to 172.20.4.0/24 should have LOCAL_PREF 200 via R3
+! On R3: both prefixes accepted (FILTER_R4_ASPATH matches on AS-path, not prefix)
+show ip bgp neighbors 10.1.34.4 routes
+! ← Both 172.20.4.0/24 and 172.20.5.0/24 present
+```
+
+### Task 2 — Aggregate at R4
+
+```ios
+! At R4 (while R3 summary-only is active):
+show ip bgp
+! ← From R3: only 172.16.0.0/16 visible (more-specifics suppressed)
+! ← From R1: 172.16.0.0/16 AND 172.16.1.0/24 both visible
+
+show ip bgp 172.16.0.0
+! ← atomic-aggregate and aggregator attributes visible on R3's advertisement
+! ← R1's aggregate does not carry atomic-aggregate (no summary-only)
+
+! After removing summary-only from R3:
+show ip bgp
+! ← Both aggregate and 172.16.1.0/24 now visible from both R1 and R3
+```
+
+### Task 3 — LOCAL_PREF 200 at R1 and R2
+
+```ios
+! At R1:
 show ip bgp 172.20.4.0
-! Expected: * i 172.20.4.0/24  10.0.0.3  ... 200  ...  65200  (best)
-!           *                  10.0.0.1  ... 150  ...  65200
+! ←  *>i 172.20.4.0/24  10.0.0.3     ...  200  0  65200 i   (best — via R3, LP 200)
+! ←  * i                10.0.0.1     ...  150  0  65200 i   (not best — R1's own, LP 150)
 
-! At XR1: verify RPL community-based LOCAL_PREF elevates R3 path
+! At XR1 (iBGP propagated; community 65100:200 triggers SET_LOCAL_PREF_BY_COMMUNITY):
 show bgp ipv4 unicast 172.20.4.0/24
-! Expected: best path via 10.0.0.3 with local preference 200 (community 65100:200 → LP 120
-!   from RPL SET_LOCAL_PREF_BY_COMMUNITY; note: 200 at R3 is set on R3 and propagated via iBGP)
+! ← best path via 10.0.0.3; local preference 120 (set by XR1's RPL on community 65100:200)
+! ← R1's path has local preference 150 but XR1's RPL re-maps it — R3 still wins at 120 vs default
+```
 
-! ── Task 4 — AS-path prepend at R4 ──
-! At R4: R1 path has 4-element AS-path, R3 path has 1-element AS-path
+### Task 4 — AS-Path Prepend at R4
+
+```ios
+! At R4:
 show ip bgp 172.16.1.0
-! Expected: * 172.16.1.0/24  10.1.34.3  ...  65100  (best, 1 AS)
-!           *                10.1.14.1  ...  65100 65100 65100 65100  (not best)
+! ←  *>  172.16.1.0/24  10.1.34.3  ...  65100             (best — R3, AS-path length 1)
+! ←  *   172.16.1.0/24  10.1.14.1  ...  65100 65100 65100 65100  (R1, AS-path length 4)
 
-! ── Task 5 — MED comparison at R4 ──
-show ip bgp 172.16.0.0/16
-! Expected: R3 path MED=50 (best); R1 path MED=100
+show ip bgp neighbors 10.1.14.1 routes
+! ← R1's advertisement shows extended AS-path in Path column
+```
 
-! ── Task 6 — RPL community+prepend at R2 ──
+### Task 5 — MED at R4
+
+```ios
+! At R4:
+show ip bgp 172.16.0.0
+! ←  *>  172.16.0.0/16  10.1.34.3   0  50  65100   (best — R3, MED 50)
+! ←  *   172.16.0.0/16  10.1.14.1   0 100  65100   (R1, MED 100)
+! ← MED comparison valid because both paths come from AS 65100 (same neighbor AS)
+```
+
+### Task 6 — RPL on R2
+
+```ios
+! At R2 (iBGP peer of XR1):
 show ip bgp 172.16.11.0
-! Expected: community 65100:300; AS-path 65100 65100 65100 65100
+! ← community: 65100:300 visible
+! ← AS-path: 65100 65100 65100 65100  (prepend 3× → total 4 AS hops)
 
-! ── Task 7 — Conditional advertisement ──
-! While R3 is up: 172.16.100.0/24 absent from R4
-show ip bgp 172.16.100.0
-! Expected: network not in table
+! On XR1 — confirm policy is active:
+show rpl route-policy SET_COMMUNITY_AND_PREPEND
+show bgp neighbors 10.0.0.2 advertised-routes
+! ← 172.16.11.0/24 should appear with the community and extended AS-path
+```
 
-! After R3 aggregate withdrawn: 172.16.100.0/24 appears at R4 from R1
+### Task 7 — Conditional Advertisement
+
+```ios
+! At R4 (while R3's aggregate is present in R1's BGP table):
 show ip bgp 172.16.100.0
-! Expected: 172.16.100.0/24  10.1.14.1  ...  65100
+! ← Network not in table — BACKUP_ADV is suppressed
+
+! After removing R3's aggregate (no aggregate-address on R3):
+! Wait 60 seconds for conditional-advertisement scanner (default 60 s interval)
+show ip bgp 172.16.100.0
+! ← 172.16.100.0/24  10.1.14.1  ...  65100  (backup now advertised from R1)
+
+! Restore R3's aggregate — 172.16.100.0/24 should withdraw from R4 again
 ```
 
 ---
 
-## Section 7 — Cheatsheet
+## 7. Verification Cheatsheet
 
-### 7.1 IOS BGP Filtering
+### Key Configuration Skeleton
 
 ```ios
-! Inbound prefix-list filter
-ip prefix-list PL_DENY_LO2 seq 5 deny 172.20.5.0/24
-ip prefix-list PL_DENY_LO2 seq 10 permit 0.0.0.0/0 le 32
-route-map RM_IN deny 10
- match ip address prefix-list PL_DENY_LO2
-route-map RM_IN permit 20
-neighbor 10.x.x.x route-map RM_IN in
+! ─── R1 ───────────────────────────────────────────────────
+ip prefix-list PFX_16_1_EXACT seq 5 permit 172.16.1.0/24
+ip prefix-list PFX_16_0_AGGREGATE seq 5 permit 172.16.0.0/16
+ip prefix-list PFX_BACKUP_COND seq 5 permit 172.16.100.0/24
+ip prefix-list PFX_TRACK_AGGREGATE seq 5 permit 172.16.0.0/16
 
-! Aggregate with null route anchor
 ip route 172.16.0.0 255.255.0.0 Null0
+ip route 172.16.100.0 255.255.255.0 Null0
+
+route-map R1_TO_R4_OUT permit 10
+ match ip address prefix-list PFX_16_1_EXACT
+ set as-path prepend 65100 65100 65100
+route-map R1_TO_R4_OUT permit 20
+ match ip address prefix-list PFX_16_0_AGGREGATE
+ set metric 100
+route-map R1_TO_R4_OUT permit 30
+
+route-map BACKUP_ADV permit 10
+ match ip address prefix-list PFX_BACKUP_COND
+route-map TRACK_PRIMARY permit 10
+ match ip address prefix-list PFX_TRACK_AGGREGATE
+
 router bgp 65100
  address-family ipv4
-  aggregate-address 172.16.0.0 255.255.0.0 summary-only
-```
+  aggregate-address 172.16.0.0 255.255.0.0
+  network 172.16.100.0 mask 255.255.255.0
+  neighbor 10.1.14.4 route-map R1_TO_R4_OUT out
+  neighbor 10.1.14.4 advertise-map BACKUP_ADV non-exist-map TRACK_PRIMARY
 
-### 7.2 Traffic Steering
+! ─── R3 ───────────────────────────────────────────────────
+ip prefix-list PFX_PREFER_172_20_4 seq 5 permit 172.20.4.0/24
+ip prefix-list PFX_16_0_AGGREGATE seq 5 permit 172.16.0.0/16
+ip as-path access-list 1 permit _65200$
 
-```ios
-! LOCAL_PREF — inbound from eBGP peer
-route-map STEER_IN permit 10
- match ip address prefix-list PL_PREFER
+ip route 172.16.0.0 255.255.0.0 Null0
+
+route-map STEER_R4_IN permit 10
+ match ip address prefix-list PFX_PREFER_172_20_4
  set local-preference 200
-neighbor 10.x.x.x route-map STEER_IN in
+ set community 65100:200
+route-map STEER_R4_IN permit 20
+ match as-path 1
+ set community 65100:200
+route-map STEER_R4_IN deny 30
 
-! AS-path prepend — outbound to eBGP peer
-route-map PREPEND_OUT permit 10
- match ip address prefix-list PL_SPECIFIC
- set as-path prepend 65100 65100 65100
-
-! MED — outbound to eBGP peer
-route-map MED_OUT permit 10
- match ip address prefix-list PL_AGGREGATE
+route-map R3_TO_R4_OUT permit 10
+ match ip address prefix-list PFX_16_0_AGGREGATE
  set metric 50
+route-map R3_TO_R4_OUT permit 20
 
-! Conditional advertisement
-neighbor 10.x.x.x advertise-map BACKUP_ADV non-exist-map TRACK_PRIMARY
-```
+router bgp 65100
+ address-family ipv4
+  aggregate-address 172.16.0.0 255.255.0.0
+  no neighbor 10.1.34.4 route-map FILTER_R4_ASPATH in
+  neighbor 10.1.34.4 route-map STEER_R4_IN in
+  neighbor 10.1.34.4 route-map R3_TO_R4_OUT out
 
-### 7.3 XR RPL Community + Prepend
-
-```xr
-prefix-set P_ORIGINATE
+! ─── XR1 ──────────────────────────────────────────────────
+prefix-set P_XR1_ORIGINATE
   172.16.11.0/24
 end-set
 route-policy SET_COMMUNITY_AND_PREPEND
-  if destination in P_ORIGINATE then
+  if destination in P_XR1_ORIGINATE then
     set community (65100:300) additive
     set as-path prepend 65100 65100 65100
   endif
   pass
 end-policy
+router bgp 65100
+ neighbor-group IBGP
+  address-family ipv4 unicast
+   route-policy SET_COMMUNITY_AND_PREPEND out
 ```
 
-### 7.4 Diagnostic Commands
+### Diagnostic Command Reference
 
-```
-! IOS
-show ip bgp                            — full BGP table
-show ip bgp <prefix>                   — detailed path info (LOCAL_PREF, MED, AS-path)
-show ip bgp neighbors <x> routes      — accepted routes (post-filter)
-show ip bgp neighbors <x> advertised-routes  — what we send
-show route-map <name>                  — policy hit counts
-debug ip bgp <neighbor> updates       — UPDATE trace
+| Command | Router | What to look for |
+|---------|--------|-----------------|
+| `show ip bgp neighbors 10.1.14.4 received-routes` | R1 | Pre-filter: both 172.20.4 and 172.20.5 present |
+| `show ip bgp neighbors 10.1.14.4 routes` | R1 | Post-filter: only 172.20.4 |
+| `show ip bgp 172.20.4.0` | R1, R2, XR1 | LOCAL_PREF 200 on R3 path (via 10.0.0.3) |
+| `show ip bgp 172.16.1.0` | R4 | R3 path: `65100` (best); R1 path: `65100 65100 65100 65100` |
+| `show ip bgp 172.16.0.0` | R4 | R3 path: MED 50 (best); R1 path: MED 100 |
+| `show ip bgp 172.16.11.0` | R2 | community 65100:300; AS-path length 4 |
+| `show ip bgp 172.16.100.0` | R4 | absent (primary up) / present (primary withdrawn) |
+| `show route-map <name>` | R1, R3 | Hit count on each sequence — zero means no match |
+| `show ip bgp neighbors <x> advertised-routes` | R1, R3 | Confirm outbound policy applied before sending |
+| `show rpl route-policy SET_COMMUNITY_AND_PREPEND` | XR1 | Policy body content |
+| `debug ip bgp <neighbor> updates` | R1, R3 | UPDATE trace — see set attributes in outbound |
 
-! XR
-show bgp ipv4 unicast                  — BGP table
-show bgp ipv4 unicast <prefix>        — path detail
-show rpl route-policy <name>          — RPL policy content
-show bgp neighbors <x> advertised-routes
-```
+### Common Failure Causes
+
+| Symptom | Likely cause | Fix |
+|---------|-------------|-----|
+| 172.20.5.0/24 visible at R1 | FILTER_R4_IN not applied or wrong direction | Verify `neighbor 10.1.14.4 route-map FILTER_R4_IN in` |
+| Aggregate not advertised | No null-route anchor | Add `ip route 172.16.0.0 255.255.0.0 Null0` |
+| LOCAL_PREF 200 not propagated AS-wide | STEER_R4_IN not applied inbound (applied outbound by mistake) | Check direction: `show ip bgp neighbors 10.1.34.4 policy` |
+| AS-path prepend not visible at R4 | `set as-path prepend` in wrong direction (inbound instead of outbound) | `R1_TO_R4_OUT` must be applied `out` on neighbor 10.1.14.4 |
+| MED 50 not set at R4 for R3 path | `R3_TO_R4_OUT` applied on iBGP neighbor instead of eBGP 10.1.34.4 | Re-apply to correct eBGP neighbor |
+| LOCAL_PREF set outbound to eBGP (common mistake) | Confusing LP (iBGP only) with AS-path prepend (inter-AS) | LP is stripped on eBGP; use `set as-path prepend` for cross-AS influence |
+| Conditional advertisement never triggers | Tracked prefix still in BGP table | Remove R3's aggregate first; wait 60 s for scanner |
+| XR1 RPL implicit drop | Missing `pass` at end of route-policy | All unmatched routes dropped without `pass` |
 
 ---
 
-## Section 8 — Solutions
+## 8. Solutions (Spoiler Alert!)
 
 <details>
-<summary>Task 1 — R1 inbound filter verification</summary>
+<summary>Task 1 — Enable soft-reconfiguration and verify FILTER_R4_IN on R1</summary>
 
-R1's FILTER_R4_IN (from lab-03) already denies 172.20.5.0/24 and permits 172.20.4.0/24.
-Enable soft-reconfiguration to see received routes before filter:
-
-```
+```ios
+! R1
 router bgp 65100
  address-family ipv4
   neighbor 10.1.14.4 soft-reconfiguration inbound
+
+clear ip bgp 10.1.14.4 soft in
+
+show ip bgp neighbors 10.1.14.4 received-routes
+! Both 172.20.4.0/24 and 172.20.5.0/24 appear
+
+show ip bgp neighbors 10.1.14.4 routes
+! Only 172.20.4.0/24 passes FILTER_R4_IN
 ```
 
-Then: `show ip bgp neighbors 10.1.14.4 received-routes` shows both.
-`show ip bgp neighbors 10.1.14.4 routes` shows only 172.20.4.0/24.
+FILTER_R4_IN (from lab-03) structure for reference:
+```ios
+ip prefix-list PL_DENY_172_20_5 seq 5 deny 172.20.5.0/24
+ip prefix-list PL_DENY_172_20_5 seq 10 permit 0.0.0.0/0 le 32
+
+route-map FILTER_R4_IN deny 10
+ match ip address prefix-list PL_DENY_172_20_5
+route-map FILTER_R4_IN permit 20
+ set community 65100:100
+ set local-preference 150
+```
 
 </details>
 
+---
+
 <details>
-<summary>Task 2 — Aggregate on R1 and R3</summary>
+<summary>Task 2 — Aggregate 172.16.0.0/16 on R1 and R3</summary>
 
 **R1:**
-```
+```ios
 ip route 172.16.0.0 255.255.0.0 Null0
+
 router bgp 65100
  address-family ipv4
   aggregate-address 172.16.0.0 255.255.0.0
 ```
 
-**R3:**
-```
+**R3 (transient `summary-only` demo):**
+```ios
 ip route 172.16.0.0 255.255.0.0 Null0
+
 router bgp 65100
  address-family ipv4
-  aggregate-address 172.16.0.0 255.255.0.0 summary-only   ! transient demo
+  aggregate-address 172.16.0.0 255.255.0.0 summary-only
 ```
 
-After verification, remove `summary-only` from R3.
+After verifying that R4 sees only 172.16.0.0/16 from R3, remove `summary-only`:
+```ios
+router bgp 65100
+ address-family ipv4
+  no aggregate-address 172.16.0.0 255.255.0.0 summary-only
+  aggregate-address 172.16.0.0 255.255.0.0
+```
 
 </details>
 
-<details>
-<summary>Task 3 — STEER_R4_IN on R3</summary>
+---
 
-```
+<details>
+<summary>Task 3 — STEER_R4_IN on R3 (LOCAL_PREF 200 for 172.20.4.0/24)</summary>
+
+```ios
+! R3
 ip prefix-list PFX_PREFER_172_20_4 seq 5 permit 172.20.4.0/24
-ip prefix-list PFX_16_0_AGGREGATE seq 5 permit 172.16.0.0/16
 ip as-path access-list 1 permit _65200$
 
 route-map STEER_R4_IN permit 10
@@ -468,14 +672,19 @@ router bgp 65100
  address-family ipv4
   no neighbor 10.1.34.4 route-map FILTER_R4_ASPATH in
   neighbor 10.1.34.4 route-map STEER_R4_IN in
+
+clear ip bgp 10.1.34.4 soft in
 ```
 
 </details>
 
-<details>
-<summary>Task 4 — AS-path prepend on R1</summary>
+---
 
-```
+<details>
+<summary>Task 4 — AS-path prepend 3× on R1 outbound to R4</summary>
+
+```ios
+! R1
 ip prefix-list PFX_16_1_EXACT seq 5 permit 172.16.1.0/24
 
 route-map R1_TO_R4_OUT permit 10
@@ -486,24 +695,32 @@ route-map R1_TO_R4_OUT permit 30
 router bgp 65100
  address-family ipv4
   neighbor 10.1.14.4 route-map R1_TO_R4_OUT out
+
+clear ip bgp 10.1.14.4 soft out
 ```
 
 </details>
 
-<details>
-<summary>Task 5 — MED on R1 and R3</summary>
+---
 
-**R1 — extend R1_TO_R4_OUT:**
-```
+<details>
+<summary>Task 5 — MED 100/50 for 172.16.0.0/16 on R1 and R3</summary>
+
+**R1 — extend R1_TO_R4_OUT with seq 20:**
+```ios
 ip prefix-list PFX_16_0_AGGREGATE seq 5 permit 172.16.0.0/16
 
 route-map R1_TO_R4_OUT permit 20
  match ip address prefix-list PFX_16_0_AGGREGATE
  set metric 100
+
+clear ip bgp 10.1.14.4 soft out
 ```
 
-**R3 — add R3_TO_R4_OUT:**
-```
+**R3 — create R3_TO_R4_OUT:**
+```ios
+ip prefix-list PFX_16_0_AGGREGATE seq 5 permit 172.16.0.0/16
+
 route-map R3_TO_R4_OUT permit 10
  match ip address prefix-list PFX_16_0_AGGREGATE
  set metric 50
@@ -512,17 +729,23 @@ route-map R3_TO_R4_OUT permit 20
 router bgp 65100
  address-family ipv4
   neighbor 10.1.34.4 route-map R3_TO_R4_OUT out
+
+clear ip bgp 10.1.34.4 soft out
 ```
 
 </details>
 
+---
+
 <details>
 <summary>Task 6 — RPL SET_COMMUNITY_AND_PREPEND on XR1</summary>
 
-```
+```xr
+! XR1
 prefix-set P_XR1_ORIGINATE
   172.16.11.0/24
 end-set
+
 route-policy SET_COMMUNITY_AND_PREPEND
   if destination in P_XR1_ORIGINATE then
     set community (65100:300) additive
@@ -535,15 +758,28 @@ router bgp 65100
  neighbor-group IBGP
   address-family ipv4 unicast
    route-policy SET_COMMUNITY_AND_PREPEND out
+  !
+ !
+!
+```
+
+Verify on R2:
+```ios
+show ip bgp 172.16.11.0
+! community 65100:300; AS-path 65100 65100 65100 65100
 ```
 
 </details>
 
+---
+
 <details>
 <summary>Task 7 — Conditional advertisement on R1</summary>
 
-```
+```ios
+! R1
 ip route 172.16.100.0 255.255.255.0 Null0
+
 ip prefix-list PFX_BACKUP_COND seq 5 permit 172.16.100.0/24
 ip prefix-list PFX_TRACK_AGGREGATE seq 5 permit 172.16.0.0/16
 
@@ -558,113 +794,189 @@ router bgp 65100
   neighbor 10.1.14.4 advertise-map BACKUP_ADV non-exist-map TRACK_PRIMARY
 ```
 
-To test: on R3 do `no aggregate-address 172.16.0.0 255.255.0.0` — observe 172.16.100.0/24
-appearing at R4. Restore with `aggregate-address 172.16.0.0 255.255.0.0`.
+**Test:** On R3: `no aggregate-address 172.16.0.0 255.255.0.0` → wait up to 60 seconds
+(conditional advertisement scanner interval) → `show ip bgp 172.16.100.0` at R4 should show
+the prefix from R1.
+
+Restore: `aggregate-address 172.16.0.0 255.255.0.0` on R3.
 
 </details>
 
 ---
 
-## Section 9 — Troubleshooting Tickets
+## 9. Troubleshooting Scenarios
 
-### Ticket 1 — 172.20.4.0/24 Not Preferred via R3
+### Troubleshooting Workflow
 
-**Symptom:** `show ip bgp 172.20.4.0` on R1 shows the R1 path (via 10.1.14.4) as best
-instead of R3 (via 10.0.0.3). Both paths are present but R3 is not winning.
+```
+Anomaly observed (wrong best path / missing prefix / MED not set)
+        │
+        ▼
+show ip bgp <prefix>  ←── Check LOCAL_PREF, MED, AS-path on each path
+        │
+        ├── Attribute missing or wrong value?
+        │         │
+        │         ▼
+        │   show route-map <name>  ←── Hit count = 0 means route-map not matching
+        │         │
+        │         ├── Zero hits → check match clause (prefix-list, direction)
+        │         └── Non-zero hits → check set clause (wrong attribute set)
+        │
+        └── Attribute present but on wrong neighbor?
+                  │
+                  ▼
+            show ip bgp neighbors <x> policy
+            show run | section router bgp  ←── Confirm neighbor + direction
+                  │
+                  └── Reapply to correct neighbor, then:
+                      clear ip bgp <neighbor> soft in/out
+```
+
+---
+
+### Ticket 1 — 172.20.4.0/24 Not Preferred via R3 (LOCAL_PREF Not Elevated)
+
+**Symptom:** `show ip bgp 172.20.4.0` on R1 shows R1's own path (via 10.1.14.4, next-hop
+10.0.0.1) as best instead of R3's path (next-hop 10.0.0.3). Both paths are present but
+neither has LOCAL_PREF 200.
 
 **Inject:** `python3 scripts/fault-injection/inject_scenario_01.py --host <eve-ng-ip>`
 
-**Diagnosis path:**
-1. Check LOCAL_PREF on both paths: `show ip bgp 172.20.4.0` at R1
-2. If LOCAL_PREF is the same (both 150 or both 0), the issue is in STEER_R4_IN on R3
-3. Check: `show route-map STEER_R4_IN` at R3 — look for zero matches on sequence 10
-4. Check: `show ip prefix-list PFX_PREFER_172_20_4` — verify the prefix-list entry
-5. Check: `show ip bgp neighbors 10.1.34.4 routes` at R3 — confirm 172.20.4.0/24 passes inbound filter
-
 <details>
-<summary>Fault and fix</summary>
+<summary>Diagnosis steps</summary>
 
-The fault is `PFX_PREFER_172_20_4` having a wrong prefix (e.g., 172.20.4.0/25 instead of
-172.20.4.0/24). Fix: correct the prefix-list entry, then `clear ip bgp 10.1.34.4 soft in`.
+1. At R1: `show ip bgp 172.20.4.0` — compare LOCAL_PREF on both paths
+2. If neither path has LP 200, the issue is in `STEER_R4_IN` on R3 — seq 10 is not matching
+3. At R3: `show route-map STEER_R4_IN` — check hit count on sequence 10
+4. If seq 10 hit count is 0, `PFX_PREFER_172_20_4` is not matching 172.20.4.0/24
+5. At R3: `show ip prefix-list PFX_PREFER_172_20_4` — inspect the configured prefix and length
+6. If the prefix-list shows `/25` instead of `/24`, the route received from R4 (`/24`) is not
+   matched — the seq 10 deny-by-mismatch falls through to seq 20 which only sets community,
+   not LOCAL_PREF
 
 </details>
 
-### Ticket 2 — R4 Not Preferring R3 Path for 172.16.0.0/16
+<details>
+<summary>Fix</summary>
 
-**Symptom:** `show ip bgp 172.16.0.0/16` at R4 shows R1 path as best (or no MED
-difference). MED 50 / MED 100 distinction is absent.
+```ios
+! R3 — correct the prefix-list from /25 back to /24
+no ip prefix-list PFX_PREFER_172_20_4 seq 5 permit 172.20.4.0/25
+ip prefix-list PFX_PREFER_172_20_4 seq 5 permit 172.20.4.0/24
+
+clear ip bgp 10.1.34.4 soft in
+```
+
+Verify: `show ip bgp 172.20.4.0` at R1 now shows LP 200 on the R3 path (next-hop 10.0.0.3).
+
+</details>
+
+---
+
+### Ticket 2 — R4 Not Preferring R3 Path for 172.16.0.0/16 (MED Missing)
+
+**Symptom:** `show ip bgp 172.16.0.0/16` at R4 shows no MED difference between R1 and R3
+paths, or shows R1 as best. MED 50 from R3 is not present.
 
 **Inject:** `python3 scripts/fault-injection/inject_scenario_02.py --host <eve-ng-ip>`
 
-**Diagnosis path:**
-1. Check: `show ip bgp 172.16.0.0/16` at R4 — note MED values in output
-2. If both paths show MED 0, the outbound route-maps are not applied or not matching
-3. At R3: `show route-map R3_TO_R4_OUT` — check hit count on seq 10
-4. At R3: `show ip bgp neighbors 10.1.34.3 advertised-routes` — confirm 172.16.0.0/16 is in outbound updates
-5. At R1: same checks on R1_TO_R4_OUT seq 20
-
 <details>
-<summary>Fault and fix</summary>
+<summary>Diagnosis steps</summary>
 
-The fault is `R3_TO_R4_OUT` applied on the wrong neighbor (e.g., `neighbor 10.0.0.1
-route-map R3_TO_R4_OUT out` instead of `neighbor 10.1.34.4`). Fix: apply to the correct
-eBGP neighbor and `clear ip bgp 10.1.34.4 soft out`.
+1. At R4: `show ip bgp 172.16.0.0` — note MED values; if both show 0, outbound policy issue on R3
+2. At R3: `show route-map R3_TO_R4_OUT` — check hit count on seq 10
+3. If seq 10 hit count is 0, R3_TO_R4_OUT is not being applied to the R4 eBGP session
+4. At R3: `show ip bgp neighbors 10.1.34.4 policy` — check outbound policy assignment
+5. If no outbound policy shown for 10.1.34.4, `R3_TO_R4_OUT` was likely applied to the wrong neighbor
+6. At R3: `show run | section router bgp` — look for `route-map R3_TO_R4_OUT out` under an iBGP
+   neighbor (e.g., `neighbor 10.0.0.1`) instead of the eBGP neighbor (10.1.34.4)
 
 </details>
 
-### Ticket 3 — AS-path Prepend Has No Effect at R4
+<details>
+<summary>Fix</summary>
 
-**Symptom:** `show ip bgp 172.16.1.0` at R4 shows R1 path as best or with AS-path length
-equal to R3's path. Prepend is not visible.
+```ios
+! R3 — move R3_TO_R4_OUT from the wrong iBGP neighbor to the correct eBGP neighbor
+router bgp 65100
+ address-family ipv4
+  no neighbor 10.0.0.1 route-map R3_TO_R4_OUT out
+  neighbor 10.1.34.4 route-map R3_TO_R4_OUT out
+
+clear ip bgp 10.1.34.4 soft out
+```
+
+Verify: `show ip bgp 172.16.0.0` at R4 shows MED 50 on R3 path (best) and MED 100 on R1 path.
+
+</details>
+
+---
+
+### Ticket 3 — AS-Path Prepend Has No Effect at R4
+
+**Symptom:** `show ip bgp 172.16.1.0` at R4 shows R1 and R3 paths with equal AS-path length
+(both `65100`), or R1 path is best. AS-path prepend from R1 is not visible.
 
 **Inject:** `python3 scripts/fault-injection/inject_scenario_03.py --host <eve-ng-ip>`
 
-**Diagnosis path:**
-1. At R4: `show ip bgp 172.16.1.0` — compare AS-path lengths on R1 and R3 paths
-2. If R1 path AS-path is `65100` (not prepended), R1_TO_R4_OUT seq 10 is not matching
-3. At R1: `show route-map R1_TO_R4_OUT` — check hit count on seq 10
-4. At R1: `show ip prefix-list PFX_16_1_EXACT` — verify the /24 match
-5. At R1: `show ip bgp neighbors 10.1.14.4 advertised-routes` — confirm 172.16.1.0/24 is in updates
+<details>
+<summary>Diagnosis steps</summary>
+
+1. At R4: `show ip bgp 172.16.1.0` — compare AS-path column for R1 (10.1.14.1) and R3 (10.1.34.3)
+   paths; if both show `65100` (length 1), prepend is absent from R1's advertisement
+2. At R1: `show route-map R1_TO_R4_OUT` — check hit count on seq 10
+3. If seq 10 hit count is non-zero, the `set` clause is executing but having no effect
+4. At R1: `show route-map R1_TO_R4_OUT` — look at the `set` clause in seq 10
+5. If you see `set local-preference 200` instead of `set as-path prepend`, this is the fault:
+   LOCAL_PREF is an iBGP attribute and is stripped before R1 sends the UPDATE to eBGP peer R4
+6. Confirm: at R4 `show ip bgp 172.16.1.0` — the LOCAL_PREF column for R1's path will show
+   0 or missing, proving the attribute was stripped at the eBGP boundary
+
+</details>
 
 <details>
-<summary>Fault and fix</summary>
+<summary>Fix</summary>
 
-The fault is LOCAL_PREF applied outbound instead of AS-path prepend (e.g., `set local-preference
-200` in R1_TO_R4_OUT seq 10 instead of `set as-path prepend 65100 65100 65100`). LOCAL_PREF
-is stripped on eBGP sessions and has zero effect at R4. Fix: correct the `set` clause and
-`clear ip bgp 10.1.14.4 soft out`.
+```ios
+! R1 — replace the incorrect set local-preference with set as-path prepend in seq 10
+route-map R1_TO_R4_OUT permit 10
+ match ip address prefix-list PFX_16_1_EXACT
+ no set local-preference 200
+ set as-path prepend 65100 65100 65100
+
+clear ip bgp 10.1.14.4 soft out
+```
+
+Verify: `show ip bgp 172.16.1.0` at R4 now shows R1 path with AS-path
+`65100 65100 65100 65100` (length 4) — R3 path `65100` (length 1) is best.
 
 </details>
 
 ---
 
-## Section 10 — Checklists
-
-### Core Checklist
+## 10. Lab Completion Checklist
 
 - [ ] R1 BGP table: 172.20.5.0/24 absent; 172.20.4.0/24 present with community 65100:100
-- [ ] All AS 65100 routers: best path to 172.20.4.0/24 resolves via R3 (LOCAL_PREF 200)
-- [ ] R4 BGP table: R3 path to 172.16.1.0/24 best (R1 path has 4-element AS-path)
-- [ ] R4 BGP table: 172.16.0.0/16 R3 path MED=50 (best), R1 path MED=100
-- [ ] R4 BGP table: 172.16.100.0/24 absent while R3 is up
-- [ ] R2 BGP table: 172.16.11.0/24 has community 65100:300 and AS-path length 4
-
-### Troubleshooting Checklist
-
-- [ ] `show route-map <name>` shows non-zero hit counts on intended sequences
-- [ ] `show ip bgp neighbors <x> advertised-routes` used to verify outbound policy effect
-- [ ] `show ip bgp neighbors <x> routes` used to verify inbound policy effect
-- [ ] After any route-map change: `clear ip bgp <neighbor> soft` applied
-- [ ] LOCAL_PREF verified end-to-end with `show ip bgp <prefix>` across multiple routers
-- [ ] MED comparison confirmed on R4 where both paths are from the same peer AS
+- [ ] All AS 65100 routers: best path to 172.20.4.0/24 exits via R3 (next-hop 10.0.0.3,
+  LOCAL_PREF 200)
+- [ ] R4 BGP table: `show ip bgp 172.16.0.0` — R3 path has aggregate with summary-only
+  (transient) and then reverts to both aggregate + specifics
+- [ ] R4 BGP table: `show ip bgp 172.16.1.0` — R3 path best (AS-path `65100`); R1 path
+  has AS-path `65100 65100 65100 65100`
+- [ ] R4 BGP table: `show ip bgp 172.16.0.0` — R3 path MED 50 (best), R1 path MED 100
+- [ ] R2 BGP table: `show ip bgp 172.16.11.0` — community 65100:300; AS-path length 4
+- [ ] R4: 172.16.100.0/24 absent while R3's aggregate is present
+- [ ] R4: 172.16.100.0/24 appears within 60 s after R3's aggregate is withdrawn
+- [ ] `show route-map` on R1 and R3 show non-zero hit counts on all active sequences
+- [ ] After any route-map change: `clear ip bgp <neighbor> soft` applied and output re-verified
 
 ---
 
-## Section 11 — Script Exit Codes
+## 11. Appendix: Script Exit Codes
 
-| Script | Exit 0 | Exit 1 |
-|--------|--------|--------|
-| inject_scenario_01.py | Fault injected successfully | Connection failure or command error |
-| inject_scenario_02.py | Fault injected successfully | Connection failure or command error |
-| inject_scenario_03.py | Fault injected successfully | Connection failure or command error |
-| apply_solution.py | Solution applied to all devices | One or more devices failed |
+| Script | Exit 0 | Exit 1 | Exit 3 | Exit 4 |
+|--------|--------|--------|--------|--------|
+| `inject_scenario_01.py` | Fault injected on R3 | Command error | Lab/node not found | Pre-flight check failed |
+| `inject_scenario_02.py` | Fault injected on R3 | Command error | Lab/node not found | Pre-flight check failed |
+| `inject_scenario_03.py` | Fault injected on R1 | Command error | Lab/node not found | Pre-flight check failed |
+| `apply_solution.py` | Solution applied to all devices | One or more devices failed | Lab/node not found | N/A |
