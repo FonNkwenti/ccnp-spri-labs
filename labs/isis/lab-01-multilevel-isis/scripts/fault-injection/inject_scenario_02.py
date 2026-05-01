@@ -24,8 +24,10 @@ FAULT_COMMANDS = [
 PREFLIGHT_CMD = "show running-config | section router isis"
 # If this string is already present -> fault already injected, bail out.
 PREFLIGHT_FAULT_MARKER = "is-type level-2-only"
-# If this string is absent -> not in solution state, bail out.
-PREFLIGHT_SOLUTION_MARKER = "is-type level-1-2"
+# metric-style wide is a non-default setting IOS always writes to running-config,
+# making it a reliable presence marker (unlike is-type level-1-2, which IOS omits
+# as a default value after restoration).
+PREFLIGHT_SOLUTION_MARKER = "metric-style wide"
 
 
 def preflight(conn) -> bool:

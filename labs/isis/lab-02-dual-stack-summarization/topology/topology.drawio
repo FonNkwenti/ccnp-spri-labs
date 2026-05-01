@@ -1,0 +1,91 @@
+<mxfile host="65bd71144e">
+    <diagram id="isis-lab-02-dual-stack" name="Page-1">
+        <mxGraphModel dx="732" dy="612" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1100" pageHeight="850" background="#1a1a2e" math="0" shadow="0">
+            <root>
+                <mxCell id="0"/>
+                <mxCell id="1" parent="0"/>
+                <mxCell id="title" value="&lt;font style=&quot;font-size:16px;&quot; color=&quot;#FFFFFF&quot;&gt;&lt;b&gt;Lab 02: IS-IS Dual-Stack Summarization&lt;/b&gt;&lt;/font&gt;" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;strokeColor=none;fillColor=none;" parent="1" vertex="1">
+                    <mxGeometry x="200" y="20" width="580" height="36" as="geometry"/>
+                </mxCell>
+                <mxCell id="zone_49_0001" value="&lt;font color=&quot;#FFFFFF&quot; style=&quot;font-size:12px;&quot;&gt;&lt;b&gt;IS-IS Area 49.0001 (L1 Domain)&lt;/b&gt;&lt;/font&gt;" style="rounded=1;arcSize=5;whiteSpace=wrap;html=1;dashed=1;strokeColor=#2E7D32;strokeWidth=2;fillColor=#1b3d27;opacity=35;verticalAlign=top;spacingTop=6;" parent="1" vertex="1">
+                    <mxGeometry x="40" y="70" width="310" height="340" as="geometry"/>
+                </mxCell>
+                <mxCell id="zone_l2_backbone" value="&lt;font color=&quot;#FFFFFF&quot; style=&quot;font-size:12px;&quot;&gt;&lt;b&gt;IS-IS L2 Backbone&lt;/b&gt;&lt;/font&gt;" style="rounded=1;arcSize=5;whiteSpace=wrap;html=1;dashed=1;strokeColor=#1565C0;strokeWidth=2;fillColor=#1a3a5c;opacity=35;verticalAlign=bottom;spacingBottom=6;" parent="1" vertex="1">
+                    <mxGeometry x="250" y="230" width="370" height="148" as="geometry"/>
+                </mxCell>
+                <mxCell id="zone_49_0002" value="&lt;font color=&quot;#FFFFFF&quot; style=&quot;font-size:12px;&quot;&gt;&lt;b&gt;IS-IS Area 49.0002 (L1 Domain)&lt;/b&gt;&lt;/font&gt;" style="rounded=1;arcSize=5;whiteSpace=wrap;html=1;dashed=1;strokeColor=#E65100;strokeWidth=2;fillColor=#4a1e00;opacity=35;verticalAlign=top;spacingTop=6;" parent="1" vertex="1">
+                    <mxGeometry x="490" y="70" width="440" height="510" as="geometry"/>
+                </mxCell>
+                <mxCell id="zone_external" value="&lt;font color=&quot;#FFFFFF&quot; style=&quot;font-size:11px;&quot;&gt;External (No IS-IS)&lt;/font&gt;" style="rounded=1;arcSize=5;whiteSpace=wrap;html=1;dashed=1;strokeColor=#37474F;strokeWidth=2;fillColor=#1a2226;opacity=35;verticalAlign=top;spacingTop=6;" parent="1" vertex="1">
+                    <mxGeometry x="500" y="580" width="160" height="190" as="geometry"/>
+                </mxCell>
+                <mxCell id="R1" value="&lt;b style=&quot;color:#FFFFFF;&quot;&gt;R1&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#CCCCCC&quot; style=&quot;font-size:10px;&quot;&gt;L1 Stub Router&lt;br&gt;Lo0: 10.0.0.1/32&lt;/font&gt;" style="sketch=0;points=[[0.5,0,0],[1,0.5,0],[0.5,1,0],[0,0.5,0],[0.145,0.145,0],[0.8555,0.145,0],[0.855,0.8555,0],[0.145,0.855,0]];html=1;aspect=fixed;pointerEvents=1;shape=mxgraph.cisco19.rect;prIcon=router;fillColor=#FAFAFA;strokeColor=#005073;verticalLabelPosition=top;verticalAlign=bottom;align=center;labelPosition=center;" parent="1" vertex="1">
+                    <mxGeometry x="105" y="155" width="60" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="R2" value="&lt;b style=&quot;color:#FFFFFF;&quot;&gt;R2&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#CCCCCC&quot; style=&quot;font-size:10px;&quot;&gt;L1/L2 Border Router&lt;br&gt;Area 49.0001 side&lt;br&gt;Lo0: 10.0.0.2/32&lt;/font&gt;" style="sketch=0;points=[[0.5,0,0],[1,0.5,0],[0.5,1,0],[0,0.5,0],[0.145,0.145,0],[0.8555,0.145,0],[0.855,0.8555,0],[0.145,0.855,0]];html=1;aspect=fixed;pointerEvents=1;shape=mxgraph.cisco19.rect;prIcon=router;fillColor=#FAFAFA;strokeColor=#005073;verticalLabelPosition=top;verticalAlign=bottom;align=center;labelPosition=center;" parent="1" vertex="1">
+                    <mxGeometry x="285" y="295" width="60" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="R3" value="&lt;b style=&quot;color:#FFFFFF;&quot;&gt;R3&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#CCCCCC&quot; style=&quot;font-size:10px;&quot;&gt;L1/L2 Border Router&lt;br&gt;Area 49.0002 side&lt;br&gt;Lo0: 10.0.0.3/32&lt;/font&gt;" style="sketch=0;points=[[0.5,0,0],[1,0.5,0],[0.5,1,0],[0,0.5,0],[0.145,0.145,0],[0.8555,0.145,0],[0.855,0.8555,0],[0.145,0.855,0]];html=1;aspect=fixed;pointerEvents=1;shape=mxgraph.cisco19.rect;prIcon=router;fillColor=#FAFAFA;strokeColor=#005073;verticalLabelPosition=top;verticalAlign=bottom;align=center;labelPosition=center;" parent="1" vertex="1">
+                    <mxGeometry x="545" y="295" width="60" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="R4" value="&lt;b style=&quot;color:#FFFFFF;&quot;&gt;R4&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#CCCCCC&quot; style=&quot;font-size:10px;&quot;&gt;L1 Stub Router&lt;br&gt;Lo0: 10.0.0.4/32&lt;/font&gt;" style="sketch=0;points=[[0.5,0,0],[1,0.5,0],[0.5,1,0],[0,0.5,0],[0.145,0.145,0],[0.8555,0.145,0],[0.855,0.8555,0],[0.145,0.855,0]];html=1;aspect=fixed;pointerEvents=1;shape=mxgraph.cisco19.rect;prIcon=router;fillColor=#FAFAFA;strokeColor=#005073;verticalLabelPosition=top;verticalAlign=bottom;align=center;labelPosition=center;" parent="1" vertex="1">
+                    <mxGeometry x="720" y="155" width="60" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="R5" value="&lt;b style=&quot;color:#FFFFFF;&quot;&gt;R5&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#CCCCCC&quot; style=&quot;font-size:10px;&quot;&gt;L1 Stub Router&lt;br&gt;Lo0: 10.0.0.5/32&lt;/font&gt;" style="sketch=0;points=[[0.5,0,0],[1,0.5,0],[0.5,1,0],[0,0.5,0],[0.145,0.145,0],[0.8555,0.145,0],[0.855,0.8555,0],[0.145,0.855,0]];html=1;aspect=fixed;pointerEvents=1;shape=mxgraph.cisco19.rect;prIcon=router;fillColor=#FAFAFA;strokeColor=#005073;verticalLabelPosition=bottom;verticalAlign=top;align=center;labelPosition=center;" parent="1" vertex="1">
+                    <mxGeometry x="820" y="375" width="60" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="R6" value="&lt;b style=&quot;color:#FFFFFF;&quot;&gt;R6&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#CCCCCC&quot; style=&quot;font-size:10px;&quot;&gt;External Router&lt;br&gt;No IS-IS&lt;br&gt;Lo0: 10.0.0.6/32&lt;/font&gt;" style="sketch=0;points=[[0.5,0,0],[1,0.5,0],[0.5,1,0],[0,0.5,0],[0.145,0.145,0],[0.8555,0.145,0],[0.855,0.8555,0],[0.145,0.855,0]];html=1;aspect=fixed;pointerEvents=1;shape=mxgraph.cisco19.rect;prIcon=router;fillColor=#FAFAFA;strokeColor=#005073;verticalLabelPosition=bottom;verticalAlign=top;align=center;labelPosition=center;" parent="1" vertex="1">
+                    <mxGeometry x="545" y="633" width="60" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="link_R1_R2" value="Gi0/0 - Gi0/0&#10;10.1.12.0/24&#10;[IS-IS L1]" style="endArrow=none;html=1;strokeWidth=2;strokeColor=#FFFFFF;fontSize=10;fontColor=#CCCCCC;align=center;exitX=0.855;exitY=0.8555;exitDx=0;exitDy=0;exitPerimeter=0;" parent="1" source="R1" target="R2" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="link_R2_R3" value="Gi0/1 - Gi0/0&#10;10.1.23.0/24&#10;[IS-IS L2 Backbone]" style="endArrow=none;html=1;strokeWidth=2;strokeColor=#FFFFFF;fontSize=10;fontColor=#CCCCCC;align=center;" parent="1" source="R2" target="R3" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="link_R3_R4" value="Gi0/1 - Gi0/0&#10;10.1.34.0/24&#10;[IS-IS L1]" style="endArrow=none;html=1;strokeWidth=2;strokeColor=#FFFFFF;fontSize=10;fontColor=#CCCCCC;align=center;" parent="1" source="R3" target="R4" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="link_R3_R5" value="Gi0/2 - Gi0/0&#10;10.1.35.0/24&#10;[IS-IS L1]" style="endArrow=none;html=1;strokeWidth=2;strokeColor=#FFFFFF;fontSize=10;fontColor=#CCCCCC;align=center;" parent="1" source="R3" target="R5" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="link_R3_R6" value="Gi0/3 - Gi0/0&#10;10.1.36.0/24&#10;[External / No IS-IS]" style="endArrow=none;html=1;strokeWidth=2;strokeColor=#FFFFFF;dashed=1;fontSize=10;fontColor=#CCCCCC;align=center;" parent="1" source="R3" target="R6" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="oct_12_r1" value=".1" style="text;html=1;align=center;verticalAlign=middle;fontSize=10;fontColor=#FFFFFF;strokeColor=none;fillColor=none;" parent="1" vertex="1">
+                    <mxGeometry x="145" y="214" width="20" height="16" as="geometry"/>
+                </mxCell>
+                <mxCell id="oct_12_r2" value=".2" style="text;html=1;align=center;verticalAlign=middle;fontSize=10;fontColor=#FFFFFF;strokeColor=none;fillColor=none;" parent="1" vertex="1">
+                    <mxGeometry x="265" y="310" width="20" height="16" as="geometry"/>
+                </mxCell>
+                <mxCell id="oct_23_r2" value=".2" style="text;html=1;align=center;verticalAlign=middle;fontSize=10;fontColor=#FFFFFF;strokeColor=none;fillColor=none;" parent="1" vertex="1">
+                    <mxGeometry x="356" y="312" width="20" height="16" as="geometry"/>
+                </mxCell>
+                <mxCell id="oct_23_r3" value=".3" style="text;html=1;align=center;verticalAlign=middle;fontSize=10;fontColor=#FFFFFF;strokeColor=none;fillColor=none;" parent="1" vertex="1">
+                    <mxGeometry x="524" y="312" width="20" height="16" as="geometry"/>
+                </mxCell>
+                <mxCell id="oct_34_r3" value=".3" style="text;html=1;align=center;verticalAlign=middle;fontSize=10;fontColor=#FFFFFF;strokeColor=none;fillColor=none;" parent="1" vertex="1">
+                    <mxGeometry x="592" y="274" width="20" height="16" as="geometry"/>
+                </mxCell>
+                <mxCell id="oct_34_r4" value=".4" style="text;html=1;align=center;verticalAlign=middle;fontSize=10;fontColor=#FFFFFF;strokeColor=none;fillColor=none;" parent="1" vertex="1">
+                    <mxGeometry x="714" y="218" width="20" height="16" as="geometry"/>
+                </mxCell>
+                <mxCell id="oct_35_r3" value=".3" style="text;html=1;align=center;verticalAlign=middle;fontSize=10;fontColor=#FFFFFF;strokeColor=none;fillColor=none;" parent="1" vertex="1">
+                    <mxGeometry x="616" y="314" width="20" height="16" as="geometry"/>
+                </mxCell>
+                <mxCell id="oct_35_r5" value=".5" style="text;html=1;align=center;verticalAlign=middle;fontSize=10;fontColor=#FFFFFF;strokeColor=none;fillColor=none;" parent="1" vertex="1">
+                    <mxGeometry x="800" y="375" width="20" height="16" as="geometry"/>
+                </mxCell>
+                <mxCell id="oct_36_r3" value=".3" style="text;html=1;align=center;verticalAlign=middle;fontSize=10;fontColor=#FFFFFF;strokeColor=none;fillColor=none;" parent="1" vertex="1">
+                    <mxGeometry x="585" y="368" width="20" height="16" as="geometry"/>
+                </mxCell>
+                <mxCell id="oct_36_r6" value=".6" style="text;html=1;align=center;verticalAlign=middle;fontSize=10;fontColor=#FFFFFF;strokeColor=none;fillColor=none;" parent="1" vertex="1">
+                    <mxGeometry x="585" y="612" width="20" height="16" as="geometry"/>
+                </mxCell>
+                <mxCell id="legend" value="&lt;b style=&quot;color:#FFFFFF;&quot;&gt;LEGEND&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#CCCCCC&quot; style=&quot;font-size:10px;&quot;&gt;&amp;#9473;&amp;#9473;  IS-IS Physical Link&lt;br&gt;- - -  External (Non-IS-IS) Link&lt;br&gt;&lt;br&gt;[green]  Area 49.0001 (L1 Domain)&lt;br&gt;[blue]   IS-IS L2 Backbone&lt;br&gt;[orange] Area 49.0002 (L1 Domain)&lt;br&gt;[grey]   External Zone&lt;br&gt;&lt;br&gt;L1 = Level-1 (intra-area)&lt;br&gt;L2 = Level-2 (inter-area backbone)&lt;br&gt;L1/L2 = ABR (Area Border Router)&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#000000;strokeColor=#FFFFFF;fontColor=#FFFFFF;fontSize=10;align=left;verticalAlign=top;spacingLeft=8;spacingTop=8;arcSize=3;" parent="1" vertex="1">
+                    <mxGeometry x="153" y="580" width="250" height="160" as="geometry"/>
+                </mxCell>
+            </root>
+        </mxGraphModel>
+    </diagram>
+</mxfile>
