@@ -1,0 +1,81 @@
+# Auto-generated — do not edit manually. Use /tag-lab to stamp external agent runs.
+lab: lab-04-bgp-filtering-steering
+chapter: routing-policy
+exam: 300-510
+devices:
+  - name: R1
+    platform: iosv
+    role: SP core / eBGP edge to AS 65200
+  - name: R2
+    platform: iosv
+    role: SP core / OSPF ABR / IS-IS L1-L2 boundary
+  - name: R3
+    platform: iosv
+    role: SP core / eBGP edge to AS 65200
+  - name: R4
+    platform: iosv
+    role: External AS edge (AS 65200)
+  - name: XR1
+    platform: xrv9000
+    role: IOS-XR RPL node / IS-IS L1-2
+  - name: XR2
+    platform: xrv9000
+    role: IOS-XR RPL node / IS-IS L2-only
+created:
+  date: "2026-04-28"
+  agent: claude-sonnet-4-6
+  skill: lab-assembler
+  skill_version: "2026-04-28"
+  files:
+    - workbook.md
+    - topology/topology.drawio
+    - topology/README.md
+    - setup_lab.py
+    - README.md
+    - decisions.md
+    - initial-configs/R1.cfg
+    - initial-configs/R2.cfg
+    - initial-configs/R3.cfg
+    - initial-configs/R4.cfg
+    - initial-configs/XR1.cfg
+    - initial-configs/XR2.cfg
+    - solutions/R1.cfg
+    - solutions/R2.cfg
+    - solutions/R3.cfg
+    - solutions/R4.cfg
+    - solutions/XR1.cfg
+    - solutions/XR2.cfg
+    - scripts/fault-injection/inject_scenario_01.py
+    - scripts/fault-injection/inject_scenario_02.py
+    - scripts/fault-injection/inject_scenario_03.py
+    - scripts/fault-injection/apply_solution.py
+    - scripts/fault-injection/README.md
+updated:
+  - date: "2026-04-28"
+    agent: claude-sonnet-4-6
+    skill: build-lab
+    skill_version: "2026-04-28"
+    files:
+      - decisions.md
+      - initial-configs/R1.cfg
+      - initial-configs/R2.cfg
+      - initial-configs/R3.cfg
+      - initial-configs/R4.cfg
+      - initial-configs/XR1.cfg
+      - initial-configs/XR2.cfg
+      - README.md
+      - scripts/fault-injection/apply_solution.py
+      - scripts/fault-injection/inject_scenario_01.py
+      - scripts/fault-injection/inject_scenario_02.py
+      - scripts/fault-injection/inject_scenario_03.py
+      - scripts/fault-injection/README.md
+      - setup_lab.py
+      - solutions/R1.cfg
+      - solutions/R2.cfg
+      - solutions/R3.cfg
+      - solutions/R4.cfg
+      - solutions/XR1.cfg
+      - solutions/XR2.cfg
+      - topology/README.md
+      - topology/topology.drawio
+      - workbook.md

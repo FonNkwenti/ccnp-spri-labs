@@ -1,0 +1,67 @@
+# Auto-generated -- do not edit manually. Use /tag-lab to stamp external agent runs.
+lab: lab-00-route-maps-foundations
+chapter: routing-policy
+exam: 300-510
+devices:
+  - name: R1
+    platform: iosv
+    role: SP core / eBGP edge to AS 65200 (AS 65100)
+  - name: R2
+    platform: iosv
+    role: SP core transit (AS 65100)
+  - name: R3
+    platform: iosv
+    role: SP core / eBGP edge to AS 65200 (AS 65100)
+  - name: R4
+    platform: iosv
+    role: External AS edge (AS 65200)
+created:
+  date: "2026-04-28"
+  agent: claude-opus-4-7
+  skill: lab-assembler
+  skill_version: "2026-04-28"
+  files:
+    - README.md
+    - workbook.md
+    - decisions.md
+    - setup_lab.py
+    - topology/topology.drawio
+    - topology/README.md
+    - initial-configs/R1.cfg
+    - initial-configs/R2.cfg
+    - initial-configs/R3.cfg
+    - initial-configs/R4.cfg
+    - solutions/R1.cfg
+    - solutions/R2.cfg
+    - solutions/R3.cfg
+    - solutions/R4.cfg
+    - scripts/fault-injection/README.md
+    - scripts/fault-injection/apply_solution.py
+    - scripts/fault-injection/inject_scenario_01.py
+    - scripts/fault-injection/inject_scenario_02.py
+    - scripts/fault-injection/inject_scenario_03.py
+updated:
+  - date: "2026-04-28"
+    agent: claude-opus-4-7
+    skill: build-lab
+    skill_version: "2026-04-28"
+    files:
+      - README.md
+      - decisions.md
+      - initial-configs/R1.cfg
+      - initial-configs/R2.cfg
+      - initial-configs/R3.cfg
+      - initial-configs/R4.cfg
+      - scripts/fault-injection/README.md
+      - scripts/fault-injection/apply_solution.py
+      - scripts/fault-injection/inject_scenario_01.py
+      - scripts/fault-injection/inject_scenario_02.py
+      - scripts/fault-injection/inject_scenario_03.py
+      - setup_lab.py
+      - solutions/R1.cfg
+      - solutions/R2.cfg
+      - solutions/R3.cfg
+      - solutions/R4.cfg
+      - topology/README.md
+      - topology/topology.drawio
+      - workbook.md
