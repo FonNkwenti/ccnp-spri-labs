@@ -19,6 +19,36 @@ New entries at the top. Review at the start of each session.
 
 -->
 
+## 2026-05-03 — Verify third-party analysis against primary sources before acting
+
+**Correction:** A Pi-generated audit of the BGP capstone workbook (`lab-07-capstone-config`)
+identified 6 "root causes" for non-deterministic lab output. 4 of the 6 claims were factually
+wrong when checked against primary source skill files. The most critical mistake was misreading
+an enforcement gap (gate didn't exist yet) as a gate that wasn't enforced. The workbook was
+built 2026-04-28; the workbook contract gate was added 2026-05-01 — Pi blamed the gate instead
+of the build date.
+
+**Rule:** Before acting on any third-party analysis of skill files:
+1. **Timestamp first.** Check `meta.yaml created.date` against the commit date of the gate/rule
+   being blamed. If the artifact predates the rule, the root cause is absence, not failure.
+2. **Read the primary source.** For any claim about what a skill does or doesn't say, grep the
+   actual SKILL.md. Don't accept "the skill says X" without verifying the line number.
+3. **Distinguish real bugs from historical gaps.** Real bugs: rule exists, artifact violates it.
+   Historical gaps: rule didn't exist when the artifact was built. Fixes differ — bugs need
+   enforcement fixes; gaps need rebuild decisions.
+
+**Why:** Acting on wrong root causes produces wrong fixes. Adding enforcement for a rule that
+already exists wastes a commit; rebuilding a lab that the current gate would pass is unnecessary
+churn. The two confirmed bugs (drawio dispatch contradictions) were real and worth fixing. The
+four false claims would have led to unnecessary changes to skill files that were already correct.
+
+**Touched:**
+- `.agent/skills/lab-assembler/SKILL.md` — Step 5 Pre/Post-Write checklists (drawio dispatch
+  contradictions fixed); Step 3b Section 5 gate tightened with explicit FAIL patterns.
+- `tasks/pre-gate-labs.txt` — Pre-gate audit output (38 pre-gate labs, 6 FAIL, 32 OK).
+
+---
+
 ## 2026-04-30 — Workbook topology ASCII: bordered-box style with rich per-router info
 
 **Correction:** First build of `segment-routing/lab-00-sr-foundations-and-srgb`
