@@ -1,0 +1,99 @@
+# Pre-Gate Lab Audit
+# Labs with meta.yaml created.date < 2026-05-01 (before workbook contract gate commit f840ce0)
+# Gate added: 2026-05-01
+# Audit run: 2026-05-03
+
+## Summary
+Total pre-gate labs: 38
+Section 1 OK (likely contract-compliant):  32
+Section 1 FAIL (needs review):              6
+Missing workbook:                           0
+
+## FAIL Labs — Rebuild Candidates
+
+### bgp/lab-07-capstone-config
+- Created: 2026-04-28 (agent: claude-opus-4-7)
+- Section 1: "## 1. Lab Overview"  (should be "## 1. Concepts & Skills Covered")
+- Section 5: Uses "### Scenario A — ..." style (9 scenarios)
+             FAIL — should be "### Task N:" or capstone_i "Full Protocol Mastery" with Task N: sub-items
+- Severity: WHOLESALE FAILURE — completely different workbook template
+- Note: Pi-generated replacement exists at labs/bgp/lab-07-capstone-config-pi — consider swap/delete old
+
+### bgp/lab-08-capstone-troubleshooting
+- Created: 2026-04-28 (agent: claude-opus-4-7)
+- Section 1: "## 1. Lab Overview"  (should be "## 1. Concepts & Skills Covered")
+- Section 5: Not visible in quick scan; H3 headings appear to be "### 7.x ..." style
+- Severity: WHOLESALE FAILURE — same old template as lab-07
+- Action: Rebuild with /build-lab bgp/lab-08-capstone-troubleshooting
+
+### bgp-dual-ce/lab-04-capstone-config
+- Created: 2026-04-28 (agent: claude-opus-4-7)
+- Section 1: "## 1. Lab Overview"  (should be "## 1. Concepts & Skills Covered")
+- Section 5: Uses "### Task N —" (em-dash separator, not colon) — structurally close
+- Severity: MODERATE — Section 1 rename + heading separator fix (not a wholesale rewrite)
+- Action: Targeted rewrite of Sections 1 + Section 5 headings (Task N — → Task N:)
+
+### mpls/lab-00-ldp-foundations
+- Created: 2026-04-28 (agent: claude-opus-4-7)
+- Section 1: "## 1. Concepts"  (should be "## 1. Concepts & Skills Covered")
+- Section 5: Uses "### Task N —" (em-dash separator) — structurally close
+- Severity: MINOR — Section 1 heading text only + separator style
+- Action: Targeted Section 1 heading fix + Section 5 heading separator fix
+
+### ospf/lab-04-capstone-config
+- Created: 2026-04-26 (agent: claude-opus-4-7)
+- Section 1: "## 1. Lab Overview"  (should be "## 1. Concepts & Skills Covered")
+- Section 5: Uses "### IPv4" / "### IPv6" style headings — no Task structure at all
+- Severity: WHOLESALE FAILURE — old template, no Section 5 tasks
+- Action: Rebuild with /build-lab ospf/lab-04-capstone-config
+
+### ospf/lab-05-capstone-troubleshooting
+- Created: 2026-04-27 (agent: claude-opus-4-7)
+- Section 1: "## 1. Lab Overview"  (should be "## 1. Concepts & Skills Covered")
+- Section 5: Uses "### IPv4" / "### IPv6" style headings — same old pattern
+- Severity: WHOLESALE FAILURE — old template, no Section 5 tasks
+- Action: Rebuild with /build-lab ospf/lab-05-capstone-troubleshooting
+
+## OK Labs (Section 1 heading correct — no immediate rebuild needed)
+
+bgp/lab-00-ebgp-ibgp-foundations          2026-04-27
+bgp/lab-01-route-reflectors               2026-04-27
+bgp/lab-02-ebgp-multihoming               2026-04-27
+bgp/lab-03-interdomain-security           2026-04-27
+bgp/lab-04-dampening-dynamic              2026-04-28
+bgp/lab-05-communities-flowspec           2026-04-28
+bgp/lab-06-confederations                 2026-04-28
+bgp-dual-ce/lab-00-dual-ce-ibgp-baseline  2026-04-28
+bgp-dual-ce/lab-01-transit-prevention     2026-04-28
+bgp-dual-ce/lab-02-inbound-traffic-engineering  2026-04-28
+bgp-dual-ce/lab-03-selective-advertisement      2026-04-28
+isis/lab-00-single-level-isis             2026-04-28
+isis/lab-01-multilevel-isis               2026-04-29
+isis/lab-02-dual-stack-summarization      2026-04-30
+mpls/lab-01-lsp-verification-and-troubleshooting  2026-04-30
+mpls/lab-02-bgp-free-core-and-unified-bgp         2026-04-30
+mpls/lab-03-rsvp-te-tunnels               2026-04-30
+ospf/lab-00-single-area-ospfv2            2026-04-24
+ospf/lab-01-multiarea-ospfv2              2026-04-25
+ospf/lab-02-ospfv3-dual-stack             2026-04-25
+ospf/lab-03-summarization-stub-nssa       2026-04-26
+routing-policy/lab-00-route-maps-foundations    2026-04-28
+routing-policy/lab-01-tags-regex-communities    2026-04-28
+routing-policy/lab-02-rpl-vs-route-maps         2026-04-28
+routing-policy/lab-03-igp-route-manipulation    2026-04-28
+routing-policy/lab-04-bgp-filtering-steering    2026-04-28
+segment-routing/lab-00-sr-foundations-and-srgb  (no date)
+segment-routing/lab-01-ti-lfa             2026-04-30
+segment-routing/lab-02-sr-migration-ldp-coexistence  2026-04-30
+segment-routing/lab-03-sr-te-policies-and-steering   2026-04-30
+segment-routing/lab-04-pce-srlg-tree-sid  2026-04-30
+segment-routing/lab-05-ospf-sr-standalone 2026-04-30
+
+## Recommended Rebuild Order (if you proceed)
+
+1. ospf/lab-04-capstone-config       (wholesale, ospf is foundation topic)
+2. ospf/lab-05-capstone-troubleshooting (wholesale, pairs with lab-04)
+3. bgp/lab-08-capstone-troubleshooting  (wholesale)
+4. bgp/lab-07-capstone-config           (wholesale — or delete + rename lab-07-capstone-config-pi)
+5. bgp-dual-ce/lab-04-capstone-config   (targeted fix, not full rebuild)
+6. mpls/lab-00-ldp-foundations          (targeted fix, not full rebuild)
