@@ -308,6 +308,23 @@ _LAB_SWEEP_COMMANDS = [
 ]
 
 
+def push_config(conn, commands: list[str], device_type: str = "cisco_ios_telnet") -> None:
+    """Push configuration commands, handling IOS vs XR commit model correctly.
+
+    IOS path: send_config_set exits config mode normally; save_config() writes memory.
+
+    XR path: netmiko's exit_config_mode() responds 'no' to the 'Uncommitted changes
+    found' prompt, which silently discards the candidate config before save_config()
+    can commit. Fix: append 'commit' to commands so it executes inside config mode,
+    leaving nothing uncommitted when exit_config_mode() fires.
+    """
+    if device_type.startswith("cisco_xr"):
+        conn.send_config_set(list(commands) + ["commit"])
+    else:
+        conn.send_config_set(commands)
+        conn.save_config()
+
+
 def soft_reset_device(host: str, port: int) -> None:
     """Default all lab interfaces and remove OSPF processes.
 

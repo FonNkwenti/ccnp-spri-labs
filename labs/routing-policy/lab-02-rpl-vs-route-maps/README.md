@@ -12,7 +12,7 @@
 ## Overview
 
 This lab introduces IOS-XR's Routing Policy Language (RPL) as a direct contrast to IOS
-route-maps. Two XRv9k routers (XR1, XR2) join the SP core IS-IS and iBGP fabric and carry
+route-maps. Two XRv routers (XR1, XR2) join the SP core IS-IS and iBGP fabric and carry
 the RPL policy framework while the IOS core (R1/R2/R3) continues to run route-maps.
 
 After completing this lab you will be able to:
@@ -61,7 +61,7 @@ After completing this lab you will be able to:
 ## Prerequisites
 
 - lab-01-tags-regex-communities must be complete (this lab extends those configs)
-- XR1 and XR2 nodes imported and started in EVE-NG (~4 GB RAM each; allow 10 min boot)
+- XR1 and XR2 nodes imported and started in EVE-NG (~3 GB RAM each; allow 5 min boot)
 - All IOSv nodes (R1/R2/R3/R4) running with lab-01 configs loaded (initial-configs provide this)
 
 ---
@@ -96,7 +96,7 @@ After completing this lab you will be able to:
 # Push initial configs to all nodes (XR nodes will just get IPs)
 python3 setup_lab.py --host <eve-ng-ip>
 
-# After XR nodes boot (~10 min), verify IS-IS adjacency on R2:
+# After XR nodes boot (~5 min), verify IS-IS adjacency on R2:
 show isis neighbors
 
 # Verify iBGP session to XR1 on R1:

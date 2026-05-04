@@ -11,13 +11,33 @@
 ## XR driver gap — eve_ng.py patched 2026-04-28
 
 `connect_node()` in `labs/common/tools/eve_ng.py` was hardcoded to `cisco_ios_telnet`.
-XRv9k nodes require `cisco_xr_telnet` (no enable mode; candidate-config/commit model).
+XRv nodes require `cisco_xr_telnet` (no enable mode; candidate-config/commit model).
 
 **Fix:** Added optional `device_type` parameter to `connect_node()` (default `cisco_ios_telnet`).
 When `device_type` starts with `cisco_xr`, the `enable()`, `end`, and `no logging console`
 steps are skipped — they are IOS-specific and undefined/harmful on XR.
 
 In `setup_lab.py` for this lab, XR1 and XR2 are connected with `device_type="cisco_xr_telnet"`.
+
+---
+
+## XR commit model — push_config() added to eve_ng.py (2026-05-04)
+
+`send_config_set()` with default `exit_config_mode=True` calls `exit_config_mode()` after
+sending commands. On IOS-XR, exiting config mode with uncommitted changes triggers:
+`Uncommitted changes found, commit them before exiting(yes/no/cancel)?`
+Netmiko's XR `exit_config_mode()` responds `no` — silently discarding the candidate config.
+`save_config()` then sends `commit` at exec level, where it is a no-op.
+
+**Effect:** `setup_lab.py` and `apply_solution.py` were pushing XR configs but not committing them.
+
+**Fix:** `push_config(conn, commands, device_type)` added to `eve_ng.py`. For XR, it appends
+`commit` to the commands list so the commit executes inside config mode before `exit_config_mode()`
+fires — matching the pattern the fault-injection scripts already used (explicit `commit` in
+`FAULT_COMMANDS`). For IOS, it falls through to the original `send_config_set()` + `save_config()`
+path unchanged.
+
+`setup_lab.py` and `apply_solution.py` now call `push_config()` instead of the raw pair.
 
 ---
 

@@ -1,5 +1,7 @@
 # Lab 02 — RPL vs Route-Maps: Policy Sets and Hierarchical Policies
 
+**Topic:** Routing Policy and Manipulation | **Exam:** 300-510 SPRI | **Time:** 90 min | **Difficulty:** Intermediate
+
 ## Table of Contents
 
 1. [Concepts & Skills Covered](#1-concepts--skills-covered)
@@ -18,9 +20,48 @@
 
 ## 1. Concepts & Skills Covered
 
-**Exam Objectives:** 3.1 — Implement and troubleshoot routing policy · 3.2.d — RPL named sets · 3.2.j — Hierarchical and parameterized RPL policies
+**Exam Objectives:** 3.1 — Implement and troubleshoot routing policy · 3.2.d — RPL named sets · 3.2.g — Prefix sets · 3.2.j — Hierarchical and parameterized RPL policies
 
-This lab places two IOS-XRv 9000 nodes (XR1, XR2) into the existing IOSv SP core and teaches IOS-XR Routing Policy Language (RPL) by direct comparison with the IOS route-map you built in lab-00. The same filtering policy is expressed in both languages side-by-side so the structural differences are visible immediately.
+This lab places two IOS-XRv nodes (XR1, XR2) into the existing IOSv SP core and teaches IOS-XR Routing Policy Language (RPL) by direct comparison with the IOS route-map you built in lab-00. The same filtering policy is expressed in both languages side-by-side so the structural differences are visible immediately.
+
+### IOS-XR Operating Basics
+
+IOS-XR uses a **two-phase configuration model**: changes are written to a *candidate config* that is invisible to the data plane until you explicitly commit. This is the single biggest operational difference from IOS and affects every task in this lab.
+
+**Configure/commit workflow:**
+
+```
+RP/0/0/CPU0:XR1# configure terminal
+RP/0/0/CPU0:XR1(config)# router isis SP
+RP/0/0/CPU0:XR1(config-isis)#  is-type level-2-only
+RP/0/0/CPU0:XR1(config-isis)# exit
+RP/0/0/CPU0:XR1(config)# commit          ! applies candidate config to running config
+RP/0/0/CPU0:XR1(config)# end             ! exits to exec mode cleanly
+```
+
+If you type `end` before `commit`, XR prompts:
+
+```
+Uncommitted changes found, commit them before exiting(yes/no/cancel)? [cancel]:
+```
+
+Answer `yes` to commit and exit, `no` to discard and exit, or `cancel` (the default) to stay in config mode and review. The safest habit is always `commit` then `end` as two separate steps.
+
+To discard the entire candidate config without being prompted: type `abort` in config mode.
+
+**Key syntax differences from IOS:**
+
+| Operation | IOS | IOS-XR |
+|-----------|-----|--------|
+| Interface address | `ip address 10.0.0.1 255.255.255.255` | `ipv4 address 10.0.0.1 255.255.255.255` |
+| BGP table | `show ip bgp summary` | `show bgp ipv4 unicast summary` |
+| Routing table | `show ip route` | `show route ipv4` |
+| Save config | `write memory` | `commit` (there is no `write memory`) |
+| Filter running-config | `show running-config \| include X` | `show running-config formal \| include X` |
+
+**`!` is a comment, not an exit.** In IOS, `!` in a config block is often used as a separator between sections — pasting such blocks into XR config mode will insert comment lines that do nothing. Use `exit` to leave a sub-mode. The solution configs in this lab use `exit` explicitly for this reason.
+
+**Sub-mode depth.** XR config uses deeply nested sub-modes (router isis → address-family → interface → address-family). `exit` moves up one level; `end` jumps all the way to exec (with the commit prompt if changes are pending). If you get lost, `show configuration failed` reports any syntax errors in the current candidate config.
 
 ### Route-Map vs RPL: Core Structural Difference
 
@@ -109,21 +150,24 @@ end-policy
            ┌──────────────────────────────────────────────────────────────┐
            │                          AS 65100                             │
            │                                                               │
-           │    ┌────┐   L1 10.1.12.0/24   ┌────┐   L6 10.1.25.0/24     │
+           │    ┌────┐   L1 10.1.12.0/24   ┌────┐   L6 10.1.25.0/24     ┌───┐
            │    │ R1 ├────────────────────┤ R2 ├───────────────────────►│XR1│
            │    └──┬─┘  OSPF/IS-IS/iBGP    └──┬─┘  IS-IS L2 only        └──┬┘
            │       │ L5 10.1.13.0/24       L2 │ 10.1.23.0/24               │
            │       │                          │                          L8 │ 10.1.56.0/24
            │    ┌──┴────────────────────────┴──┐   L7 10.1.36.0/24     ┌──┴┐
            │    │              R3              ├───────────────────────►│XR2│
-           │    └──────────────────────────────┘  IS-IS L2 only         └───┘
-           └──────────────────────────────────────────────────────────────┘
-               │ L4 (eBGP)               │ L3 (eBGP)
-           10.1.14.0/24             10.1.34.0/24
-               └──────── R4 ────────────┘
-                       AS 65200
-                  Lo1: 172.20.4.0/24
-                  Lo2: 172.20.5.0/24
+           │    └──┬────────────────────────┬──┘  IS-IS L2 only         └───┘
+           │       │ L4 (eBGP)              │ L3 (eBGP)                     │
+           │       │ 10.1.14.0/24           │ 10.1.34.0/24                  │
+           └───────┼────────────────────────┼───────────────────────────────┘
+                   │                        │
+                   │    ┌────┐              │
+                   └────┤ R4 ├──────────────┘
+                        └────┘
+                      AS 65200
+                 Lo1: 172.20.4.0/24
+                 Lo2: 172.20.5.0/24
 ```
 
 **Key relationships:**
@@ -140,16 +184,16 @@ end-policy
 
 ### Device Inventory
 
-| Device | Role | Platform | Image |
-|--------|------|----------|-------|
-| R1 | SP Core / eBGP Edge | IOSv | vios-adventerprisek9-m.SPA.156-2.T |
-| R2 | SP Core / iBGP Transit | IOSv | vios-adventerprisek9-m.SPA.156-2.T |
-| R3 | SP Core / eBGP Edge | IOSv | vios-adventerprisek9-m.SPA.156-2.T |
-| R4 | External Peer | IOSv | vios-adventerprisek9-m.SPA.156-2.T |
-| XR1 | IOS-XR RPL Node | IOS-XRv 9000 | xrv9k-fullk9.iso (7.x) |
-| XR2 | IOS-XR RPL Node | IOS-XRv 9000 | xrv9k-fullk9.iso (7.x) |
+| Device | Role | Platform | Image | RAM |
+|--------|------|----------|-------|-----|
+| R1 | SP Core / eBGP Edge | IOSv | vios-adventerprisek9-m.SPA.156-2.T | 512 MB |
+| R2 | SP Core / iBGP Transit | IOSv | vios-adventerprisek9-m.SPA.156-2.T | 512 MB |
+| R3 | SP Core / eBGP Edge | IOSv | vios-adventerprisek9-m.SPA.156-2.T | 512 MB |
+| R4 | External Peer | IOSv | vios-adventerprisek9-m.SPA.156-2.T | 512 MB |
+| XR1 | IOS-XR RPL Node | IOS-XRv | iosxrv-demo.qcow2 (6.x) | 3072 MB |
+| XR2 | IOS-XR RPL Node | IOS-XRv | iosxrv-demo.qcow2 (6.x) | 3072 MB |
 
-> **Boot note:** XRv9k nodes take 5–10 minutes to fully boot. Wait for the `RP/0/0/CPU0:XR1#` prompt before running setup or connecting.
+> **Boot note:** XRv nodes take 3–5 minutes to fully boot. Wait for the `RP/0/0/CPU0:XR1#` prompt before running setup or connecting.
 
 ### Loopback Addresses
 

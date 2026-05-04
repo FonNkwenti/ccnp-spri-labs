@@ -10,8 +10,8 @@
 | R2     | IOSv     | 65100  | Lo0: 10.0.0.2/32                             | IGP transit       |
 | R3     | IOSv     | 65100  | Lo0: 10.0.0.3/32                             | IGP transit / ASBR|
 | R4     | IOSv     | 65200  | Lo0: 10.0.0.4/32, Lo1: 172.20.4.0/24, Lo2: 172.20.5.0/24 | eBGP peer (AS 65200) |
-| XR1    | XRv9k    | 65100  | Lo0: 10.0.0.5/32, Lo1: 172.16.11.0/24       | XR IS-IS/iBGP node|
-| XR2    | XRv9k    | 65100  | Lo0: 10.0.0.6/32                             | XR IS-IS/iBGP node|
+| XR1    | XRv    | 65100  | Lo0: 10.0.0.5/32, Lo1: 172.16.11.0/24       | XR IS-IS/iBGP node|
+| XR2    | XRv    | 65100  | Lo0: 10.0.0.6/32                             | XR IS-IS/iBGP node|
 
 ## Link Table
 
@@ -53,7 +53,7 @@
 
 - **eBGP boundary**: L3 (R3-R4) and L4 (R1-R4) cross the AS 65100/65200 boundary
 - **IGP domain**: R1/R2/R3 run OSPF and IS-IS; XR1/XR2 extend IS-IS into the XR cluster
-- **XRv9k cluster**: XR1 and XR2 are visually distinguished by a blue border and label
+- **XRv cluster**: XR1 and XR2 are visually distinguished by a blue border and label
 - **Policy comparison**: R1/R2/R3 use IOS route maps; XR1/XR2 use IOS-XR RPL (route-policy language) — the key lab contrast
 
 ## Diagram File

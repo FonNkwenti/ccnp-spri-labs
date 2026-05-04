@@ -16,10 +16,10 @@ devices:
     platform: iosv
     role: External AS edge (AS 65200)
   - name: XR1
-    platform: xrv9k
+    platform: xrv
     role: IOS-XR RPL node; iBGP in AS 65100; IS-IS L2 adjacency to R2
   - name: XR2
-    platform: xrv9k
+    platform: xrv
     role: IOS-XR RPL node; iBGP in AS 65100; IS-IS L2 adjacency to R3
 created:
   date: "2026-04-28"

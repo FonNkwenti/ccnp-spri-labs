@@ -12,7 +12,7 @@ Usage:
     python3 setup_lab.py --host <eve-ng-ip>
 
 All nodes must be started in EVE-NG before running this script.
-XR nodes require ~10 min boot time — wait for the XRv9k boot sequence to
+XR nodes require ~5 min boot time — wait for the XRv boot sequence to
 complete before running setup or the telnet session will be refused.
 """
 
@@ -24,7 +24,7 @@ from pathlib import Path
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(SCRIPT_DIR.parents[1] / "common" / "tools"))
-from eve_ng import EveNgError, connect_node, discover_ports, require_host, resolve_and_discover, soft_reset_device  # noqa: E402
+from eve_ng import EveNgError, connect_node, discover_ports, push_config, require_host, resolve_and_discover, soft_reset_device  # noqa: E402
 
 INITIAL_CONFIGS_DIR = SCRIPT_DIR / "initial-configs"
 
@@ -41,7 +41,7 @@ DEVICES = {
 }
 
 
-def push_config(host: str, name: str, port: int, device_type: str) -> bool:
+def configure_device(host: str, name: str, port: int, device_type: str) -> bool:
     cfg_file = INITIAL_CONFIGS_DIR / f"{name}.cfg"
     if not cfg_file.exists():
         print(f"  [!] Config file not found: {cfg_file}")
@@ -55,8 +55,7 @@ def push_config(host: str, name: str, port: int, device_type: str) -> bool:
             for line in cfg_file.read_text().splitlines()
             if line.strip() and not line.startswith("!")
         ]
-        conn.send_config_set(commands)
-        conn.save_config()
+        push_config(conn, commands, device_type)
         conn.disconnect()
         print(f"[+] {name} configured.")
         return True
@@ -80,8 +79,8 @@ def main() -> int:
     print("=" * 60)
     print(f"Lab Setup: lab-02-rpl-vs-route-maps (EVE-NG: {host})")
     print("=" * 60)
-    print("NOTE: XR1 and XR2 require ~10 min to boot. If this is a fresh")
-    print("      EVE-NG start, wait for the XRv9k boot sequence to finish")
+    print("NOTE: XR1 and XR2 require ~5 min to boot. If this is a fresh")
+    print("      EVE-NG start, wait for the XRv boot sequence to finish")
     print("      before running setup or the telnet session will be refused.")
     print("=" * 60)
 
@@ -98,7 +97,7 @@ def main() -> int:
             print(f"[!] {name} not found in lab — skipping.")
             failed += 1
             continue
-        if push_config(host, name, port, device_type):
+        if configure_device(host, name, port, device_type):
             success += 1
         else:
             failed += 1
