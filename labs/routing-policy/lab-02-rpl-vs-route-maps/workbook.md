@@ -262,8 +262,8 @@ The following is **pre-loaded** via `setup_lab.py`:
 
 Bring XR1 and XR2 into the IS-IS L2 domain and iBGP full mesh:
 
-- On **R2**: bring up Gi0/2 (L6) — `ip address 10.1.25.2 255.255.255.0`, `no shutdown`, then add to IS-IS SP: `ip router isis SP`, `isis network point-to-point`. Do **not** add to OSPF.
-- On **R3**: bring up Gi0/3 (L7) — `ip address 10.1.36.3 255.255.255.0`, `no shutdown`, then add to IS-IS SP: `ip router isis SP`, `isis network point-to-point`. Do not add to OSPF.
+- On **R2**: assign the address from the cabling table to Gi0/2 (L6), bring up the interface, and enable IS-IS SP in point-to-point mode. Do **not** add to OSPF.
+- On **R3**: same for Gi0/3 (L7). Do not add to OSPF.
 - On **XR1**: configure IS-IS SP (`is-type level-2-only`, NET `49.0001.0000.0000.0005.00`). Include Loopback0 (passive), Gi0/0/0/0 (L6, point-to-point), and Gi0/0/0/1 (L8, point-to-point). Note XR IS-IS uses `address-family ipv4 unicast` blocks per interface and `metric-style wide` under the process AF block.
 - On **XR2**: same structure, NET `49.0001.0000.0000.0006.00`, interfaces Loopback0, Gi0/0/0/0 (L7), Gi0/0/0/1 (L8).
 - On **XR1 and XR2**: define `route-policy PASS` with a single `pass` statement **before** configuring any BGP. This is the XR scaffolding policy that prevents implicit drop when a policy is first applied.
