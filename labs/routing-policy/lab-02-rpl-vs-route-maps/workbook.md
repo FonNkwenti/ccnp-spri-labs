@@ -241,13 +241,13 @@ The following is **pre-loaded** via `setup_lab.py`:
 - OSPF area 0, IS-IS L2 (SP instance), and iBGP full-mesh on R1/R2/R3
 - eBGP sessions R1↔R4 (L4) and R3↔R4 (L3); `FILTER_R4_IN` on R1; `FILTER_R4_ASPATH` on R3
 - Community lists, tag-based redistribution loop prevention, R1 Lo1 and R4 Lo1/Lo2 in BGP
-- R2 and R3: interface IP addresses on Gi0/2 and Gi0/3 (L6, L7 links) but IS-IS **not yet enabled** on those interfaces
 
 **IS pre-loaded on XR1 and XR2 (initial-configs = IPs only):**
 - Hostnames, Loopback0/Loopback1 IP addresses, core link IPs
 
 **IS NOT pre-loaded (student configures this):**
-- IS-IS on R2 Gi0/2 (L6) and R3 Gi0/3 (L7)
+- R2 Gi0/2 (L6) IP address (`10.1.25.2/24`) and IS-IS enablement
+- R3 Gi0/3 (L7) IP address (`10.1.36.3/24`) and IS-IS enablement
 - XR1 and XR2 IS-IS L2 process and interface assignments
 - `route-policy PASS` scaffolding on XR1 and XR2 (required before BGP session activation)
 - XR1 and XR2 iBGP sessions (neighbor-group IBGP)
@@ -262,8 +262,8 @@ The following is **pre-loaded** via `setup_lab.py`:
 
 Bring XR1 and XR2 into the IS-IS L2 domain and iBGP full mesh:
 
-- On **R2**: add Gi0/2 (L6) to IS-IS SP — `ip router isis SP`, `isis network point-to-point`. Do **not** add to OSPF.
-- On **R3**: add Gi0/3 (L7) to IS-IS SP — same. Do not add to OSPF.
+- On **R2**: bring up Gi0/2 (L6) — `ip address 10.1.25.2 255.255.255.0`, `no shutdown`, then add to IS-IS SP: `ip router isis SP`, `isis network point-to-point`. Do **not** add to OSPF.
+- On **R3**: bring up Gi0/3 (L7) — `ip address 10.1.36.3 255.255.255.0`, `no shutdown`, then add to IS-IS SP: `ip router isis SP`, `isis network point-to-point`. Do not add to OSPF.
 - On **XR1**: configure IS-IS SP (`is-type level-2-only`, NET `49.0001.0000.0000.0005.00`). Include Loopback0 (passive), Gi0/0/0/0 (L6, point-to-point), and Gi0/0/0/1 (L8, point-to-point). Note XR IS-IS uses `address-family ipv4 unicast` blocks per interface and `metric-style wide` under the process AF block.
 - On **XR2**: same structure, NET `49.0001.0000.0000.0006.00`, interfaces Loopback0, Gi0/0/0/0 (L7), Gi0/0/0/1 (L8).
 - On **XR1 and XR2**: define `route-policy PASS` with a single `pass` statement **before** configuring any BGP. This is the XR scaffolding policy that prevents implicit drop when a policy is first applied.
