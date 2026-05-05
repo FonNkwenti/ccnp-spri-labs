@@ -83,6 +83,12 @@ end-policy
 The trailing `pass` is mandatory in RPL — without it, unmatched routes are implicitly dropped
 (RPL's default drop is the opposite of IOS route-map's implicit permit-all at the end).
 
+**Community inline vs. named-set:** `set community (65100:300) additive` uses parentheses to
+declare an inline community literal. Without parentheses — `set community 65100:300` — IOS XR
+parses `65100:300` as a reference to a named `community-set`, and BGP will refuse to attach the
+policy with the error *"must be defined before [policy] can be attached"*. Use parentheses for
+inline literals; use a bare name for references to a defined `community-set`.
+
 ### Conditional Advertisement
 
 `neighbor X advertise-map A non-exist-map B` instructs IOS: send the prefixes matched by `A`
@@ -351,8 +357,10 @@ Before building anything new, verify the filter is operating correctly.
 
 - On XR1, define a prefix-set `P_XR1_ORIGINATE` containing 172.16.11.0/24.
 - Create `route-policy SET_COMMUNITY_AND_PREPEND` with the following logic:
-  - If destination in `P_XR1_ORIGINATE`: set community 65100:300 additive and prepend
-    AS 65100 three times
+  - If destination in `P_XR1_ORIGINATE`: set community `(65100:300)` additive and prepend
+    AS 65100 three times. The parentheses are required — `set community (65100:300)` is
+    an inline literal; without them XR treats `65100:300` as a named community-set reference
+    and will reject the policy attachment with "must be defined before ... can be attached".
   - Trailing `pass` statement — mandatory in RPL; without it, unmatched routes are
     implicitly dropped (the opposite of IOS route-map's implicit permit-all).
 - Replace the existing outbound policy on XR1's iBGP neighbor-group with
