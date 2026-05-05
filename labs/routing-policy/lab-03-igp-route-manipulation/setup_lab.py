@@ -12,7 +12,7 @@ Usage:
     python3 setup_lab.py --host <eve-ng-ip>
 
 All nodes must be started in EVE-NG before running this script.
-XR nodes require ~10 min boot time — wait for the XRv9k boot sequence to
+XR nodes require ~3–5 min boot time — wait for the IOS XRv boot sequence to
 complete before running setup or the telnet session will be refused.
 """
 
@@ -80,8 +80,8 @@ def main() -> int:
     print("=" * 60)
     print(f"Lab Setup: lab-03-igp-route-manipulation (EVE-NG: {host})")
     print("=" * 60)
-    print("NOTE: XR1 and XR2 require ~10 min to boot. If this is a fresh")
-    print("      EVE-NG start, wait for the XRv9k boot sequence to finish")
+    print("NOTE: XR1 and XR2 require ~3-5 min to boot. If this is a fresh")
+    print("      EVE-NG start, wait for the IOS XRv boot sequence to finish")
     print("      before running setup or the telnet session will be refused.")
     print("=" * 60)
 
