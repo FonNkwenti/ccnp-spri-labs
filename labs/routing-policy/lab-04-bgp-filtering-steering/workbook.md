@@ -74,7 +74,7 @@ separate sequences as in an IOS route-map:
 route-policy SET_COMMUNITY_AND_PREPEND
   if destination in P_XR1_ORIGINATE then
     set community (65100:300) additive
-    set as-path prepend 65100 65100 65100
+    prepend as-path 65100 3
   endif
   pass
 end-policy
@@ -585,7 +585,7 @@ end-set
 route-policy SET_COMMUNITY_AND_PREPEND
   if destination in P_XR1_ORIGINATE then
     set community (65100:300) additive
-    set as-path prepend 65100 65100 65100
+    prepend as-path 65100 3
   endif
   pass
 end-policy
@@ -799,7 +799,7 @@ end-set
 route-policy SET_COMMUNITY_AND_PREPEND
   if destination in P_XR1_ORIGINATE then
     set community (65100:300) additive
-    set as-path prepend 65100 65100 65100
+    prepend as-path 65100 3
   endif
   pass
 end-policy
