@@ -7,11 +7,11 @@ devices:
     platform: iosv
     role: Area 1 internal router
   - name: R2
-    platform: xrv
-    role: ABR (Area 0 / Area 1) with inter-area summarization (XR-mixed retrofit)
+    platform: iosv
+    role: ABR (Area 0 / Area 1) with inter-area summarization
   - name: R3
-    platform: xrv
-    role: Triple ABR + ASBR (Area 0 / Area 2 / Area 3 + External) (XR-mixed retrofit)
+    platform: iosv
+    role: Triple ABR + ASBR (Area 0 / Area 2 / Area 3 + External)
   - name: R4
     platform: iosv
     role: Area 2 internal router (totally stubby)

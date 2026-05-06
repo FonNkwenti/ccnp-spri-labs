@@ -10,11 +10,11 @@ devices:
     platform: iosv
     role: PE East-1 / dynamic-neighbor listen (AS 65100)
   - name: R3
-    platform: xrv
-    role: PE East-2 multihome backup (AS 65100) (XR-mixed retrofit)
+    platform: iosv
+    role: PE East-2 multihome backup (AS 65100)
   - name: R4
-    platform: xrv
-    role: P-router / Route Reflector (AS 65100) (XR-mixed retrofit)
+    platform: iosv
+    role: P-router / Route Reflector (AS 65100)
   - name: R5
     platform: csr1000v
     role: PE West / FlowSpec installer (AS 65100)

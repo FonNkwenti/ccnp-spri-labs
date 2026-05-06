@@ -808,26 +808,3 @@ Verify: `show ip bgp 172.16.1.0` on R3 now shows `Next Hop: 10.0.0.2`. `show ip 
 | 2 | `--host` not provided | All scripts |
 | 3 | EVE-NG connectivity error | All scripts |
 | 4 | Pre-flight check failed | Inject scripts only |
-
----
-
-## 12. Appendix: Same Tasks on IOS-XR
-
-This lab boots IOSv only. For students preparing for the CCIE SP precursor track
-or anyone curious about the XR equivalent of an iBGP Route Reflector, see:
-
-- `solutions-xr/R4.cfg` — full XR equivalent of `solutions/R4.cfg` (the RR)
-
-Highlights of the XR translation:
-
-- `bgp cluster-id` lives under `router bgp` (same keyword as IOS)
-- `route-reflector-client` is a **per-AF** neighbor property under the
-  session AF block, not a global `address-family ipv4` knob
-- A `neighbor-group RR-CLIENTS` consolidates the three client neighbors
-  (XR's equivalent of an IOS `peer-group`)
-- A `route-policy PASS` is **mandatory** on every activated AF — XR drops
-  prefixes silently without an explicit policy
-
-The XR file is a side-by-side read, **not booted** as part of this lab. To
-exercise it on real hardware, see the XR-mixed retrofit of
-`bgp/lab-07-capstone-config` or the `xr-bridge` bonus topic.
