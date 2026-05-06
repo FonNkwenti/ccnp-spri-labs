@@ -144,12 +144,12 @@ Every topic spec's Blueprint Coverage Matrix gets a new rightmost column
 | `multicast` | XR-mixed | ~4 GB (4×IOSv + 2×Linux) | ~11 GB (3×IOSv + 2×XRv + 2×Linux) | Phase 3 #7. |
 | `ipv6-transition` | IOSv-only | ~3 GB | ~3 GB | unchanged. |
 | `segment-routing` | XR-native | ~80 GB peak (5×XRv 9000) | ~80 GB | unchanged — already at hardware ceiling, see lab-00 prereq notes. |
-| `srv6` | XR-native | ~96 GB peak (6×XRv 9000) | ~96 GB | **exceeds 64 GB ceiling** — known, documented in srv6 spec, students must boot in halves. |
+| `srv6` | XR-native | ~24 GB peak (6×XRv 9000 @ 4 GB) | ~24 GB | XRv 9000 nodes here run at the reduced 4 GB allocation; SRv6 control + data plane fit comfortably. |
 | `xr-bridge` | Bridge | ~28 GB (4×XRv + 1×XRv 9000 + 1×IOSv) | ~28 GB | comfortably within ceiling. |
 
-The two ceiling-violating topics (`segment-routing`, `srv6`) are pre-existing
-constraints that the XR Coverage Retrofit does **not** make worse. They are
-listed here for completeness, not for action.
+The one ceiling-tight topic (`segment-routing`) is a pre-existing constraint
+that the XR Coverage Retrofit does **not** make worse. It is listed here for
+completeness, not for action.
 
 ---
 
