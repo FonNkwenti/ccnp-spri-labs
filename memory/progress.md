@@ -1,6 +1,6 @@
 # Lab Build Progress — CCNP SPRI (300-510)
 
-Last updated: 2026-04-30 (segment-routing lab-03-sr-te-policies-and-steering built)
+Last updated: 2026-05-05 (multicast lab-00-pim-sm-foundations built)
 
 ## Build Order
 
@@ -14,6 +14,7 @@ Last updated: 2026-04-30 (segment-routing lab-03-sr-te-policies-and-steering bui
 8. multicast
 9. segment-routing
 10. srv6
+11. xr-bridge *(spec-only, build deferred — see `memory/xr-coverage-policy.md` §2)*
 
 ---
 
@@ -70,6 +71,28 @@ Last updated: 2026-04-30 (segment-routing lab-03-sr-te-policies-and-steering bui
 | lab-05-capstone-config | Routing Policy Full Mastery — Capstone I | Not Started |
 | lab-06-capstone-troubleshooting | Routing Policy Comprehensive Troubleshooting — Capstone II | Not Started |
 
+## ipv6-transition
+
+| Lab | Title | Status |
+|-----|-------|--------|
+| lab-00-manual-and-6to4-tunnels | Static IPv6-in-IPv4 and 6to4 Tunnels | Review Needed |
+| lab-01-6pe-over-mpls | IPv6 Provider Edge (6PE) over MPLS | Not Started |
+| lab-02-ipv6-policy-enforcement | IPv6 Policy Enforcement with ACLs and PBR | Not Started |
+| lab-03-nat64-and-mapt | NAT64 and MAP-T Translation | Not Started |
+| lab-04-capstone-config | IPv6 Transition Full Mastery — Capstone I | Not Started |
+| lab-05-capstone-troubleshooting | IPv6 Transition Comprehensive Troubleshooting — Capstone II | Not Started |
+
+## fast-convergence
+
+| Lab | Title | Status |
+|-----|-------|--------|
+| lab-00-bfd-and-fast-timers | BFD and Fast Timer Tuning | Review Needed |
+| lab-01-nsf-and-nsr | Nonstop Forwarding (NSF) and Nonstop Routing (NSR) | Not Started |
+| lab-02-lfa-ip-fast-reroute | IS-IS LFA and IP Fast Reroute | Not Started |
+| lab-03-bgp-pic-and-addpaths | BGP PIC Edge/Core and Additional Paths | Not Started |
+| lab-04-capstone-config | Fast Convergence Full Mastery — Capstone I | Not Started |
+| lab-05-capstone-troubleshooting | Fast Convergence Comprehensive Troubleshooting — Capstone II | Not Started |
+
 ## mpls
 
 | Lab | Title | Status |
@@ -78,8 +101,22 @@ Last updated: 2026-04-30 (segment-routing lab-03-sr-te-policies-and-steering bui
 | lab-01-lsp-verification-and-troubleshooting | LSP Verification with MPLS OAM | Review Needed |
 | lab-02-bgp-free-core-and-unified-bgp | BGP-Free Core and Unified BGP (Labeled Unicast) | Review Needed |
 | lab-03-rsvp-te-tunnels | RSVP-TE Tunnels with Explicit Paths | Built ✓ |
-| lab-04-capstone-config | MPLS Full Mastery — Capstone I | Not Started |
+| lab-04-capstone-config | MPLS Full Mastery — Capstone I | Review Needed |
+| lab-04-capstone-config-dsc | MPLS Full Mastery — Capstone I (DSC) | Review Needed |
 | lab-05-capstone-troubleshooting | MPLS Comprehensive Troubleshooting — Capstone II | Not Started |
+
+## multicast
+
+| Lab | Title | Status |
+|-----|-------|--------|
+| lab-00-pim-sm-foundations | PIM-SM Foundations | Review Needed |
+| lab-01-rp-mechanisms | RP Mechanisms: Auto-RP, BSR, Anycast, Phantom | Not Started |
+| lab-02-ssm-and-bidir-pim | SSM and BIDIR-PIM | Not Started |
+| lab-03-msdp-inter-domain | MSDP and Inter-Domain Multicast | Not Started |
+| lab-04-mbgp-multicast | Multiprotocol BGP for Multicast | Not Started |
+| lab-05-mldp-p2mp | MLDP and P2MP LSPs | Not Started |
+| lab-06-capstone-config | Multicast Full Deployment — Capstone I | Not Started |
+| lab-07-capstone-troubleshooting | Multicast Comprehensive Troubleshooting — Capstone II | Not Started |
 
 ## bgp-dual-ce (supplemental topic)
 
@@ -104,3 +141,28 @@ Last updated: 2026-04-30 (segment-routing lab-03-sr-te-policies-and-steering bui
 | lab-05-ospf-sr-standalone | OSPF Segment Routing Extensions (standalone) | Review Needed |
 | lab-06-capstone-config | SR Full Mastery — Capstone I | Not Started |
 | lab-07-capstone-troubleshooting | SR Comprehensive Troubleshooting — Capstone II | Not Started |
+
+## srv6
+
+| Lab | Title | Status |
+|-----|-------|--------|
+| lab-00-srv6-control-plane | SRv6 IS-IS Control Plane | Review Needed |
+| lab-01-srv6-data-plane | SRv6 Data Plane and Encapsulation | Not Started |
+| lab-02-flex-algo-and-l3vpn | Flex-Algo, BGP SRv6 L3VPN, and Interworking | Not Started |
+| lab-03-capstone-config | SRv6 Full Deployment — Capstone I | Not Started |
+| lab-04-capstone-troubleshooting | SRv6 Comprehensive Troubleshooting — Capstone II | Not Started |
+
+## xr-bridge *(spec-only, build deferred)*
+
+Bonus self-study topic for CCIE SP precursor candidates. Spec and baseline
+written to full standard; lab content deferred. See
+`memory/xr-coverage-policy.md` §2 (`Bridge` posture).
+
+| Lab | Title | Status |
+|-----|-------|--------|
+| lab-00-xr-cli-and-commit-model | IOS-XR CLI, Commit Model, and Config Groups | Spec Only |
+| lab-01-xr-bgp-and-policy | XR BGP — RR, Confederations, RPL End-to-End | Spec Only |
+| lab-02-xr-mpls-stack | XR MPLS — LDP, BGP-LU, BGP-free Core, RSVP-TE | Spec Only |
+| lab-03-xr-6pe | XR 6PE — IPv6 over MPLS | Spec Only |
+| lab-04-xr-multicast | XR Multicast — PIM-SM and mLDP on XR | Spec Only |
+| lab-05-xr-convergence | XR Convergence — TI-LFA, BFD, NSR, GR | Spec Only |
