@@ -49,12 +49,24 @@ ISP-B representative prefix: `10.200.1.0/24` (Lo1 on R4).
 
 ## Blueprint Coverage Matrix
 
-| Blueprint Bullet | Description | Covered In |
-|-----------------|-------------|------------|
-| 1.5.d | Multihoming | lab-00, lab-01, lab-02, lab-03, lab-04, lab-05 |
-| 1.5.a | Route advertisement | lab-03, lab-04, lab-05 |
+| Blueprint Bullet | Description | Covered In | XR Exercised? |
+|-----------------|-------------|------------|---------------|
+| 1.5.d | Multihoming | lab-00, lab-01, lab-02, lab-03, lab-04, lab-05 | yes — capstone |
+| 1.5.a | Route advertisement | lab-03, lab-04, lab-05 | yes — capstone |
 
 ## Design Decisions
+
+- **XR Coverage Posture: `XR-mixed`** (per `memory/xr-coverage-policy.md`).
+  Foundation/intermediate labs run on IOSv as today; the capstones (lab-04,
+  lab-05) flip the **CE pair** (R1 and R2) to IOS XRv via Phase 3 #6 of the
+  [`2026-05-06 XR Coverage Retrofit`](../../tasks/2026-05-06-xr-coverage-retrofit.md).
+  Driven by §1.5.d and §1.5.a — XR-side dual-CE iBGP, AS-path prepend for
+  inbound TE, and selective prefix advertisement use the `router bgp`
+  neighbor-group / address-family hierarchy and RPL `as-path-set` matching
+  rather than IOS route-maps. CCIE SP candidates routinely encounter
+  XR-on-CE in real SP-MPLS handoffs, which makes this retrofit
+  high-value despite the topic's CE-only focus. Capstone peak ≈ 9 GB
+  (4×IOSv + 2×XRv); see RAM table in `memory/xr-coverage-policy.md` §5.
 
 - **Two distinct provider ASes (65100 and 65200) instead of two PEs in the same SP:** The
   existing `bgp` series already covers single-SP dual-PE. Using separate ISP ASes forces
