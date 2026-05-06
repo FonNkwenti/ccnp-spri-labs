@@ -90,7 +90,7 @@ See [`.agent/skills/README.md`](.agent/skills/) for the full skill catalogue and
 | `/build-lab <topic>/<lab-id>` | 3 | Build a single lab |
 | `/build-topic <topic>` | 3 | Build all labs for a topic with review gates |
 | `/build-capstone` | 3 | Multi-domain capstone spanning topics |
-| `/tag-lab <topic>/<lab-id>` | — | Stamp lab `meta.yaml` with provenance |
+| `/tag-lab <topic>/<lab-id>` | — | Stamp lab `meta.yaml` with provenance + telemetry (see [`docs/telemetry-and-cost.md`](docs/telemetry-and-cost.md)) |
 | `/sync-skills` | — | Pull latest `.agent/skills/` from upstream |
 | `/project-status` | — | Regenerate [`STATUS.md`](STATUS.md) |
 
@@ -110,6 +110,7 @@ For the current state of the project (which labs are built, what's next), run `/
 | See live build progress | [`STATUS.md`](STATUS.md) |
 | Learn how the skill toolkit works | [`.agent/skills/README.md`](.agent/skills/) |
 | Read the exam blueprint | [`blueprint/300-510/blueprint.md`](blueprint/300-510/blueprint.md) |
+| Track build cost / compare models | [`docs/telemetry-and-cost.md`](docs/telemetry-and-cost.md) |
 
 ---
 
