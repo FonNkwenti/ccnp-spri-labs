@@ -1,5 +1,20 @@
 # Lab 05: OSPF Comprehensive Troubleshooting — Capstone II
 
+> **Platform Mix Notice (XR-mixed capstone):** R2 (ABR) and R3 (triple ABR +
+> ASBR) run **IOS XRv (light, 6.1.x)**; R1, R4, R5, R6 remain IOSv. Two of the
+> injected faults live on the XR side and require XR-syntax fixes:
+>  - **R2 fault:** wrong Type 3 summary mask (`range 172.16.0.0/23` — should be
+>    `/21` to cover the full Area 1 prefix set).
+>  - **R3 fault A:** OSPF `dead-interval 80` on Area 2 link — Hello/Dead
+>    mismatch with R4. **R3 fault B:** REDIST_STATIC route-policy drops the
+>    192.168.66.0/24 external — Type 5 LSA missing.
+>
+> See [Appendix B: XR-side Command Reference](#appendix-b-xr-side-command-reference)
+> for command equivalents. The IOS troubleshooting workflow described in this
+> workbook still applies on R1/R4/R5/R6; on R2/R3 you must use the XR
+> equivalents. Status: configs are syntactically translated and need EVE-NG
+> verification.
+
 **Exam:** 300-510 SPRI  
 **Chapter:** OSPF  
 **Difficulty:** Advanced  
@@ -774,3 +789,85 @@ R1# ping 2001:db8:66::1
   and configuring loopbacks does not automatically enable OSPFv3 on transit interfaces.
 - **`distribute-list ... out <protocol>`** filters at the redistribution boundary, not in the
   routing table — the static route still appears in `show ip route`, but the LSA is never generated.
+
+---
+
+## Appendix B: XR-side Command Reference
+
+R2 and R3 run **IOS XRv (light)** in this capstone. The IOS show/config
+commands referenced earlier in the workbook do not exist on XR — use the
+equivalents below when working on R2 or R3. R1, R4, R5, R6 are still IOSv;
+their commands are unchanged.
+
+### Why XR here
+
+OSPF is platform-agnostic in the 300-510 blueprint, but XR is the production
+SP edge platform and has a meaningfully different OSPF config model: per-area
+stanza (instead of `network` statements), mandatory route-policies for
+redistribution, and a separate `router ospfv3` AF block for OSPFv3. See
+`memory/xr-coverage-policy.md` §2 (XR-mixed posture).
+
+### XR commit model (one-time orientation)
+
+XR uses a **candidate / running** config split. Changes you type are staged
+and do not take effect until you `commit`. `abort` discards the candidate;
+`show configuration` displays the diff. `!` is a comment in XR (not a
+sub-mode exit) — use `exit` or `root`.
+
+### IOS → XR command equivalents (R2 / R3 only)
+
+| Purpose | IOS (R1, R4, R5, R6) | IOS XR (R2, R3) |
+|---|---|---|
+| Show interface IPv4 | `show ip interface brief` | `show ipv4 interface brief` |
+| Show interface IPv6 | `show ipv6 interface brief` | `show ipv6 interface brief` |
+| OSPF neighbors | `show ip ospf neighbor` | `show ospf neighbor` |
+| OSPFv3 neighbors | `show ospfv3 neighbor` | `show ospfv3 neighbor` |
+| OSPF interface | `show ip ospf interface GigE0/0` | `show ospf interface GigE0/0/0/0` |
+| OSPF database | `show ip ospf database` | `show ospf database` |
+| OSPF DB summary (Type 3) | `show ip ospf database summary` | `show ospf database summary` |
+| OSPF DB external (Type 5) | `show ip ospf database external` | `show ospf database external` |
+| OSPF DB NSSA (Type 7) | `show ip ospf database nssa-external` | `show ospf database nssa-external` |
+| Route table | `show ip route ospf` | `show route ospf` |
+| Inspect route-policy | (n/a, uses route-maps: `show route-map`) | `show route-policy REDIST_STATIC` |
+| Save running config | `write memory` | `commit` (auto-persists) |
+
+### IOS → XR config-block equivalents
+
+| Purpose | IOS line | XR equivalent |
+|---|---|---|
+| Per-interface area assignment | `ip ospf 1 area 0` (under int) | `area 0\n interface Gig0/0/0/X` (under `router ospf 1`) |
+| Inter-area summary | `area 1 range A.B.C.D MASK` | `area 1\n range A.B.C.D/PFX` |
+| External summary | `summary-address A.B.C.D MASK` | `summary-prefix A.B.C.D/PFX` |
+| Totally stubby area | `area N stub no-summary` | `area N\n stub no-summary` |
+| NSSA area | `area N nssa` | `area N\n nssa` |
+| Redistribute static | `redistribute static subnets` | `redistribute static route-policy POLICY_NAME` (policy MANDATORY) |
+| Distribute-list out | `distribute-list prefix LIST out static` | (use route-policy `if destination in SET then drop endif pass`) |
+| Hello/Dead per int | `ip ospf hello-interval N` (under int) | `interface GigE0/0/0/X\n  hello-interval N` (under area) |
+| OSPFv3 area | (per int: `ospfv3 1 ipv6 area 0`) | `router ospfv3 1\n area 0\n  interface GigE0/0/0/X` |
+
+### Verification flow on R2 / R3 (XR-side)
+
+```
+RP/0/0/CPU0:R2# show ospf neighbor
+RP/0/0/CPU0:R2# show ospfv3 neighbor
+RP/0/0/CPU0:R2# show ospf database summary
+RP/0/0/CPU0:R2# show route ospf
+
+RP/0/0/CPU0:R3# show ospf neighbor
+RP/0/0/CPU0:R3# show ospf database external
+RP/0/0/CPU0:R3# show ospf interface GigabitEthernet0/0/0/1
+RP/0/0/CPU0:R3# show route-policy REDIST_STATIC
+```
+
+### Known gaps
+
+- This appendix gives commands, not full per-task XR rewrites. Workbook
+  sections that print expected IOS output are illustrative — translate the
+  command per the table and the show fields will be very close (XR may add
+  extra columns).
+- XR does not support `network` statements under `router ospf`; if a fault
+  ticket asks you to "fix the OSPF network statement," the corresponding XR
+  fix is to add an `interface GigE0/0/0/X` line under the appropriate `area`.
+- Configs are syntactically translated from the IOS sibling solution but
+  have **not yet been verified in EVE-NG**. Expect minor adjustments after
+  first boot.

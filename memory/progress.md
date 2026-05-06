@@ -26,8 +26,8 @@ Last updated: 2026-05-05 (multicast lab-00-pim-sm-foundations built)
 | lab-01-multiarea-ospfv2 | Multiarea OSPFv2 and LSA Propagation | Built ✓ |
 | lab-02-ospfv3-dual-stack | OSPFv3 Dual-Stack Multiarea | Built ✓ |
 | lab-03-summarization-stub-nssa | Summarization, Stub, and NSSA | Built ✓ |
-| lab-04-capstone-config | OSPF Full Protocol Mastery — Capstone I | Built ✓ |
-| lab-05-capstone-troubleshooting | OSPF Comprehensive Troubleshooting — Capstone II | Review Needed |
+| lab-04-capstone-config | OSPF Full Protocol Mastery — Capstone I | XR Retrofit — Needs EVE-NG Verification |
+| lab-05-capstone-troubleshooting | OSPF Comprehensive Troubleshooting — Capstone II | XR Retrofit — Needs EVE-NG Verification |
 
 ## isis
 
@@ -50,8 +50,8 @@ Last updated: 2026-05-05 (multicast lab-00-pim-sm-foundations built)
 | lab-04-dampening-dynamic | Route Dampening and Dynamic Neighbors | Review Needed |
 | lab-05-communities-flowspec | BGP Communities and FlowSpec | Review Needed |
 | lab-06-confederations | BGP Confederations | Review Needed |
-| lab-07-capstone-config | BGP Full Protocol Mastery — Capstone I | Review Needed |
-| lab-08-capstone-troubleshooting | BGP Comprehensive Troubleshooting — Capstone II | Review Needed |
+| lab-07-capstone-config | BGP Full Protocol Mastery — Capstone I | XR Retrofit — Needs EVE-NG Verification |
+| lab-08-capstone-troubleshooting | BGP Comprehensive Troubleshooting — Capstone II | XR Retrofit — Needs EVE-NG Verification (inject scripts pending) |
 
 **Note (2026-04-28):** All BGP workbooks (lab-00 through lab-08) have been reviewed and improved for clarity:
 - Clarified `show ip bgp <prefix>` (detailed view) vs `show ip bgp` (table view) command output formats
@@ -101,8 +101,8 @@ Last updated: 2026-05-05 (multicast lab-00-pim-sm-foundations built)
 | lab-01-lsp-verification-and-troubleshooting | LSP Verification with MPLS OAM | Review Needed |
 | lab-02-bgp-free-core-and-unified-bgp | BGP-Free Core and Unified BGP (Labeled Unicast) | Review Needed |
 | lab-03-rsvp-te-tunnels | RSVP-TE Tunnels with Explicit Paths | Built ✓ |
-| lab-04-capstone-config | MPLS Full Mastery — Capstone I | Review Needed |
-| lab-04-capstone-config-dsc | MPLS Full Mastery — Capstone I (DSC) | Review Needed |
+| lab-04-capstone-config | MPLS Full Mastery — Capstone I | XR Retrofit — Needs EVE-NG Verification |
+| lab-04-capstone-config-dsc | MPLS Full Mastery — Capstone I (DSC) | XR Retrofit — Needs EVE-NG Verification |
 | lab-05-capstone-troubleshooting | MPLS Comprehensive Troubleshooting — Capstone II | Not Started |
 
 ## multicast
@@ -126,7 +126,7 @@ Last updated: 2026-05-05 (multicast lab-00-pim-sm-foundations built)
 | lab-01-transit-prevention | Transit Prevention Policy | Review Needed |
 | lab-02-inbound-traffic-engineering | Inbound Traffic Engineering Across Two ISPs | Review Needed |
 | lab-03-selective-advertisement | Outbound Policy and Selective Prefix Advertisement | Review Needed |
-| lab-04-capstone-config | BGP Dual-CE Full Protocol Mastery — Capstone I | Built ✓ |
+| lab-04-capstone-config | BGP Dual-CE Full Protocol Mastery — Capstone I | XR Retrofit — Needs EVE-NG Verification |
 | lab-05-capstone-troubleshooting | BGP Dual-CE Comprehensive Troubleshooting — Capstone II | Not Started |
 
 ## segment-routing

@@ -40,7 +40,7 @@ iBGP requires a full mesh: every iBGP router must peer with every other iBGP rou
 
 Confederation eBGP behaves like regular eBGP in most respects:
 
-- **Next-hop is rewritten** to the peering interface address (same as regular eBGP). This is why `next-hop-self` is NOT needed on confederation eBGP sessions.
+- **Next-hop handling — platform-dependent:** RFC 5065 specifies that confederation eBGP should rewrite the next-hop to the peering interface address, just like regular eBGP. However, **Cisco IOS does not do this automatically** when the prefix was originally received from an external eBGP peer. The original external next-hop (e.g. the customer's interface IP) is preserved across the confederation boundary unless `next-hop-self` is explicitly configured. Always configure `next-hop-self` on confederation eBGP sessions where external next-hops need to be resolved by downstream routers.
 - **BGP loop prevention** uses AS_CONFED_SEQUENCE (sub-AS numbers) rather than the AS_PATH. When the route leaves the confederation, the entire AS_CONFED_SEQUENCE is stripped and only the confederation identifier appears in the AS_PATH visible to external peers.
 - **TTL is set to 1** by default (same as regular eBGP) — direct connections only unless `ebgp-multihop` is configured.
 
@@ -48,11 +48,13 @@ Confederation eBGP behaves like regular eBGP in most respects:
 
 | Session Type | next-hop-self needed? | Reason |
 |---|---|---|
-| Confederation eBGP (inter-sub-AS) | No | Next-hop auto-rewrites (like regular eBGP) |
+| Confederation eBGP (inter-sub-AS) | **Yes — on the PE advertising an external prefix** | Cisco IOS does NOT auto-rewrite the next-hop on confederation eBGP sessions. An external next-hop (e.g. 10.1.12.1) is preserved and becomes inaccessible to downstream sub-AS routers. |
 | iBGP within sub-AS (full mesh) | Yes — on the PE facing the external eBGP peer | iBGP does NOT rewrite next-hop. Routers inside the sub-AS cannot resolve an external next-hop that is not in OSPF. |
 
 In this lab:
 - R2 and R3 each have `next-hop-self` toward each other (iBGP within sub-AS 65101) — so each PE sees the other's eBGP next-hop as a loopback, not as R1's IP
+- **R2 has `next-hop-self` toward R4 (confederation eBGP)** — without it, R4 sees 172.16.1.0/24 with next-hop 10.1.12.1 (R1's interface IP, not in OSPF)
+- **R3 has `next-hop-self` toward R4 (confederation eBGP)** — same reason; R4 would see next-hop 10.1.13.1 otherwise
 - R4 has `next-hop-self` toward R5 (iBGP within sub-AS 65102) — so R5 sees R6's prefix with a reachable next-hop
 - R5 has `next-hop-self` toward R4 — so R4 can resolve R6's prefix (10.1.56.6 is NOT in OSPF)
 
@@ -197,7 +199,7 @@ On each SP router (R2, R3, R4, R5), configure:
 
 This step alone does not establish any BGP sessions but is the prerequisite for all subsequent tasks. Without `bgp confederation peers`, IOS will treat the cross-sub-AS eBGP sessions as regular eBGP (carrying the sub-AS in the AS_PATH) rather than as confederation eBGP.
 
-**Verification:** `show ip bgp summary` on any SP router should show router-id set; no sessions established yet.
+**Verification:** No neighbors have been configured at this stage — `show ip bgp summary` will not return any output. This task establishes the confederation foundation only; session verification begins in Task 2.
 
 ---
 
@@ -219,7 +221,7 @@ Configure confederation eBGP sessions between sub-AS 65101 and sub-AS 65102:
 - R3 peer toward R4: `neighbor 10.1.34.4 remote-as 65102`
 - R4 peer toward R2: `neighbor 10.1.24.2 remote-as 65101`
 - R4 peer toward R3: `neighbor 10.1.34.3 remote-as 65101`
-- Do **NOT** configure `next-hop-self` on these confederation eBGP sessions — confederation eBGP rewrites the next-hop automatically, just like regular eBGP
+- **Configure `next-hop-self` on R2 toward R4 and on R3 toward R4.** Cisco IOS does not automatically rewrite the next-hop on confederation eBGP sessions. Without `next-hop-self`, R4 receives Customer A's prefix (172.16.1.0/24) with next-hop 10.1.12.1 (R1's interface IP), which is unreachable in the OSPF topology — R4 marks the route inaccessible and does not advertise it to R5. R4 does not need `next-hop-self` toward R2/R3 because R5 already rewrites the next-hop to its own loopback (10.0.0.5) when advertising toward R4, and that loopback is reachable via OSPF.
 
 Because `bgp confederation peers 65102` is already configured on R2/R3 (Task 1), IOS classifies these as confederation eBGP sessions and uses AS_CONFED_SEQUENCE instead of AS_PATH for loop prevention within the confederation.
 
@@ -259,14 +261,7 @@ Advertise prefixes:
 
 ### Task 1 — Confederation Foundation
 
-```
-R2# show ip bgp summary
-BGP router identifier 10.0.0.2, local AS number 65101
-BGP table version is 1, main routing table version 1
-Confederation identifier: 65100
-Confederation peers: 65102
-                                                 ! ← Confederation configured; no peers yet
-```
+No neighbors have been configured yet, so `show ip bgp summary` will not return any output at this stage. There is nothing to verify here — the confederation foundation commands are a prerequisite for subsequent tasks, not an independently observable state.
 
 ### Task 2 — iBGP within Sub-AS 65101 (R2 ↔ R3)
 
@@ -350,7 +345,7 @@ router bgp <sub-AS>
 | `neighbor X remote-as <sub-AS>` | iBGP within sub-AS (same sub-AS number) |
 | `neighbor X remote-as <peer-sub-AS>` | Confederation eBGP (different sub-AS, must be in confederation peers) |
 | `neighbor X update-source Loopback0` | Required for iBGP over loopbacks |
-| `neighbor X next-hop-self` | Required on iBGP sessions where external next-hops are unreachable |
+| `neighbor X next-hop-self` | Required on iBGP sessions where external next-hops are unreachable; also required on confederation eBGP sessions on Cisco IOS where external prefixes are being advertised across sub-AS boundaries |
 
 ### Verification Commands
 
@@ -372,7 +367,7 @@ IOS classifies a BGP session based on the `bgp confederation peers` declaration:
 | Condition | Session Type | next-hop behavior | Loop prevention |
 |---|---|---|---|
 | `remote-as` = own sub-AS | iBGP | Preserved (use next-hop-self) | MED, local-pref |
-| `remote-as` in `confederation peers` | Confederation eBGP | Rewritten to peering IP | AS_CONFED_SEQUENCE |
+| `remote-as` in `confederation peers` | Confederation eBGP | **Not auto-rewritten on Cisco IOS** — use `next-hop-self` when advertising external prefixes | AS_CONFED_SEQUENCE |
 | `remote-as` not in confederation peers | Regular eBGP | Rewritten to peering IP | AS_PATH |
 
 > **Exam tip:** If `bgp confederation peers` is missing, IOS treats cross-sub-AS sessions as regular eBGP and the sub-AS number leaks into the AS_PATH seen by external peers — this is the most common confederation misconfiguration.
@@ -382,8 +377,10 @@ IOS classifies a BGP session based on the `bgp confederation peers` declaration:
 | Symptom | Likely Cause |
 |---------|-------------|
 | External peer sees sub-AS (65101/65102) in AS-path | `bgp confederation peers` missing on one or both SP routers |
+| External eBGP session to PE is Idle; customer loses primary path but backup path (via another PE) still works | `bgp confederation identifier` missing on the PE — it presents its sub-AS (e.g. 65101) in BGP OPEN; the CE has `remote-as 65100`, causing an AS mismatch and session rejection |
 | Confederation eBGP session stuck in Active | `bgp confederation peers` missing; IOS treats it as regular eBGP (TTL=1 still works for direct links, but AS classification is wrong) |
 | Route learned via confederation eBGP not forwarded across sub-AS | `bgp confederation identifier` missing on one router |
+| R4 shows Customer A prefix with inaccessible next-hop (10.1.12.1 or 10.1.13.1) | `next-hop-self` missing on R2 or R3 toward R4 — confederation eBGP does NOT auto-rewrite next-hop on Cisco IOS; the original external IP leaks across the sub-AS boundary |
 | Route received by iBGP peer has unreachable next-hop | `next-hop-self` missing on the PE that faces the external eBGP peer |
 | R4 cannot reach R6's prefix (172.16.6.0/24) | `next-hop-self` missing on R5 toward R4 (10.1.56.6 not in OSPF) |
 | R3 cannot learn R1's routes | R2↔R3 iBGP session down or `next-hop-self` missing |
@@ -497,6 +494,7 @@ R3# show ip bgp neighbors 10.0.0.2 | include BGP state
 ```bash
 router bgp 65101
  neighbor 10.1.24.4 remote-as 65102
+ neighbor 10.1.24.4 next-hop-self
  !
  address-family ipv4
   neighbor 10.1.24.4 activate
@@ -510,6 +508,7 @@ router bgp 65101
 ```bash
 router bgp 65101
  neighbor 10.1.34.4 remote-as 65102
+ neighbor 10.1.34.4 next-hop-self
  !
  address-family ipv4
   neighbor 10.1.34.4 activate
@@ -689,34 +688,41 @@ python3 scripts/fault-injection/apply_solution.py --host <ip>      # restore
 
 ---
 
-### Ticket 1 — R1 Sees Sub-AS 65101 in AS-Path
+### Ticket 1 — R1 Loses the Primary Path to External SP Peer (R1↔R2 Session Down)
 
-The NOC reports that Customer A's BGP monitoring detects an unexpected AS number (65101) in the AS-path for some prefixes arriving from the SP. The SP confederation should be completely hidden behind the public AS 65100.
+The NOC reports that Customer A's router (R1) can no longer reach the external SP peer prefix via the primary PE (R2). BGP monitoring shows R1 has only a single path to 172.16.6.0/24, sourced exclusively from R3. The R1↔R2 eBGP session is in Idle.
 
-**Symptom:** `show ip bgp 172.16.6.0/24` on R1 shows AS_PATH: `65101 65100 65002` instead of `65100 65002`.
+**Root cause:** When `bgp confederation identifier 65100` is removed from R2, R2 presents itself as AS 65101 in BGP OPEN messages. R1 has `neighbor 10.1.12.2 remote-as 65100` — the AS numbers do not match, so the session is refused and stays Idle. R1 falls back to the single path via R3.
+
+**Symptom:** `show ip bgp summary` on R1 shows neighbor 10.1.12.2 (R2) in `Idle` state; `show ip bgp 172.16.6.0/24` on R1 shows only one path (via 10.1.13.3, R3).
 
 **Inject:** `python3 scripts/fault-injection/inject_scenario_01.py --host <eve-ng-ip>`
 
-**Success criteria:** `show ip bgp 172.16.6.0/24` on R1 shows AS_PATH: `65100 65002` only; no sub-AS numbers visible.
+**Success criteria:** `show ip bgp summary` on R1 shows 10.1.12.2 as `Established` with `PfxRcd: 1`; `show ip bgp 172.16.6.0/24` on R1 shows two paths (via 10.1.12.2 and 10.1.13.3).
 
 <details>
 <summary>Click to view Diagnosis Steps</summary>
 
 ```bash
-! 1. Check R1's view of the path — identify which sub-AS is leaking
+! 1. Check R1's session state — which PE session is down?
+R1# show ip bgp summary
+! Look for Idle in State/PfxRcd — if 10.1.12.2 is Idle, R2 is rejecting the session
+
+! 2. Check how many paths R1 has for 172.16.6.0/24
 R1# show ip bgp 172.16.6.0/24
-! Look at AS_PATH — which sub-AS appears? This narrows down which router lost its identifier config
+! Only one path (via 10.1.13.3) means R2's eBGP session is not contributing routes
 
-! 2. Check R2's confederation identity
+! 3. Determine why R2 is refusing R1 — check what AS R2 is presenting
 R2# show ip bgp summary
-! Look for: "Confederation identifier: 65100"
-! If missing, R2 is presenting itself as AS 65101 to R1
+! Look for: "local AS number 65101" and "Confederation identifier: 65100"
+! If "Confederation identifier" line is ABSENT, R2 is presenting itself as AS 65101
+! R1 expects remote-as 65100 — AS mismatch → session rejected
 
-! 3. Confirm confederation identifier is configured
+! 4. Confirm confederation identifier is missing
 R2# show running-config | include confederation identifier
-! Must show: bgp confederation identifier 65100
+! If no output: bgp confederation identifier 65100 has been removed
 
-! 4. Check the confederation peers declaration is intact
+! 5. Confirm confederation peers is intact (not the fault, but verify)
 R2# show running-config | include confederation peers
 ! Must show: bgp confederation peers 65102
 ```
@@ -727,15 +733,19 @@ R2# show running-config | include confederation peers
 
 ```bash
 ! Fault: bgp confederation identifier 65100 removed from R2
-! Effect: R2 presents sub-AS 65101 to R1 via eBGP — sub-AS leaks into external AS-path
+! Effect: R2 presents itself as AS 65101 in BGP OPEN; R1 expects remote-as 65100
+!         AS mismatch → R1↔R2 session stays Idle → R1 loses the primary path
 
 R2(config)# router bgp 65101
 R2(config-router)# bgp confederation identifier 65100
 R2(config-router)# end
-R2# clear ip bgp 10.1.12.1 soft
 
 ! Verify:
-R1# show ip bgp 172.16.6.0/24    ! AS_PATH must now show 65100 65002 only
+R1# show ip bgp summary
+! 10.1.12.2 must now show Established and PfxRcd: 1
+
+R1# show ip bgp 172.16.6.0/24
+! Must show two paths: one via 10.1.12.2 (R2) and one via 10.1.13.3 (R3)
 ```
 </details>
 
@@ -872,7 +882,7 @@ R4# show ip bgp 172.16.6.0/24
 
 ### Troubleshooting
 
-- [ ] Ticket 1 resolved: `bgp confederation identifier 65100` restored on R2; R1 no longer sees sub-AS in path
+- [ ] Ticket 1 resolved: `bgp confederation identifier 65100` restored on R2; R1↔R2 session Established; R1 shows two paths to 172.16.6.0/24
 - [ ] Ticket 2 resolved: R2↔R3 iBGP restored on R3; R3 sees R2's learned routes
 - [ ] Ticket 3 resolved: `next-hop-self` restored on R5 toward R4; R4 can forward to R6's prefix
 
@@ -887,3 +897,29 @@ R4# show ip bgp 172.16.6.0/24
 | 2 | `--host` not provided | All scripts |
 | 3 | EVE-NG connectivity error | All scripts |
 | 4 | Pre-flight check failed (lab nodes not started) | Inject scripts only |
+
+---
+
+## 12. Appendix: Same Tasks on IOS-XR
+
+This lab boots IOSv only. For the XR equivalent of a BGP confederation
+sub-AS member, see:
+
+- `solutions-xr/R3.cfg` — full XR equivalent of `solutions/R3.cfg`
+  (sub-AS 65101 boundary router with confed-eBGP toward sub-AS 65102)
+
+Highlights of the XR translation:
+
+- `bgp confederation identifier 65100` and `bgp confederation peers 65102`
+  use the **same keywords** as IOS, inside `router bgp <sub-as>`
+- `next-hop-self` is **per-AF** in XR (under the neighbor's
+  `address-family ipv4 unicast` block), not a global neighbor knob
+- Confed-eBGP next-hop behavior matches IOS — XR does **not** auto-rewrite
+  next-hop on confed-eBGP, so `next-hop-self` is still required toward the
+  other sub-AS
+- A `route-policy PASS` is mandatory on every activated AF — XR drops
+  prefixes silently without an explicit policy
+
+The XR file is a side-by-side read, **not booted** as part of this lab. To
+exercise it on real hardware, see the XR-mixed retrofit of
+`bgp/lab-07-capstone-config` or the `xr-bridge` bonus topic.

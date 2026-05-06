@@ -74,9 +74,10 @@ BGP FlowSpec uses a new address family (AFI 1, SAFI 133 — `ipv4 flowspec`) to 
 - **Match criteria:** destination prefix, source prefix, IP protocol, port numbers, DSCP, TCP flags
 - **Action:** carried as BGP extended communities — e.g., `traffic-rate 0` (drop), `traffic-rate N` (rate-limit), `redirect VRF`
 
-On IOS-XE, the match criteria are defined using `class-map type traffic` and the action is defined in `policy-map type traffic`. The FlowSpec AFI peering between routers propagates these rules without any per-router ACL provisioning.
+On **IOS-XR**, rule origination uses `class-map type traffic` (with rich match criteria: destination prefix, protocol, port) plus `policy-map type traffic` (with drop/rate-limit actions). On **IOS-XE 17.3.x**, these constructs do not exist — the router can receive and enforce FlowSpec NLRI from peers, but cannot locally originate rules. FlowSpec enforcement on IOS-XE is enabled via `flowspec address-family ipv4 local-install interface-all`.
 
 ```
+! IOS-XR rule origination syntax (for reference only — not available on IOS-XE 17.3.x)
 class-map type traffic match-all FS_DROP_SSH
  match destination-address ipv4 172.16.1.0 255.255.255.0
  match protocol tcp
@@ -99,7 +100,7 @@ policy-map type traffic PM_DROP_SSH
 | Well-known community enforcement | Applying `no-export` and `no-advertise` and observing propagation stops |
 | SoO extended community | Tagging dual-homed customer routes to prevent PE-to-PE routing loops |
 | BGP FlowSpec AFI peering | Activating `address-family ipv4 flowspec` between IOS-XE peers |
-| FlowSpec rule definition | Writing `class-map type traffic` + `policy-map type traffic` for drop rules |
+| FlowSpec enforcement setup | Enabling `flowspec local-install interface-all` on the enforcer (IOS-XE 17.3.x) |
 | FlowSpec verification | Using `show bgp ipv4 flowspec` to confirm NLRI install on enforcer |
 
 ---
@@ -239,7 +240,7 @@ The following is **pre-loaded** via `setup_lab.py`:
 - SoO extended community definition and application on R2 and R3
 - eBGP peering between R5 and R7 (neighbor declaration and address-family activation)
 - BGP FlowSpec address-family on R5 and R7
-- FlowSpec rule definition on R7 (class-map type traffic + policy-map type traffic)
+- FlowSpec enforcement setup on R5 (`flowspec local-install interface-all`) and AF peering with R7
 
 ---
 
@@ -250,7 +251,7 @@ The following is **pre-loaded** via `setup_lab.py`:
 - Bring up an eBGP session between R5 (AS 65100) and R7 (AS 65003) using the directly connected `10.1.57.0/24` link
 - Activate the session in both the `ipv4 unicast` and `ipv4 flowspec` address families on both routers
 - On R7, advertise its Loopback1 prefix (172.16.7.0/24) into BGP using a network statement
-- On R5, enable FlowSpec local installation on all interfaces
+- On R5, enable FlowSpec enforcement using the `flowspec` global submode: enter `flowspec`, then `address-family ipv4`, then `local-install interface-all`
 
 **Verification:** `show bgp ipv4 unicast neighbors 10.1.57.7 | include BGP state` must show `Established`; `show bgp ipv4 flowspec summary` on R5 must list R7 as an active peer.
 
@@ -258,16 +259,16 @@ The following is **pre-loaded** via `setup_lab.py`:
 
 ### Task 2: Tag Customer A Routes with Standard Community 65100:100
 
+- On every router where you will set or match communities (at minimum R2 and R5), run `ip bgp-community new-format` in global config. This switches community notation from legacy 32-bit decimal (e.g. `4259840100`) to the `ASN:value` format (e.g. `65100:100`). Without it, `set community 65100:100` in a route-map and `show ip bgp community 65100:100` will not work as expected — the router either rejects the colon notation or displays communities as unreadable decimal integers.
 - On R2, update the inbound route-map applied to the R1 eBGP session to additionally tag Customer A's prefix (172.16.1.0/24) with community `65100:100`
 - Use the `additive` keyword so existing policy attributes are preserved
 - Enable `send-community both` on R2's iBGP neighbors (R4 and the legacy R5 session) so the community propagates through the SP core
 - On R4, enable `send-community both` toward all three RR clients (R2, R3, R5) — the RR must carry communities transparently
-- Verify the community appears on R5 using `show ip bgp` (table view shows community in the Path column) or `show ip bgp 172.16.1.0/24` (detailed view shows community attribute on separate line)
-- Demonstrate filtering: create an `ip community-list` on R5 matching `65100:100` and use it in `show ip bgp community 65100:100` to confirm the tag is visible
+- Verify the community appears on R5 using `show ip bgp 172.16.1.0/24` — the detailed view shows the `Community: 65100:100` attribute on a separate line. Note: the summary table (`show ip bgp`) does not display community values; you must use the per-prefix detailed form
+- Confirm filtering: run `show ip bgp community 65100:100` on R5 — the command takes the community value directly (no `ip community-list` required) and returns only prefixes carrying that tag
 
 **Verification:** 
-- `show ip bgp` on R5 must show 172.16.1.0/24 with community visible (or detailed view)
-- `show ip bgp 172.16.1.0/24` on R5 must show `Community: 65100:100` (appears as a separate labeled line in detailed output)
+- `show ip bgp 172.16.1.0/24` on R5 must show `Community: 65100:100` as a separate labeled line in the detailed output (`show ip bgp` summary table does not display community values)
 - `show ip bgp community 65100:100` on R5 must include 172.16.1.0/24
 
 ---
@@ -290,19 +291,23 @@ The following is **pre-loaded** via `setup_lab.py`:
 - Apply the same SoO stamp on R3 inbound from R1 (L2 backup path)
 - Confirm that if the RR reflects Customer A's prefix back toward R3, R3 discards the route because the SoO matches — preventing the backup PE from re-advertising a route that originated from its own site
 
-**Verification:** Use `show ip bgp 172.16.1.0/24` on R5 (detailed view — Extended Community appears as a labeled line) to confirm `Extended Community: SoO:65001:1`. On R3, `show ip bgp 172.16.1.0/24` received from R4 must also show the same SoO attribute (labeled line format); the route is accepted but the SoO prevents re-advertisement back toward R1 on L2.
+**Verification:**
+- On R5: `show ip bgp 172.16.1.0/24` (detailed view) must show `Extended Community: SoO:65001:1` as a labeled line — confirms the SoO tag is propagated through the RR chain.
+- On R3: `show ip bgp 172.16.1.0/24` must show **only one path** — the direct eBGP path from R1 (10.1.13.1). The iBGP path reflected by R4 is discarded by the inbound SoO route-map before installation, so no second path appears. This single-path result is the proof that SoO filtering is working: R3 cannot learn (and therefore cannot re-advertise) a route that originated from its own attached site.
+- To confirm R1 is not receiving its own prefix back via L2: `show ip bgp 172.16.1.0/24` on R1 should show only the locally-originated entry, with no path learned from R3 (10.1.13.x next-hop).
 
 ---
 
-### Task 5: Originate a BGP FlowSpec Rule on R7 and Verify Install on R5
+### Task 5: Establish FlowSpec AF Peering and Configure R5 as Enforcer
 
-- On R7, define a traffic class matching destination prefix `172.16.1.0/24`, protocol TCP, destination port 22 using `class-map type traffic`
-- Define a policy with action `police rate 0 pps` (drop) bound to that class using `policy-map type traffic`
-- Configure the FlowSpec address family on R7 with `bgp flowspec disable-local-install` (R7 originates the rule but does not enforce it locally) and activate the R5 neighbor in the FlowSpec AF with `send-community both`
-- On R5, activate the R7 neighbor in `address-family ipv4 flowspec` and enable `bgp flowspec local-install interface-all` to install received FlowSpec rules into the forwarding plane
-- Verify the FlowSpec NLRI appears in R5's BGP table and is installed
+> **IOS-XE 17.3.x limitation:** Local FlowSpec rule origination via `class-map type traffic` / `policy-map type traffic` is not supported on this platform — those are IOS-XR constructs. On IOS-XE 17.3.x, `class-map type traffic` only supports `match access-group input/output <acl>` (not match-all, destination-address, protocol, or port), and `policy-map type traffic` does not exist. Rule origination in production requires IOS-XR or a FlowSpec controller. This task focuses on what IS achievable: peering setup and enforcement configuration.
 
-**Verification:** `show bgp ipv4 flowspec` on R5 must list the FlowSpec NLRI for destination 172.16.1.0/24 with TCP/22; `show bgp ipv4 flowspec summary` must show R7 as Established.
+- On R5, enable FlowSpec enforcement on all interfaces using the `flowspec` global config submode: enter `flowspec`, then `address-family ipv4`, then `local-install interface-all`
+- On R5, activate the R7 neighbor in `address-family ipv4 flowspec` with `send-community both`
+- On R7, activate the R5 neighbor in `address-family ipv4 flowspec` with `send-community both`; R7 does not need `flowspec local-install interface-all` since it is not enforcing rules in this lab
+- Verify the FlowSpec peering session is Established
+
+**Verification:** `show bgp ipv4 flowspec summary` on R5 must show R7 as an active peer (State/PfxRcd = 0 is expected since no rules are originated from R7 on this platform).
 
 ---
 
@@ -462,12 +467,24 @@ route-map APPLY-SOO permit 10
 ### BGP FlowSpec (IOS-XE)
 
 ```
-address-family ipv4 flowspec
- bgp flowspec local-install interface-all   ! receiver/enforcer
- bgp flowspec disable-local-install         ! originator only (no local enforce)
- neighbor X activate
- neighbor X send-community both
-exit-address-family
+! IOS-XE 17.3.x — FlowSpec enforcement is opt-in via the flowspec global submode
+! Enforcer (receiver): enable local install globally, then activate the neighbor in BGP
+flowspec
+ address-family ipv4
+  local-install interface-all
+ exit-address-family
+!
+router bgp <asn>
+ address-family ipv4 flowspec
+  neighbor X activate
+  neighbor X send-community both
+ exit-address-family
+
+! Originator (no local enforcement): simply omit 'flowspec local-install interface-all'
+! Optional: disable per-interface with 'ip flowspec disable' under interface config
+
+! Note: class-map type traffic only supports 'match access-group input/output <acl>'
+! policy-map type traffic does not exist on IOS-XE 17.3.x — rule origination requires IOS-XR
 ```
 
 | Command | What to Look For |
@@ -498,7 +515,7 @@ exit-address-family
 | `no-export` prefix still visible at remote AS | Community tagged on wrong router (receiver, not sender) |
 | SoO attribute not appearing on reflected routes | `send-community extended` or `both` not set on iBGP peers |
 | FlowSpec session stays in Idle | `address-family ipv4 flowspec` not activated on one side |
-| FlowSpec NLRI not installed | `bgp flowspec local-install interface-all` missing on enforcer |
+| FlowSpec NLRI not installed | `ip flowspec disable` applied on enforcer's interfaces (opt-out on IOS-XE 17.3.x) |
 
 ---
 
@@ -512,7 +529,12 @@ exit-address-family
 <summary>Click to view R5 Configuration</summary>
 
 ```bash
-! R5 (CSR1000v IOS-XE)
+! R5 (CSR1000v IOS-XE 17.3.x)
+flowspec
+ address-family ipv4
+  local-install interface-all
+ exit-address-family
+!
 router bgp 65100
  neighbor 10.1.57.7 remote-as 65003
  neighbor 10.1.57.7 description External-Peer-R7-AS65003-FlowSpec
@@ -523,7 +545,6 @@ router bgp 65100
  exit-address-family
  !
  address-family ipv4 flowspec
-  bgp flowspec local-install interface-all
   neighbor 10.1.57.7 activate
   neighbor 10.1.57.7 send-community both
  exit-address-family
@@ -550,7 +571,6 @@ router bgp 65003
  exit-address-family
  !
  address-family ipv4 flowspec
-  bgp flowspec disable-local-install
   neighbor 10.1.57.5 activate
   neighbor 10.1.57.5 send-community both
  exit-address-family
@@ -574,7 +594,9 @@ R5# show bgp ipv4 flowspec summary
 <summary>Click to view R2 Configuration</summary>
 
 ```bash
-! R2 — update existing route-map, add send-community
+! R2 — enable ASN:value notation before using colon syntax in set community
+ip bgp-community new-format
+!
 ip extcommunity-list standard SOO_CUSTA permit soo 65001:1
 !
 route-map FROM-CUST-A-PRIMARY permit 10
@@ -608,11 +630,22 @@ router bgp 65100
 </details>
 
 <details>
+<summary>Click to view R5 Configuration</summary>
+
+```bash
+! R5 — enable ASN:value community notation
+ip bgp-community new-format
+! Without new-format, 65100:100 displays as a 32-bit decimal and colon notation
+! is rejected in show commands and route-map match statements
+```
+</details>
+
+<details>
 <summary>Click to view Verification Commands</summary>
 
 ```bash
-R5# show ip bgp 172.16.1.0/24
-R5# show ip bgp community 65100:100
+R5# show ip bgp 172.16.1.0/24          ! Community: 65100:100 must appear in detailed output
+R5# show ip bgp community 65100:100    ! 172.16.1.0/24 must appear in filtered table
 ```
 </details>
 
@@ -746,22 +779,11 @@ R3# show ip bgp 172.16.1.0/24    ! SoO attribute visible on reflected route from
 <summary>Click to view R7 FlowSpec Configuration</summary>
 
 ```bash
-! R7 — define the traffic class and action policy for FlowSpec
-class-map type traffic match-all FS_DROP_SSH_CUSTA
- match destination-address ipv4 172.16.1.0 255.255.255.0
- match protocol tcp
- match destination-port 22
-!
-policy-map type traffic PM_FS_BLACKHOLE_SSH
- class FS_DROP_SSH_CUSTA
-  police rate 0 pps
-   conform-action drop
-   exceed-action drop
-!
-! Configure FlowSpec AF (originator — disable local install)
+! R7 — activate FlowSpec AF toward R5; no local enforcement configured
+! Note: class-map type traffic / policy-map type traffic do not exist on IOS-XE 17.3.x
+! FlowSpec rule origination requires IOS-XR or a FlowSpec controller
 router bgp 65003
  address-family ipv4 flowspec
-  bgp flowspec disable-local-install
   neighbor 10.1.57.5 activate
   neighbor 10.1.57.5 send-community both
  exit-address-family
@@ -772,10 +794,14 @@ router bgp 65003
 <summary>Click to view R5 FlowSpec Receiver Configuration</summary>
 
 ```bash
-! R5 — activate FlowSpec AF and enable local install
+! R5 — enforcer: enable FlowSpec enforcement globally, then activate the FlowSpec AF
+flowspec
+ address-family ipv4
+  local-install interface-all
+ exit-address-family
+!
 router bgp 65100
  address-family ipv4 flowspec
-  bgp flowspec local-install interface-all
   neighbor 10.1.57.7 activate
   neighbor 10.1.57.7 send-community both
  exit-address-family
@@ -894,11 +920,15 @@ R7# show bgp ipv4 flowspec
 ```bash
 ! Fault: address-family ipv4 flowspec not activated for the R7 neighbor on R5
 
+R5(config)# flowspec
+R5(config-flowspec)# address-family ipv4
+R5(config-flowspec-afi)# local-install interface-all
+R5(config-flowspec-afi)# exit-address-family
+R5(config-flowspec)# exit
 R5(config)# router bgp 65100
 R5(config-router)# address-family ipv4 flowspec
 R5(config-router-af)# neighbor 10.1.57.7 activate
 R5(config-router-af)# neighbor 10.1.57.7 send-community both
-R5(config-router-af)# bgp flowspec local-install interface-all
 R5(config-router-af)# end
 
 ! Verify:
@@ -991,3 +1021,33 @@ R2# show ip bgp 172.16.6.0/24    ! Must return "% Network not in table"
 | 2 | `--host` not provided | All scripts |
 | 3 | EVE-NG connectivity error | All scripts |
 | 4 | Pre-flight check failed (lab nodes not started) | Inject scripts only |
+
+---
+
+## 12. Appendix: Same Tasks on IOS-XR
+
+This lab boots IOSv/CSR1000v only. For the XR equivalent of community matching,
+well-known community application, and FlowSpec activation, see:
+
+- `solutions-xr/R5.cfg` — full XR equivalent of `solutions/R5.cfg`
+
+Highlights of the XR translation:
+
+- Communities are matched/applied via **`community-set`** RPL objects
+  (named like `prefix-set`), not `ip community-list` + `route-map`
+- The well-known community `no-export` appears literally inside a
+  `community-set` and is applied with `set community ... additive`
+- `send-community both` is **implicit** in XR — communities propagate
+  unless a policy strips them
+- FlowSpec keeps the same address family name (`address-family ipv4 flowspec`)
+  under `router bgp`, and the global `flowspec / address-family ipv4 /
+  local-install interface-all` stanza mirrors IOS exactly
+- `bgp dampening` lives under `address-family ipv4 unicast`, not directly
+  under `router bgp`
+- `maximum-prefix 100 75 warning-only` keeps the same positional form
+- A `route-policy PASS` is mandatory on every activated AF (including
+  the FlowSpec AF)
+
+The XR file is a side-by-side read, **not booted** as part of this lab. To
+exercise it on real hardware, see the XR-mixed retrofit of
+`bgp/lab-07-capstone-config` or the `xr-bridge` bonus topic.

@@ -1,5 +1,15 @@
 # BGP Lab 07 — Full Protocol Mastery (Capstone I)
 
+> **Platform Mix Notice (XR-mixed capstone):** R3 (PE East-2 multihome) and
+> R4 (P-router / Route Reflector) run **IOS XRv (light, 6.1.x)**; R1, R2, R6
+> remain IOSv; R5 and R7 remain CSR1000v. This retrofit exposes you to XR's
+> route-reflector configuration model (cluster-id under AF, neighbor-group
+> abstraction), mandatory route-policies on every BGP session, and the
+> RPL-based community/SOO/extcommunity machinery. IOS commands shown
+> throughout still apply on R1/R2/R5/R6/R7; for the XR equivalents on R3 and
+> R4, see [Appendix B: XR-side Command Reference](#appendix-b-xr-side-command-reference).
+> Status: configs are syntactically translated and need EVE-NG verification.
+
 | Field | Value |
 |-------|-------|
 | Exam | 300-510 SPRI |
@@ -1166,3 +1176,117 @@ python scripts/fault-injection/apply_solution.py --host <eve-ng-ip>
 - RFC 5575 / RFC 8955 — Dissemination of Flow Specification Rules
 - RFC 7311 — AIGP (informational; not used here but mentioned in the topic)
 - CCNP SPRI Official Cert Guide — Chapter 3 (BGP Path Control and Advanced Features)
+
+---
+
+## Appendix B: XR-side Command Reference
+
+R3 (PE East-2) and R4 (P-router / RR) run **IOS XRv (light)** in this
+capstone. The IOS show/config commands referenced earlier in the workbook
+do not exist on XR — use the equivalents below when working on R3 or R4.
+R1, R2, R5 (CSR), R6, and R7 (CSR) are unchanged.
+
+### Why XR here
+
+BGP is platform-agnostic in the 300-510 blueprint, but XR's BGP config model
+differs structurally from IOS in three ways CCIE SP candidates must know:
+(1) **mandatory route-policies** on every activated AF session — XR drops
+silently otherwise; (2) **RPL-based community/extcommunity sets** instead of
+IOS `ip community-list` and `route-map set community additive`; (3)
+**neighbor-group** as the cleaner replacement for IOS `peer-group`. See
+`memory/xr-coverage-policy.md` §2 (XR-mixed posture).
+
+### XR commit model (one-time orientation)
+
+XR uses **candidate / running** with two-stage commit. `commit` applies;
+`abort` discards. `show configuration` shows uncommitted diff. `!` is a
+comment (use `exit` or `root`).
+
+### IOS → XR command equivalents (R3 / R4 only)
+
+| Purpose | IOS (R1, R2, R5, R6, R7) | IOS XR (R3, R4) |
+|---|---|---|
+| BGP summary | `show ip bgp summary` | `show bgp ipv4 unicast summary` |
+| BGP neighbor detail | `show ip bgp neighbors X.X.X.X` | `show bgp ipv4 unicast neighbors X.X.X.X` |
+| BGP table | `show ip bgp` | `show bgp ipv4 unicast` |
+| BGP routes from neighbor | `show ip bgp neighbors X received-routes` | `show bgp ipv4 unicast neighbors X received-routes` |
+| BGP routes advertised | `show ip bgp neighbors X advertised-routes` | `show bgp ipv4 unicast neighbors X advertised-routes` |
+| BGP communities | `show ip bgp community 65100:200` | `show bgp ipv4 unicast community 65100:200` |
+| Inspect route-map | `show route-map FROM-CUST-A-BACKUP` | `show route-policy FROM-CUST-A-BACKUP` |
+| Inspect community-list | `show ip community-list` | `show rpl community-set` |
+| Inspect prefix-list | `show ip prefix-list` | `show rpl prefix-set` |
+| Inspect extcommunity | `show ip extcommunity-list` | `show rpl extcommunity-set` |
+| RR cluster info | `show ip bgp` (look for cluster-list) | `show bgp ipv4 unicast` (CLUSTER_LIST shown inline) |
+| Save | `write memory` | `commit` (auto-persists) |
+
+### IOS → XR config-block equivalents
+
+| Purpose | IOS line | XR equivalent |
+|---|---|---|
+| Cluster ID | `bgp cluster-id 10.0.0.4` (router level) | `bgp cluster-id 10.0.0.4` (under `router bgp`) |
+| RR client | `neighbor X.X.X.X route-reflector-client` (under AF) | `route-reflector-client` (under per-neighbor AF) |
+| Send community | `neighbor X send-community both` | (default — communities forwarded unless policy strips them) |
+| Set community additive | `route-map: set community 65100:200 additive` | `set community CUST-A-BACKUP-COM additive` (community-set required) |
+| Set SOO extcommunity | `route-map: set extcommunity soo 65001:1` | `set extcommunity soo SOO_CUSTA` (extcommunity-set required) |
+| Maximum-prefix | `neighbor X maximum-prefix 100 75 restart 5` | `maximum-prefix 100 75 restart 5` (under AF) |
+| TTL security | `neighbor X ttl-security hops 1` | `ttl-security` (single hop default) |
+| Peer-group / template | `neighbor PG peer-group` | `neighbor-group RR-CLIENTS` |
+| Mandatory in/out policy | (not required) | `route-policy PASS in / route-policy PASS out` per AF |
+
+### RPL primer (XR-only concept)
+
+XR replaces IOS `route-map` with **Routing Policy Language** (RPL). Three
+named-set types are referenced from policies:
+
+```
+prefix-set CUST-A-BACKUP            community-set CUST-A-COM
+  172.16.1.0/24                       65100:200
+end-set                             end-set
+
+extcommunity-set soo SOO_CUSTA
+  65001:1
+end-set
+```
+
+Sets are referenced by name in `route-policy`:
+
+```
+route-policy FROM-CUST-A-BACKUP
+  if destination in CUST-A-BACKUP then
+    set community CUST-A-COM additive
+    set extcommunity soo SOO_CUSTA
+  endif
+  pass
+end-policy
+```
+
+The implicit terminal action of a route-policy is **drop** unless `pass` is
+the last statement. This is the #1 cause of "BGP session up but no routes"
+on XR.
+
+### Verification flow on R3 / R4 (XR-side)
+
+```
+RP/0/0/CPU0:R4# show bgp ipv4 unicast summary
+RP/0/0/CPU0:R4# show bgp ipv4 unicast neighbors 10.0.0.3
+RP/0/0/CPU0:R4# show bgp ipv4 unicast | i CLUSTER_LIST
+
+RP/0/0/CPU0:R3# show bgp ipv4 unicast neighbors 10.1.13.1
+RP/0/0/CPU0:R3# show bgp ipv4 unicast neighbors 10.1.13.1 received-routes
+RP/0/0/CPU0:R3# show route-policy FROM-CUST-A-BACKUP
+RP/0/0/CPU0:R3# show bgp ipv4 unicast 172.16.1.0/24
+RP/0/0/CPU0:R3# show rpl community-set CUST-A-BACKUP-COM
+```
+
+### Known gaps
+
+- This appendix gives commands, not full per-task XR rewrites.
+- The fault-injection scripts (`inject_scenario_*.py`) target IOS syntax for
+  R3/R4 — they need translating before the troubleshooting tickets that
+  affect R3/R4 will inject on XR. Tickets targeting other devices are
+  unaffected.
+- XRv (light) does not support BGP FlowSpec controller mode; that role
+  remains on R5/R7 (CSR1000v) by design.
+- Configs are syntactically translated from the IOS sibling solution but
+  have **not yet been verified in EVE-NG**. Expect minor adjustments after
+  first boot.
