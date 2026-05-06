@@ -17,3 +17,8 @@ __pycache__/
 
 # Claude Code: local settings are machine-specific, commands are tracked
 .claude/settings.local.json
+
+# Claude Code telemetry runtime files (one-shot sidecars, not for tracking)
+.claude/last_run.json
+.claude/pending_telemetry.json
+.claude/build_start.json

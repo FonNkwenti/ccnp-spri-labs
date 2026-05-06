@@ -18,6 +18,14 @@ You are running Phase 3 of the three-phase lab workflow: **lab build** for `$ARG
    - `labs/routing-policy/lab-03-igp-route-manipulation`
    - `labs\routing-policy\lab-03-igp-route-manipulation`
 
+## Telemetry: record build start
+
+Run this command and store the output integer as `BUILD_START_EPOCH`. Also write it to disk so it survives across subagent dispatches:
+
+```bash
+python -c "import time,json,os; os.makedirs('.claude',exist_ok=True); t=int(time.time()); open('.claude/build_start.json','w').write(json.dumps({'start_epoch':t})); print(t)"
+```
+
 ## HARD PRE-FLIGHT GATE — model enforcement (BLOCKING)
 
 This gate runs BEFORE any skill read, BEFORE any file write, BEFORE any subagent dispatch.
@@ -85,4 +93,37 @@ When the lab is approved, **update `README.md`**:
 2. In the `### <topic-slug>` section between the `<!-- lab-index-start -->` / `<!-- lab-index-end -->` markers, find the line containing `- [ ] \`<lab-id>\`` and change `[ ]` to `[x]`.
 3. Write the updated `README.md`.
 
-Then suggest `/tag-lab $ARGUMENTS` and point the user at the next unbuilt lab in the same topic.
+## Telemetry: write sidecar and auto-tag
+
+1. Read `.claude/build_start.json` to recover `start_epoch`.
+
+2. Compute end time and duration, then write `.claude/pending_telemetry.json`:
+
+```bash
+python -c "
+import time, json, os, datetime
+start = json.load(open('.claude/build_start.json'))['start_epoch']
+end = int(time.time())
+data = {
+    'model': '<YOUR_EXACT_MODEL_ID_FROM_SYSTEM_PROMPT>',
+    'tool_calls': None,
+    'duration_seconds': end - start,
+    'session_id': None,
+    'written_at': datetime.datetime.now(datetime.timezone.utc).isoformat(),
+    'source': 'build-lab-inline',
+    'skill': 'build-lab'
+}
+os.makedirs('.claude', exist_ok=True)
+open('.claude/pending_telemetry.json', 'w').write(json.dumps(data, indent=2))
+print('pending_telemetry.json written')
+"
+```
+
+Substitute `<YOUR_EXACT_MODEL_ID_FROM_SYSTEM_PROMPT>` with the literal model ID string declared in your system prompt under "The exact model ID is …" — do not guess or abbreviate.
+
+3. Read `.agent/skills/tag-lab/SKILL.md` and execute it. Pass as arguments: `<topic-slug>/<lab-id> <your-exact-model-id> build-lab`
+
+   Example: if `$ARGUMENTS` resolved to `bgp/lab-05-communities-flowspec` and your model is `claude-sonnet-4-6`, the effective tag-lab invocation is:
+   `bgp/lab-05-communities-flowspec claude-sonnet-4-6 build-lab`
+
+4. After tag-lab completes, point the user at the next unbuilt lab in the same topic.
