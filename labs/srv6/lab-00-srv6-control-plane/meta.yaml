@@ -1,0 +1,54 @@
+# Auto-generated — do not edit manually. Use /tag-lab to stamp external agent runs.
+lab: srv6/lab-00-srv6-control-plane
+chapter: srv6
+exam: 300-510
+devices:
+  - name: P1
+    platform: xrv9k
+    role: "P core (hub, ring + diagonal + PE1 attachment)"
+  - name: P2
+    platform: xrv9k
+    role: "P core (apex, ring only)"
+  - name: P3
+    platform: xrv9k
+    role: "P core (hub, ring + diagonal + PE2 attachment)"
+  - name: P4
+    platform: xrv9k
+    role: "P core (apex, ring only)"
+  - name: PE1
+    platform: xrv9k
+    role: "SP edge"
+  - name: PE2
+    platform: xrv9k
+    role: "SP edge"
+created:
+  date: "2026-05-01"
+  agent: claude-sonnet-4-6
+  skill: lab-assembler
+  skill_version: "2026-05-01"
+  files:
+    - workbook.md
+    - topology/topology.drawio
+    - topology/README.md
+    - setup_lab.py
+    - README.md
+    - decisions.md
+    - meta.yaml
+    - initial-configs/P1.cfg
+    - initial-configs/P2.cfg
+    - initial-configs/P3.cfg
+    - initial-configs/P4.cfg
+    - initial-configs/PE1.cfg
+    - initial-configs/PE2.cfg
+    - solutions/P1.cfg
+    - solutions/P2.cfg
+    - solutions/P3.cfg
+    - solutions/P4.cfg
+    - solutions/PE1.cfg
+    - solutions/PE2.cfg
+    - scripts/fault-injection/inject_scenario_01.py
+    - scripts/fault-injection/inject_scenario_02.py
+    - scripts/fault-injection/inject_scenario_03.py
+    - scripts/fault-injection/apply_solution.py
+    - scripts/fault-injection/README.md
+updated: []
