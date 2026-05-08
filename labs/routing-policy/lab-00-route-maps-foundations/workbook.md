@@ -167,12 +167,14 @@ Inside a route-map sequence, `continue [seq]` runs this sequence's `set` actions
 The following is **pre-loaded** via `setup_lab.py`:
 
 **IS pre-loaded:**
+
 - Hostnames (R1, R2, R3, R4)
 - Interface IP addressing on all five core links (L1–L5) and all loopbacks
 - Interface descriptions referencing the link IDs
 - `no ip domain-lookup` and `ip cef` on all devices
 
 **IS NOT pre-loaded** (student configures this):
+
 - OSPF area 0 process and interface assignments
 - IS-IS instance SP and interface assignments
 - BGP AS 65100 iBGP full-mesh (peer-group IBGP) between R1/R2/R3
@@ -233,11 +235,13 @@ On R1, build `route-map FILTER_R4_IN` with two sequences:
 - **Sequence 20 — `permit`**: `match ip address prefix-list PFX_R4_LE_24` — permits 172.20.4.0/24.
 
 Apply inbound on neighbor 10.1.14.4:
+
 ```
 neighbor 10.1.14.4 route-map FILTER_R4_IN in
 ```
 
 Soft-reset to activate without tearing down the session:
+
 ```
 clear ip bgp 10.1.14.4 soft in
 ```
@@ -431,6 +435,8 @@ clear ip bgp 10.1.14.4 soft in
 
 ### Task 1: IGP and BGP Baseline
 
+> **Platform note (IOSv 15.6(2)T — EVE-NG):** `neighbor IBGP activate` inside `address-family ipv4` is rejected on this image with `% Activation failed : configure "bgp listener range" before activating peergroup`. Omit that line and activate each peer-group member individually instead (`neighbor 10.0.0.X activate`). All other peer-group attributes are still inherited. This restriction does not exist on IOS-XE or physical hardware.
+
 <details>
 <summary>Click to view R1 Configuration</summary>
 
@@ -475,13 +481,13 @@ router bgp 65100
  !
  address-family ipv4
   network 172.16.1.0 mask 255.255.255.0
-  neighbor IBGP activate
   neighbor IBGP next-hop-self
   neighbor 10.0.0.2 activate
   neighbor 10.0.0.3 activate
   neighbor 10.1.14.4 activate
  exit-address-family
 ```
+
 </details>
 
 <details>
@@ -526,12 +532,12 @@ router bgp 65100
  neighbor 10.0.0.3 peer-group IBGP
  !
  address-family ipv4
-  neighbor IBGP activate
   neighbor IBGP next-hop-self
   neighbor 10.0.0.1 activate
   neighbor 10.0.0.3 activate
  exit-address-family
 ```
+
 </details>
 
 <details>
@@ -577,13 +583,13 @@ router bgp 65100
  neighbor 10.1.34.4 remote-as 65200
  !
  address-family ipv4
-  neighbor IBGP activate
   neighbor IBGP next-hop-self
   neighbor 10.0.0.1 activate
   neighbor 10.0.0.2 activate
   neighbor 10.1.34.4 activate
  exit-address-family
 ```
+
 </details>
 
 <details>
@@ -605,6 +611,7 @@ router bgp 65200
   neighbor 10.1.34.3 activate
  exit-address-family
 ```
+
 </details>
 
 <details>
@@ -616,6 +623,7 @@ show isis neighbors
 show ip bgp summary
 show ip bgp
 ```
+
 </details>
 
 ---
@@ -639,6 +647,7 @@ ip prefix-list PFX_R4_LE_24 seq 5 permit 172.20.0.0/16 ge 24 le 24
 ! Prefix-list — exact match for 172.20.5.0/24 only
 ip prefix-list PFX_R4_LO2_EXACT seq 5 permit 172.20.5.0/24
 ```
+
 </details>
 
 <details>
@@ -650,6 +659,7 @@ show ip access-lists ACL_EXT_R4_LO2
 show ip prefix-list
 show ip prefix-list detail PFX_R4_LO2_EXACT
 ```
+
 </details>
 
 ---
@@ -670,6 +680,7 @@ router bgp 65100
  address-family ipv4
   neighbor 10.1.14.4 route-map FILTER_R4_IN in
 ```
+
 </details>
 
 <details>
@@ -681,6 +692,7 @@ show ip bgp neighbors 10.1.14.4 routes
 show ip bgp 172.20.5.0
 show route-map FILTER_R4_IN
 ```
+
 </details>
 
 ---
@@ -703,6 +715,7 @@ route-map DEMO_REDIST permit 10
  match ip address 10
  set tag 100
 ```
+
 </details>
 
 <details>
@@ -712,6 +725,7 @@ route-map DEMO_REDIST permit 10
 show route-map DEMO_CONTINUE
 show route-map DEMO_REDIST
 ```
+
 </details>
 
 ---
@@ -745,6 +759,7 @@ The NOC reports that after a change window on R1, **none** of R4's prefixes appe
 2. On R1: `show route-map FILTER_R4_IN` — count the sequences. If only sequence 10 (deny) is present and sequence 20 (permit) is missing, the implicit deny at the end of the map drops `172.20.4.0/24` too.
 3. Confirm: `show running-config | section route-map FILTER_R4_IN` — sequence 20 is absent.
 4. Root cause: `route-map FILTER_R4_IN permit 20` (the catch-all permit for `PFX_R4_LE_24`) was removed. With only `deny 10` remaining, the implicit deny at the end of the map drops all other prefixes including `172.20.4.0/24`.
+
 </details>
 
 <details>
@@ -779,6 +794,7 @@ The inbound filter on R1 from R4 was supposed to drop **only** `172.20.5.0/24`, 
 2. On R1: `show route-map FILTER_R4_IN` — seq 10 is a deny with `PFX_R4_LO2_EXACT`. If both prefixes are being dropped by seq 10, the prefix-list must match more than just Lo2.
 3. On R1: `show ip prefix-list PFX_R4_LO2_EXACT` — expected output is `permit 172.20.5.0/24`. If the entry shows `permit 172.20.0.0/16 le 24` instead, it now matches all /24s in 172.20/16 including Lo1.
 4. Root cause: `PFX_R4_LO2_EXACT` was widened from an exact-length `/24` entry to `172.20.0.0/16 le 24`, which matches both Lo1 and Lo2. Seq 10 (deny) now catches both, so both are dropped.
+
 </details>
 
 <details>
@@ -787,10 +803,14 @@ The inbound filter on R1 from R4 was supposed to drop **only** `172.20.5.0/24`, 
 On R1: restore the exact-match entry in `PFX_R4_LO2_EXACT`.
 
 ```
-R1(config)# no ip prefix-list PFX_R4_LO2_EXACT seq 5
+R1(config)# no ip prefix-list PFX_R4_LO2_EXACT
 R1(config)# ip prefix-list PFX_R4_LO2_EXACT seq 5 permit 172.20.5.0/24
 R1# clear ip bgp 10.1.14.4 soft in
 ```
+
+> **IOSv note:** `no ip prefix-list NAME seq N` (seq-only deletion) is rejected with `% Incomplete command.` on IOSv. Use `no ip prefix-list NAME` to delete the entire list, then re-add the correct entry.
+>
+> **Timing note:** Wait ~5 seconds after `clear ip bgp soft in` before checking `show ip bgp neighbors 10.1.14.4 routes` — the Route Refresh from R4 and re-evaluation takes a moment to complete.
 
 Verify: `show ip prefix-list PFX_R4_LO2_EXACT` shows the exact `/24` entry. `show ip bgp neighbors 10.1.14.4 routes` shows `172.20.4.0/24` accepted.
 </details>
@@ -812,6 +832,7 @@ The inbound filter on R1 from R4 is supposed to block `172.20.5.0/24`, but that 
 2. On R1: `show ip bgp neighbors 10.1.14.4` — look for the line showing route-map application. If it reads `Route map for outgoing advertisements is FILTER_R4_IN`, the map is applied outbound, not inbound.
 3. On R1: `show running-config | include route-map FILTER_R4_IN` — look for `out` instead of `in`.
 4. Root cause: `neighbor 10.1.14.4 route-map FILTER_R4_IN out` was set instead of `in`. An outbound filter controls what R1 sends to R4 — it does not filter what R1 receives from R4. The inbound RIB-IN is completely unaffected.
+
 </details>
 
 <details>
@@ -837,22 +858,22 @@ Verify: `show ip bgp neighbors 10.1.14.4` now shows `Route map for incoming adve
 
 ### Core Implementation
 
-- [ ] All OSPF and IS-IS adjacencies up between R1/R2/R3 on L1, L2, and L5
-- [ ] iBGP full-mesh established (R1↔R2, R2↔R3, R1↔R3) via Loopback0 sessions
-- [ ] eBGP sessions up: R1↔R4 (10.1.14.4) and R3↔R4 (10.1.34.4)
-- [ ] R1 advertises `172.16.1.0/24`; R4 advertises `172.20.4.0/24` and `172.20.5.0/24`
-- [ ] Standard ACL `10` and extended ACL `ACL_EXT_R4_LO2` defined on R1
-- [ ] Prefix-lists `PFX_R4_LE_24` (ge/le 24) and `PFX_R4_LO2_EXACT` (exact) defined on R1
-- [ ] `route-map FILTER_R4_IN` applied inbound on R1's neighbor 10.1.14.4
-- [ ] `show ip bgp neighbors 10.1.14.4 routes` shows only `172.20.4.0/24`
-- [ ] `show ip bgp 172.20.5.0` on R1 shows prefix reachable only via iBGP from R3
-- [ ] `route-map DEMO_CONTINUE` and `route-map DEMO_REDIST` defined (not applied) on R1
+- [x] All OSPF and IS-IS adjacencies up between R1/R2/R3 on L1, L2, and L5
+- [x] iBGP full-mesh established (R1↔R2, R2↔R3, R1↔R3) via Loopback0 sessions
+- [x] eBGP sessions up: R1↔R4 (10.1.14.4) and R3↔R4 (10.1.34.4)
+- [x] R1 advertises `172.16.1.0/24`; R4 advertises `172.20.4.0/24` and `172.20.5.0/24`
+- [x] Standard ACL `10` and extended ACL `ACL_EXT_R4_LO2` defined on R1
+- [x] Prefix-lists `PFX_R4_LE_24` (ge/le 24) and `PFX_R4_LO2_EXACT` (exact) defined on R1
+- [x] `route-map FILTER_R4_IN` applied inbound on R1's neighbor 10.1.14.4
+- [x] `show ip bgp neighbors 10.1.14.4 routes` shows only `172.20.4.0/24`
+- [x] `show ip bgp 172.20.5.0` on R1 shows prefix reachable only via iBGP from R3
+- [x] `route-map DEMO_CONTINUE` and `route-map DEMO_REDIST` defined (not applied) on R1
 
 ### Troubleshooting
 
-- [ ] Ticket 1 diagnosed (implicit deny from missing seq 20) and resolved — both R4 prefixes properly filtered/permitted
-- [ ] Ticket 2 diagnosed (PFX_R4_LO2_EXACT too broad) and resolved — only 172.20.5.0/24 denied
-- [ ] Ticket 3 diagnosed (route-map applied outbound instead of inbound) and resolved — filter active inbound
+- [x] Ticket 1 diagnosed (implicit deny from missing seq 20) and resolved — both R4 prefixes properly filtered/permitted
+- [x] Ticket 2 diagnosed (PFX_R4_LO2_EXACT too broad) and resolved — only 172.20.5.0/24 denied
+- [x] Ticket 3 diagnosed (route-map applied outbound instead of inbound) and resolved — filter active inbound
 
 ---
 

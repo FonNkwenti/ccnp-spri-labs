@@ -44,6 +44,13 @@ RESTORE_TARGETS = [
     "R4",
 ]
 
+# Per-device BGP soft-reset commands to run after config restore.
+# Required so that inbound route-map changes take effect immediately on the
+# adj-RIB-in rather than waiting for the next incoming UPDATE.
+BGP_SOFT_RESETS = {
+    "R1": "clear ip bgp 10.1.14.4 soft in",
+}
+
 
 def restore_device(host: str, ports: dict, name: str, *, reset: bool) -> bool:
     port = ports.get(name)
@@ -68,6 +75,9 @@ def restore_device(host: str, ports: dict, name: str, *, reset: bool) -> bool:
             if line.strip() and not line.startswith("!")
         ]
         conn.send_config_set(commands, cmd_verify=False)
+        if name in BGP_SOFT_RESETS:
+            print(f"[*] Soft-resetting BGP on {name} to activate restored policy ...")
+            conn.send_command(BGP_SOFT_RESETS[name], read_timeout=30)
         conn.save_config()
         conn.disconnect()
         print(f"[+] {name} restored.")

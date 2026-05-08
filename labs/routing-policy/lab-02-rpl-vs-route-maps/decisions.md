@@ -70,8 +70,10 @@ IS-IS; iBGP sessions use loopback0 as update-source.
 
 From lab-02 onward the AS 65100 iBGP full mesh includes XR1 (10.0.0.5) and XR2 (10.0.0.6).
 R1/R2/R3 each add both XR peers to the IBGP peer-group. XR1 and XR2 each peer with all four
-other AS 65100 members. `next-hop-self` is set on all iBGP sessions (both IOS and XR) so that
-XR nodes receive reachable next-hops from R4's eBGP prefixes without a BGP next-hop resolver.
+other AS 65100 members. `next-hop-self` is configured on R1 and R3 (the eBGP edge routers)
+so that iBGP peers receive R1/R3's loopback as next-hop for R4's prefixes rather than R4's
+link address. XR1 and XR2 have no eBGP peers and do not configure `next-hop-self` — all
+next-hops they receive are already loopback addresses reachable via IS-IS.
 
 ---
 

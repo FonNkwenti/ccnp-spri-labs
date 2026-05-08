@@ -45,6 +45,8 @@ Tags must be stamped **at redistribution** using `set tag` in the route-map and 
 | 100 | Originated in OSPF | OSPF→IS-IS maps on R2 and R3 | IS-IS→OSPF deny on R3 |
 | 200 | Originated in IS-IS | IS-IS→OSPF maps on R2 and R3 | OSPF→IS-IS deny on R3 |
 
+> **Reference document:** For a deeper walkthrough of the tag-based loop prevention design — including step-by-step traces of both loop directions, the tag state machine, and diagnosis of failed loop prevention — see [`docs/tag-based-loop-prevention.md`](docs/tag-based-loop-prevention.md).
+
 ### Route-Type Matching
 
 `match route-type` lets you distinguish how a route entered the routing table. In OSPF, this is critical when redistributing into IS-IS because IS-IS has no concept of external/internal — all redistributed routes are IS-IS external — so the differentiation must happen before they cross the protocol boundary.
@@ -110,6 +112,13 @@ Expanded community lists apply Cisco IOS regex to the community string. The patt
 ## 2. Topology & Scenario
 
 Your SP team runs AS 65100 across three routers (R1, R2, R3). Both OSPF and IS-IS are active on the core links — the SP uses OSPF as the primary IGP and IS-IS as a backup, and both redistribute into each other on R2 and R3. A route-filtering incident last quarter proved that uncontrolled mutual redistribution caused routing loops. Your task is to retrofit the redistribution with tag-based loop prevention.
+
+**The two-router design philosophy:** Redistribution runs on both R2 and R3, but they have **different roles**:
+
+- **R2 is the "tagger only"** — it stamps tags on routes as they cross from one protocol to the other, but applies no filtering. Its route-maps permit all route types and set a tag value so the origin protocol is identifiable downstream.
+- **R3 is the "loop protector"** — it also redistributes both ways, but adds a deny sequence at the top of each route-map that matches the tag from the *opposite direction*. This prevents a route that was just redistributed out of OSPF (tag 100) from being picked up by IS-IS→OSPF and sent back into OSPF, and vice versa.
+
+The key insight: the deny sequence must go on the **receiving side** of the loop — the router that could pull a route back into the protocol it just left. With redistribution on two routers, this means R3 is the designated break point. If both routers simply stamped tags without blocking, a route could bounce: OSPF → IS-IS (tag 100 on R2) → OSPF (tag 200 on R3) → IS-IS (tag 100 on R2) → … indefinitely.
 
 Separately, R4 (AS 65200) has dual eBGP sessions to R1 and R3. The network team wants to classify R4's prefixes with BGP communities at entry — `65100:100` on R1's side and `65100:200` on R3's side — so that downstream policy can reference the community value rather than re-applying prefix-list matches at every iBGP speaker.
 
@@ -195,6 +204,7 @@ Separately, R4 (AS 65200) has dual eBGP sessions to R1 and R3. The network team 
 The following is **pre-loaded** via `setup_lab.py`:
 
 **IS pre-loaded:**
+
 - Hostnames and `no ip domain-lookup`
 - Interface IP addressing (all routed links and loopbacks)
 - OSPF area 0 on all three SP core links and Loopback0 interfaces
@@ -205,8 +215,10 @@ The following is **pre-loaded** via `setup_lab.py`:
 - R1 `FILTER_R4_IN` route-map denying 172.20.5.0/24 inbound from R4
 - All prefix-lists and ACLs from lab-00 (PFX_R4_LE_24, PFX_R4_LO2_EXACT, ACL_EXT_R4_LO2)
 - Demo route-maps from lab-00 (DEMO_CONTINUE, DEMO_REDIST) — not applied
+- R1 `DEMO_WELL_KNOWN` route-map — matches `PFX_R4_LE_24` and sets community `no-export`; not applied (used in Task 7)
 
 **IS NOT pre-loaded** (student configures this):
+
 - R1 `redistribute connected metric-type 1 subnets` under `router ospf 1` (prerequisite E1 route source for route-type demonstrations)
 - OSPF↔IS-IS mutual redistribution on R2 and R3
 - Route tags on redistribution route-maps (tag 100 for OSPF→IS-IS, tag 200 for IS-IS→OSPF)
@@ -221,6 +233,8 @@ The following is **pre-loaded** via `setup_lab.py`:
 
 ## 5. Lab Challenge: Core Implementation
 
+> **Reference:** If you find the tag flow or the two-router division of labour confusing, read [`docs/tag-based-loop-prevention.md`](docs/tag-based-loop-prevention.md) *before* starting the tasks below. It contains full traces of both loop directions with ASCII art, a tag state machine, and verification commands.
+
 ### Task 1: Redistribute OSPF into IS-IS on R2 (with tagging)
 
 **Prerequisite — create OSPF E1 routes on R1:** The `match route-type external type-1` sequence in `OSPF_TO_ISIS` needs at least one OSPF E1 route in the domain so that you can verify tag 100 appears on an E1 prefix in R2's IS-IS LSP.
@@ -228,12 +242,14 @@ The following is **pre-loaded** via `setup_lab.py`:
 - On R1, add `redistribute connected metric-type 1 subnets` under `router ospf 1`. This injects R1's directly connected interfaces (Lo1 172.16.1.0/24 and Gi0/1 10.1.14.0/24) into OSPF as E1 routes — metric-type 1 means the OSPF cost accumulates across links as the route propagates.
 - Confirm: `show ip route ospf` on R2 must list 172.16.1.0/24 and 10.1.14.0/24 as `O E1` before you proceed to the redistribution tasks.
 
-**R2 redistribution:**
+**R2 redistribution — the "tagger only":**
+
+R2 is the simplest of the two redistribution routers. Its job is purely additive: stamp the origin protocol's tag on every route that crosses the boundary. Because R2 never denies anything, it creates no path asymmetry — both OSPF→IS-IS and IS-IS→OSPF flows pass through freely. The tag itself (100 for OSPF, 200 for IS-IS) does not prevent loops on R2; it simply marks the route so that R3 (the loop protector) can identify and block it on the return leg.
 
 - Activate bidirectional redistribution between OSPF process 1 and IS-IS process SP.
 - For OSPF→IS-IS: create a route-map that covers all three OSPF route types (external type-1, external type-2, and internal). Set tag 100 on every permitted route.
 - For IS-IS→OSPF: create a route-map that permits all IS-IS routes. Set tag 200 and set metric 20 on every permitted route.
-- Apply both route-maps to the respective redistribution commands. Do not add any deny sequences on R2 — R2 is the "tagger only."
+- Apply both route-maps to the respective redistribution commands. **Do not add any deny sequences on R2** — R2 is the "tagger only." The loop-protection denies will be placed on R3 in Task 2.
 
 **Verification:**
 
@@ -248,6 +264,16 @@ The following is **pre-loaded** via `setup_lab.py`:
 ---
 
 ### Task 2: Redistribute OSPF into IS-IS on R3 (with loop prevention)
+
+R3's route-maps are structurally identical to R2's, with one critical addition: each map has a **deny sequence at the top** that matches the tag from the opposite direction. This is where the loop stops.
+
+Trace what happens when a route tries to loop:
+
+1. An OSPF route enters IS-IS on R2 — R2 stamps **tag 100** (OSPF origin).
+2. R3 redistributes that IS-IS route back into OSPF — but R3's `ISIS_TO_OSPF` has `deny 10 match tag 100`. The route hits the deny before it reaches the permit sequence and is **blocked** from re-entering OSPF.
+3. The same logic works in reverse: an IS-IS route redistributed into OSPF on R2 carries **tag 200** (IS-IS origin). R3's `OSPF_TO_ISIS deny 10 match tag 200` blocks it from bouncing back into IS-IS.
+
+The deny thus lives on the **re-entry side** of the loop, one hop after R2's tag was stamped. R2 never blocks anything — it just tags. R3 enforces the gate.
 
 - On R3, activate the same bidirectional redistribution as Task 1.
 - For OSPF→IS-IS on R3: add a deny sequence at the top that matches tag 200 (IS-IS-origin marker), then permit the remaining routes by route-type and set tag 100.
@@ -548,6 +574,7 @@ ip community-list expanded <NAME> permit <regex>
 router ospf 1
  redistribute connected metric-type 1 subnets
 ```
+
 </details>
 
 <details>
@@ -579,6 +606,7 @@ route-map ISIS_TO_OSPF permit 10
  set tag 200
  set metric 20
 ```
+
 </details>
 
 <details>
@@ -616,6 +644,7 @@ route-map ISIS_TO_OSPF permit 20
  set tag 200
  set metric 20
 ```
+
 </details>
 
 <details>
@@ -627,6 +656,7 @@ show route-map ISIS_TO_OSPF
 show ip route | include tag
 show isis database detail
 ```
+
 </details>
 
 ### Task 3: send-community
@@ -640,6 +670,7 @@ router bgp 65100
  address-family ipv4
   neighbor IBGP send-community both
 ```
+
 </details>
 
 ### Task 4 & 5: AS-Path ACL and Community Setting
@@ -654,6 +685,7 @@ route-map FILTER_R4_IN permit 20
  set community 65100:100
  set local-preference 150
 ```
+
 </details>
 
 <details>
@@ -675,6 +707,7 @@ router bgp 65100
  address-family ipv4
   neighbor 10.1.34.4 route-map FILTER_R4_ASPATH in
 ```
+
 </details>
 
 <details>
@@ -686,6 +719,7 @@ show ip bgp regexp _65200$
 show ip as-path-access-list
 show ip bgp neighbors 10.0.0.2 | include Community
 ```
+
 </details>
 
 ### Task 6: Community Lists
@@ -698,6 +732,7 @@ ip community-list standard COMM_65100_100 permit 65100:100
 ip community-list expanded COMM_65100_1XX permit 65100:1[0-9][0-9]
 ip community-list expanded COMM_65100_2XX permit 65100:2[0-9]*
 ```
+
 </details>
 
 ---
@@ -735,6 +770,7 @@ show route-map FILTER_R4_IN
 ! Confirm AS-path ACL is not referenced by R1's map (should only be on R3)
 show ip as-path-access-list
 ```
+
 </details>
 
 <details>
@@ -749,91 +785,111 @@ route-map FILTER_R4_IN permit 20
 ! Clear soft inbound to re-evaluate
 clear ip bgp 10.1.14.4 soft in
 ```
+
 </details>
 
 ---
 
-### Ticket 2 — IS-IS Routes Disappear from the OSPF Table on R1
+### Ticket 2 — R3's IS-IS-Only Prefix Disappears from R1's OSPF Table
 
-**Scenario:** After a config audit, IS-IS routes that were previously visible in R1's OSPF table as external routes have vanished. R2 and R3 both show IS-IS adjacencies as up.
+**Scenario:** After a config audit on R2, `10.200.0.3/32` (R3's IS-IS-only loopback) has disappeared from R1's OSPF table. `10.200.0.2/32` is still visible as O E2. R2 and R3 both show IS-IS adjacencies as up.
 
 **Inject script:** `inject_scenario_02.py`
 
-**Success criteria:** `show ip route ospf` on R1 shows IS-IS-originated prefixes redistributed into OSPF with O E2 designation.
+**Success criteria:** `show ip route 10.200.0.3` on R1 shows `O E2` with `Tag 200`. `show ip ospf database external 10.200.0.3` shows advertising router `10.0.0.2` (R2).
+
+> **Diagnostic clue:** The partial disappearance is the key signal. `10.200.0.2/32` is still present because R3 learned it via IS-IS and redistributes it into OSPF. `10.200.0.3/32` is gone because R3 cannot redistribute its own locally-originated loopback via `redistribute isis` — only a remote router (R2) that learned it via IS-IS can do that. The fault is therefore on R2, not R3.
 
 <details>
 <summary>Click to view Diagnosis Steps</summary>
 
 ```bash
-! On R2 — check if ISIS_TO_OSPF route-map is applied
+! Step 1 — Confirm the partial disappearance on R1
+show ip route 10.200.0.3
+! Expected after fault: route not found (or stale via R3 with wrong attributes).
+show ip route 10.200.0.2
+! Expected: still present as O E2 — confirms R3's ISIS_TO_OSPF is intact.
+
+! Step 2 — On R2, check whether the redistribute isis command is present
 show run | section router ospf
-! Look for "redistribute isis SP level-2 subnets route-map ISIS_TO_OSPF"
-! If the route-map name is missing or wrong, redistribution is not happening.
+! Look for: redistribute isis SP level-2 subnets route-map ISIS_TO_OSPF
+! If the line is absent, R2's IS-IS→OSPF redistribution was removed — this is the fault.
 
-! On R2 — check route-map hit counters
-show route-map ISIS_TO_OSPF
-! If hit counter is 0, no IS-IS routes are being processed by the route-map.
-
-! On R3 — check loop-prevention deny in ISIS_TO_OSPF
-show route-map ISIS_TO_OSPF
-! If seq 10 deny "match tag 100" has very high hits, OSPF-tagged routes are
-! looping — but that would also affect R2. Check R2's route-map first.
+! Step 3 — Confirm on the OSPF database: R2 should be the advertising router
+show ip ospf database external 10.200.0.3
+! Before fix: entry absent or advertising router is not 10.0.0.2.
+! After fix: advertising router 10.0.0.2, metric 20, tag 200.
 ```
+
 </details>
 
 <details>
 <summary>Click to view Fix</summary>
 
 ```bash
-! The fault is a wrong route-map reference — redistribution points to a
-! non-existent or misnamed route-map, causing IOS to use an empty implicit map
-! which permits all routes but sets no tags. Or the redistribute command was
-! removed entirely.
+! The fault is removal of the redistribute isis command from R2's OSPF process.
+! R2 is the only router that can redistribute 10.200.0.3/32 (R3's Lo10) into OSPF
+! because R2 learns it via IS-IS. R3 cannot redistribute its own locally-originated
+! prefix via "redistribute isis".
 !
-! On R2 — restore redistribution with correct route-map
+! On R2 — restore redistribution
 router ospf 1
  redistribute isis SP level-2 subnets route-map ISIS_TO_OSPF
 ```
+
 </details>
 
 ---
 
-### Ticket 3 — AS-Path Filter on R3 Passes All Routes from R4 Including Unexpected Ones
+### Ticket 3 — BGP Communities Missing on R2 Despite Being Set on R1
 
-**Scenario:** During a peer audit, `show ip bgp regexp _65200$` on R3 returns routes you did not expect — the filter is too broad.
+**Scenario:** A peer reports that route-policy decisions on R2 that rely on community values are not working. On R1, `show ip bgp 172.20.4.0` correctly shows `Community: 65100:100`. On R2, the same prefix shows no community at all.
 
 **Inject script:** `inject_scenario_03.py`
 
-**Success criteria:** `show ip as-path-access-list 1` on R3 shows `permit _65200$` (anchored). The filter passes only routes where 65200 is the last (originating) AS.
+**Success criteria:** `show ip bgp 172.20.4.0` on R2 shows `Community: 65100:100`. `show ip bgp neighbors 10.0.0.2 | include Community` on R1 shows "Community attribute sent to this neighbor."
 
 <details>
 <summary>Click to view Diagnosis Steps</summary>
 
 ```bash
-! On R3 — inspect the AS-path ACL
-show ip as-path-access-list
-! Look for the regex pattern. A common error: "permit _65200_" (trailing
-! underscore instead of $). In this lab topology they behave identically,
-! but in production _65200_ also matches 65200 as a transit AS in the middle
-! of a longer path. The correct production form is _65200$.
+! Step 1 — Confirm community present on R1 but absent on R2
+R1# show ip bgp 172.20.4.0
+! Community: 65100:100 should appear here. If it does, the fault is in propagation.
 
-! Confirm by testing both patterns against the live table:
-show ip bgp regexp _65200_
-show ip bgp regexp _65200$
-! In this topology the output is identical — but document WHY _65200$ is correct.
+R2# show ip bgp 172.20.4.0
+! If community is absent here, the fault is between R1 and R2 — not in the
+! route-map itself.
+
+! Step 2 — Check whether R1 is sending communities to its iBGP peers
+R1# show ip bgp neighbors 10.0.0.2 | include Community
+! Expected (working): "Community attribute sent to this neighbor"
+! Expected (fault active): line absent or "Community attribute not sent"
+! This is the key command — communities are stripped by default on all IOS BGP
+! peers including iBGP. "send-community both" must be explicit.
+
+! Step 3 — Confirm under the BGP peer-group definition
+R1# show run | section router bgp
+! Look for "neighbor IBGP send-community both" under address-family ipv4.
+! If the line is absent, that is the fault.
 ```
+
 </details>
 
 <details>
 <summary>Click to view Fix</summary>
 
 ```bash
-! On R3 — replace the AS-path ACL with the anchored form
-no ip as-path access-list 1 permit _65200_
-ip as-path access-list 1 permit _65200$
-! Soft-clear the eBGP session to re-evaluate
-clear ip bgp 10.1.34.4 soft in
+! On R1 — restore send-community on the IBGP peer group
+router bgp 65100
+ address-family ipv4
+  neighbor IBGP send-community both
+
+! Soft-clear outbound iBGP sessions to push updated attributes immediately
+clear ip bgp 10.0.0.2 soft out
+clear ip bgp 10.0.0.3 soft out
 ```
+
 </details>
 
 ---
@@ -842,25 +898,25 @@ clear ip bgp 10.1.34.4 soft in
 
 ### Core Implementation
 
-- [ ] R1: `redistribute connected metric-type 1 subnets` under `router ospf 1` (creates O E1 routes visible on R2 and R3 — required for route-type seq 10 hit counters)
-- [ ] R2: OSPF redistributed into IS-IS with `OSPF_TO_ISIS` route-map (type-1, type-2, internal — all tagged 100)
-- [ ] R2: IS-IS redistributed into OSPF with `ISIS_TO_OSPF` route-map (tag 200, metric 20)
-- [ ] R3: `OSPF_TO_ISIS` includes deny seq for tag 200 before permit sequences
-- [ ] R3: `ISIS_TO_OSPF` includes deny seq for tag 100 before permit sequences
-- [ ] No routing loops observed (`show ip route | include tag` shows stable tags)
-- [ ] `send-community both` active on IBGP peer group on R1, R2, and R3
-- [ ] R1 `FILTER_R4_IN permit 20` sets community `65100:100` and local-preference 150
-- [ ] `ip as-path access-list 1 permit _65200$` defined on R3
-- [ ] `FILTER_R4_ASPATH` applied inbound on R3's R4 neighbor session
-- [ ] Community `65100:200` visible on R2 for routes learned via R3
-- [ ] Community `65100:100` visible on R2 for routes learned via R1
-- [ ] Community-lists `COMM_65100_100`, `COMM_65100_1XX`, `COMM_65100_2XX` defined on all three SP routers
+- [x] R1: `redistribute connected metric-type 1 subnets` under `router ospf 1` (creates O E1 routes visible on R2 and R3 — required for route-type seq 10 hit counters)
+- [x] R2: OSPF redistributed into IS-IS with `OSPF_TO_ISIS` route-map (type-1, type-2, internal — all tagged 100)
+- [x] R2: IS-IS redistributed into OSPF with `ISIS_TO_OSPF` route-map (tag 200, metric 20)
+- [x] R3: `OSPF_TO_ISIS` includes deny seq for tag 200 before permit sequences
+- [x] R3: `ISIS_TO_OSPF` includes deny seq for tag 100 before permit sequences
+- [x] No routing loops observed (`show ip route | include tag` shows stable tags)
+- [x] `send-community both` active on IBGP peer group on R1, R2, and R3
+- [x] R1 `FILTER_R4_IN permit 20` sets community `65100:100` and local-preference 150
+- [x] `ip as-path access-list 1 permit _65200$` defined on R3
+- [x] `FILTER_R4_ASPATH` applied inbound on R3's R4 neighbor session
+- [x] Community `65100:200` visible on R2 for routes learned via R3
+- [x] Community `65100:100` visible on R2 for routes learned via R1
+- [x] Community-lists `COMM_65100_100`, `COMM_65100_1XX`, `COMM_65100_2XX` defined on all three SP routers
 
 ### Troubleshooting
 
-- [ ] Ticket 1 resolved: community value corrected on R1
-- [ ] Ticket 2 resolved: IS-IS redistribution restored on R2
-- [ ] Ticket 3 resolved: AS-path ACL corrected to `_65200$` on R3
+- [x] Ticket 1 resolved: community value corrected on R1
+- [x] Ticket 2 resolved: IS-IS redistribution restored on R2
+- [ ] Ticket 3 resolved: `send-community both` restored on R1's IBGP peer group; community `65100:100` visible on R2
 
 ---
 

@@ -95,6 +95,8 @@ def main() -> int:
             return 4
         print("[*] Injecting fault configuration ...")
         conn.send_config_set(FAULT_COMMANDS)
+        print("[*] Soft-resetting BGP inbound from 10.1.14.4 to activate fault ...")
+        conn.send_command("clear ip bgp 10.1.14.4 soft in", read_timeout=30)
         conn.save_config()
     finally:
         conn.disconnect()

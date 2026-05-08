@@ -14,30 +14,29 @@ SCRIPT_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(SCRIPT_DIR.parents[3] / "common" / "tools"))
 from eve_ng import EveNgError, connect_node, discover_ports, find_open_lab, require_host  # noqa: E402
 
-DEVICE_NAME = "R3"
+DEVICE_NAME = "R1"
 FAULT_COMMANDS = [
-    "no ip as-path access-list 1 permit _65200$",
-    "ip as-path access-list 1 permit _65200_",
-    "do clear ip bgp 10.1.34.4 soft in",
+    "router bgp 65100",
+    "address-family ipv4",
+    "no neighbor IBGP send-community both",
+    "exit-address-family",
+    "exit",
+    "do clear ip bgp 10.0.0.2 soft out",
+    "do clear ip bgp 10.0.0.3 soft out",
 ]
 
-# Pre-flight: verify the AS-path ACL has the correct end-anchored pattern.
-PREFLIGHT_CMD = "show ip as-path-access-list 1"
-# Fault already active if the unanchored pattern is present.
-PREFLIGHT_FAULT_MARKER = "permit _65200_"
-# Known-good solution state marker.
-PREFLIGHT_SOLUTION_MARKER = "permit _65200$"
+# Pre-flight: verify send-community is configured on the IBGP peer group.
+PREFLIGHT_CMD = "show run | section router bgp"
+# Known-good marker: send-community present.
+PREFLIGHT_SOLUTION_MARKER = "neighbor IBGP send-community both"
 
 
 def preflight(conn) -> bool:
     output = conn.send_command(PREFLIGHT_CMD)
     if PREFLIGHT_SOLUTION_MARKER not in output:
         print("[!] Pre-flight failed: lab not in expected pre-injection state.")
+        print("    Either send-community is not configured, or the fault is already active.")
         print("    Run apply_solution.py first to restore the known-good config.")
-        return False
-    if PREFLIGHT_FAULT_MARKER in output:
-        print("[!] Pre-flight failed: scenario appears already injected.")
-        print("    Restore with apply_solution.py.")
         return False
     return True
 

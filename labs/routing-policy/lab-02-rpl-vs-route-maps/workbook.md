@@ -146,6 +146,13 @@ end-policy
 
 **Scenario:** SP-CORE is evaluating a migration from IOS to IOS-XR on two new nodes. XR1 and XR2 are connected to the existing IOSv SP core via IS-IS L2 adjacencies (L6, L7) and an XR backbone link (L8). Your task is to bring the XR nodes into the IS-IS domain and iBGP full mesh, then implement the same inbound filtering policy that R1 uses — first in RPL on XR1, then extended with hierarchical and parameterized policies that have no IOS route-map equivalent.
 
+**Pre-loaded redistribution context (from lab-01):** The IOSv core (R1/R2/R3) already has mutual OSPF↔IS-IS redistribution running. The design uses tag-based loop prevention with a two-router split:
+
+- **R2** (the "tagger only"): stamps **tag 100** on OSPF→IS-IS routes and **tag 200** (metric 20) on IS-IS→OSPF routes. No deny sequences — all route types pass through.
+- **R3** (the "loop protector"): redistributes both ways and adds a `deny 10 match tag` at the top of each route-map — blocks tag 200 from re-entering IS-IS and tag 100 from re-entering OSPF.
+
+This means all prefixes from the XR nodes that enter IS-IS on the new links (L6, L7, L8) and then get redistributed into OSPF by R2 or R3 will carry tag 200. If R3 later receives those same prefixes via OSPF (e.g., through a BGP-learned or redistributed path), its IS-IS outbound route-map will deny them — preventing an OSPF→IS-IS→OSPF→IS-IS loop through the expanded topology. The tag scheme scales cleanly as new nodes join the IS-IS domain because the deny logic lives only on R3 and is entirely tag-based — no prefix-list updates needed.
+
 ```
            ┌──────────────────────────────────────────────────────────────┐
            │                          AS 65100                             │
@@ -267,8 +274,8 @@ Bring XR1 and XR2 into the IS-IS L2 domain and iBGP full mesh:
 - On **XR1**: configure IS-IS SP (`is-type level-2-only`, NET `49.0001.0000.0000.0005.00`). Include Loopback0 (passive), Gi0/0/0/0 (L6, point-to-point), and Gi0/0/0/1 (L8, point-to-point). Note XR IS-IS uses `address-family ipv4 unicast` blocks per interface and `metric-style wide` under the process AF block.
 - On **XR2**: same structure, NET `49.0001.0000.0000.0006.00`, interfaces Loopback0, Gi0/0/0/0 (L7), Gi0/0/0/1 (L8).
 - On **XR1 and XR2**: define `route-policy PASS` with a single `pass` statement **before** configuring any BGP. This is the XR scaffolding policy that prevents implicit drop when a policy is first applied.
-- On **XR1**: configure iBGP AS 65100 with `neighbor-group IBGP` (`remote-as 65100`, `update-source Loopback0`, `next-hop-self`, `route-policy PASS in/out`). Add neighbors 10.0.0.1, 10.0.0.2, 10.0.0.3, 10.0.0.6. Advertise `network 172.16.11.0/24`.
-- On **XR2**: same neighbor-group structure, neighbors 10.0.0.1, 10.0.0.2, 10.0.0.3, 10.0.0.5. No network statement.
+- On **XR1**: configure iBGP AS 65100 with `neighbor-group IBGP` (`remote-as 65100`, `update-source Loopback0`, `route-policy PASS in/out`). Add neighbors 10.0.0.1, 10.0.0.2, 10.0.0.3, 10.0.0.6. Advertise `network 172.16.11.0/24`. Do **not** configure `next-hop-self` — XR1 has no eBGP peers, so all next-hops it receives are already loopback addresses reachable via IS-IS.
+- On **XR2**: same neighbor-group structure, neighbors 10.0.0.1, 10.0.0.2, 10.0.0.3, 10.0.0.5. No network statement. Same reasoning — no `next-hop-self`.
 - On **R1, R2, R3**: add neighbors 10.0.0.5 and 10.0.0.6 to the existing IBGP peer-group.
 
 **Verification:** `show isis neighbors` on R2, R3, XR1, XR2 — all show Level-2 Up adjacencies. `show bgp ipv4 unicast summary` on XR1 — four neighbors (10.0.0.1/2/3/6) all Established. `ping 10.0.0.5 source Loopback0` from R1 succeeds.
@@ -602,7 +609,6 @@ router bgp 65100
   address-family ipv4 unicast
    route-policy PASS in
    route-policy PASS out
-   next-hop-self
   !
  !
  neighbor 10.0.0.X
@@ -708,7 +714,6 @@ router bgp 65100
   address-family ipv4 unicast
    route-policy PASS in
    route-policy PASS out
-   next-hop-self
   !
  !
  neighbor 10.0.0.1
@@ -771,7 +776,6 @@ router bgp 65100
   address-family ipv4 unicast
    route-policy PASS in
    route-policy PASS out
-   next-hop-self
   !
  !
  neighbor 10.0.0.1

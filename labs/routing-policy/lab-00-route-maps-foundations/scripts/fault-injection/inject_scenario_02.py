@@ -16,11 +16,11 @@ from eve_ng import EveNgError, connect_node, discover_ports, find_open_lab, requ
 
 DEVICE_NAME = "R1"
 
-# Two-step replace: clear the exact seq 5, then redefine with over-wide boundary.
-# On IOS, a new seq with the same number replaces the old entry, but using
-# 'no ... seq 5' first guarantees a clean overwrite.
+# Drop the entire list first, then re-add with the over-wide boundary.
+# 'no ip prefix-list NAME seq N' requires the full entry on some IOSv versions
+# and returns "% Incomplete command." — deleting the whole list is portable.
 FAULT_COMMANDS = [
-    "no ip prefix-list PFX_R4_LO2_EXACT seq 5",
+    "no ip prefix-list PFX_R4_LO2_EXACT",
     "ip prefix-list PFX_R4_LO2_EXACT seq 5 permit 172.20.0.0/16 le 24",
 ]
 
@@ -97,6 +97,8 @@ def main() -> int:
             return 4
         print("[*] Injecting fault configuration ...")
         conn.send_config_set(FAULT_COMMANDS)
+        print("[*] Soft-resetting BGP inbound from 10.1.14.4 to activate fault ...")
+        conn.send_command("clear ip bgp 10.1.14.4 soft in", read_timeout=30)
         conn.save_config()
     finally:
         conn.disconnect()

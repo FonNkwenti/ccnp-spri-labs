@@ -25,18 +25,22 @@ FAULT_COMMANDS = [
     "exit-address-family",
 ]
 
-# 'show ip bgp neighbors 10.1.14.4' includes the route-map direction summary.
-PREFLIGHT_CMD = "show ip bgp neighbors 10.1.14.4"
+# Use a pipe to keep output short — 'show ip bgp neighbors' without a pipe
+# produces many screenfuls and can exceed Netmiko's read_timeout on slow
+# EVE-NG telnet sessions even with terminal length 0 applied.
+# On IOSv, the direction line reads: "Route map for incoming/outgoing
+# advertisements is FILTER_R4_IN" — filter on the map name to capture it.
+PREFLIGHT_CMD = "show ip bgp neighbors 10.1.14.4 | include FILTER_R4_IN"
 
 # Present in solution state: route-map applied inbound.
-PREFLIGHT_SOLUTION_MARKER = "route-map FILTER_R4_IN in"
+PREFLIGHT_SOLUTION_MARKER = "incoming"
 
 # Present only after the fault is injected: route-map applied outbound.
-PREFLIGHT_FAULT_MARKER = "route-map FILTER_R4_IN out"
+PREFLIGHT_FAULT_MARKER = "outgoing"
 
 
 def preflight(conn) -> bool:
-    output = conn.send_command(PREFLIGHT_CMD)
+    output = conn.send_command(PREFLIGHT_CMD, read_timeout=30)
     if PREFLIGHT_SOLUTION_MARKER not in output:
         print("[!] Pre-flight failed: lab not in expected pre-injection state.")
         print("    Run apply_solution.py first to restore the known-good config.")
@@ -97,6 +101,8 @@ def main() -> int:
             return 4
         print("[*] Injecting fault configuration ...")
         conn.send_config_set(FAULT_COMMANDS)
+        print("[*] Soft-resetting BGP inbound from 10.1.14.4 to activate fault ...")
+        conn.send_command("clear ip bgp 10.1.14.4 soft in", read_timeout=30)
         conn.save_config()
     finally:
         conn.disconnect()

@@ -35,7 +35,7 @@ SOLUTIONS_DIR = SCRIPT_DIR.parents[1] / "solutions"
 DEFAULT_LAB_PATH = "ccnp-spri/routing-policy/lab-01-tags-regex-communities.unl"
 
 # All devices affected by the troubleshooting scenarios -- restored in order.
-# Scenario 01 targets R1, Scenario 02 targets R2, Scenario 03 targets R3.
+# Scenario 01 targets R1, Scenario 02 targets R2, Scenario 03 targets R1.
 # R4 included for completeness when a full domain restore is needed.
 RESTORE_TARGETS = [
     "R1",
