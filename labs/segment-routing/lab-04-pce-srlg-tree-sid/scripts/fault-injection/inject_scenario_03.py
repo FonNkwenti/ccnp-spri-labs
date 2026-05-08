@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Fault Injection: Scenario 02. Restore with: python3 apply_solution.py --host <eve-ng-ip>
+Fault Injection: Scenario 03. Restore with: python3 apply_solution.py --host <eve-ng-ip>
 """
 
 from __future__ import annotations
@@ -10,26 +10,26 @@ import sys
 from pathlib import Path
 
 SCRIPT_DIR = Path(__file__).resolve().parent
-# Depth: scripts/fault-injection -> scripts -> lab-03 -> segment-routing -> labs/
+# Depth: scripts/fault-injection -> scripts -> lab-04 -> segment-routing -> labs/
 sys.path.insert(0, str(SCRIPT_DIR.parents[3] / "common" / "tools"))
 from eve_ng import EveNgError, connect_node, discover_ports, find_open_lab, require_host  # noqa: E402
 
-DEVICE_NAME = "R4"
+DEVICE_NAME = "R2"
 FAULT_COMMANDS = [
-    "segment-routing",
-    " traffic-eng",
-    "  interface GigabitEthernet0/0/0/0",
-    "   no affinity",
+    "srlg",
+    " interface GigabitEthernet0/0/0/0",
+    "  no name SRLG_L1",
+    "  name SRLG_L4",
 ]
 
-# Pre-flight: verify the SR-TE interface affinity is present (known-good state).
-# This is a removal fault — the fault state has no positive indicator string,
-# so PREFLIGHT_FAULT_MARKER is None and only the solution-state check is performed.
-PREFLIGHT_CMD = "show segment-routing traffic-eng interface GigabitEthernet0/0/0/0"
-# If this string is absent → not in solution state; bail out.
-PREFLIGHT_SOLUTION_MARKER = "name RED"
-# Removal fault: no distinct string appears post-injection; skip fault-marker check.
-PREFLIGHT_FAULT_MARKER = None
+# Pre-flight: verify SRLG assignment on R2 Gi0/0/0/0 is in the known-good state.
+PREFLIGHT_CMD = "show srlg interface brief"
+# If this string is already present the fault is already injected — bail out.
+# Check for SRLG_L4 on the Gi0/0/0/0 line: SRLG_L4 is the fault marker only for
+# Gi0/0/0/0 because Gi0/0/0/1 legitimately carries SRLG_L2, not SRLG_L4.
+PREFLIGHT_FAULT_MARKER = "GigabitEthernet0/0/0/0                SRLG_L4"
+# If this string is absent the lab is not in the expected solution state — bail out.
+PREFLIGHT_SOLUTION_MARKER = "GigabitEthernet0/0/0/0                SRLG_L1"
 
 
 def preflight(conn) -> bool:
@@ -38,7 +38,7 @@ def preflight(conn) -> bool:
         print("[!] Pre-flight failed: lab not in expected pre-injection state.")
         print("    Run apply_solution.py first to restore the known-good config.")
         return False
-    if PREFLIGHT_FAULT_MARKER is not None and PREFLIGHT_FAULT_MARKER in output:
+    if PREFLIGHT_FAULT_MARKER in output:
         print("[!] Pre-flight failed: scenario appears already injected.")
         print("    Restore with apply_solution.py.")
         return False
@@ -46,7 +46,7 @@ def preflight(conn) -> bool:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Inject Scenario 02 fault")
+    parser = argparse.ArgumentParser(description="Inject Scenario 03 fault")
     parser.add_argument("--host", default="192.168.x.x",
                         help="EVE-NG server IP (required)")
     parser.add_argument("--lab-path", default=None,
@@ -58,7 +58,7 @@ def main() -> int:
     host = require_host(args.host)
 
     print("=" * 60)
-    print("Fault Injection: Scenario 02")
+    print("Fault Injection: Scenario 03")
     print("=" * 60)
 
     if args.lab_path:
@@ -98,7 +98,7 @@ def main() -> int:
     finally:
         conn.disconnect()
 
-    print(f"[+] Fault injected on {DEVICE_NAME}. Scenario 02 is now active.")
+    print(f"[+] Fault injected on {DEVICE_NAME}. Scenario 03 is now active.")
     print("=" * 60)
     return 0
 

@@ -1,47 +1,44 @@
-lab: segment-routing/lab-00-sr-foundations-and-srgb
-title: SR-MPLS Foundations, SRGB, and Prefix SIDs
-topic: segment-routing
-difficulty: Foundation
-estimated_time_minutes: 90
-type: progressive
-blueprint_refs:
-  - "4.2"
-  - "4.2.a"
-  - "4.2.b"
+# Auto-generated — do not edit manually. Use /tag-lab to stamp external agent runs.
+lab: lab-01-ti-lfa
+chapter: Segment Routing and SR-TE
+exam: "300-510"
 devices:
-  - R1
-  - R2
-  - R3
-  - R4
-platform: xrv9k
-provenance:
-  agent: claude-opus-4-7
-  built_date: "2026-04-30"
-  rebuilt_date: "2026-04-30"
-  rebuilt_reason: "First build (sonnet-4-6) had unopenable drawio + NET inconsistencies + incoherent workbook scenarios"
-  model_gate: PASS
+  - name: R1
+    platform: xrv9k
+    role: SP edge / SR ingress
+  - name: R2
+    platform: xrv9k
+    role: SP core / TI-LFA PLR
+  - name: R3
+    platform: xrv9k
+    role: SP edge / SR egress
+  - name: R4
+    platform: xrv9k
+    role: SP core / disjoint path
 created:
+  date: "2026-04-30"
+  agent: claude-sonnet-4-6
+  skill: lab-assembler
+  skill_version: "2026-04-30"
   files:
-    - solutions/R1.cfg
-    - solutions/R2.cfg
-    - solutions/R3.cfg
-    - solutions/R4.cfg
+    - workbook.md
+    - topology/topology.drawio
+    - topology/README.md
+    - setup_lab.py
+    - README.md
     - initial-configs/R1.cfg
     - initial-configs/R2.cfg
     - initial-configs/R3.cfg
     - initial-configs/R4.cfg
-    - workbook.md
-    - setup_lab.py
-    - topology/topology.drawio
-    - topology/README.md
-    - README.md
+    - solutions/R1.cfg
+    - solutions/R2.cfg
+    - solutions/R3.cfg
+    - solutions/R4.cfg
     - scripts/fault-injection/inject_scenario_01.py
     - scripts/fault-injection/inject_scenario_02.py
     - scripts/fault-injection/inject_scenario_03.py
     - scripts/fault-injection/apply_solution.py
     - scripts/fault-injection/README.md
-    - meta.yaml
-    - decisions.md
 updated:
   - date: "2026-04-30"
     agent: claude-opus-4-7

@@ -1,0 +1,84 @@
+# Auto-generated — do not edit manually. Use /tag-lab to stamp external agent runs.
+lab: lab-03-sr-te-policies-and-steering
+chapter: segment-routing
+exam: "300-510"
+devices:
+  - name: R1
+    platform: xrv9k
+    role: SP Edge / Ingress PE
+  - name: R2
+    platform: xrv9k
+    role: SP Core
+  - name: R3
+    platform: xrv9k
+    role: SP Edge / Egress PE
+  - name: R4
+    platform: xrv9k
+    role: SP Core
+  - name: CE1
+    platform: iosv
+    role: Customer Edge AS 65101
+  - name: CE2
+    platform: iosv
+    role: Customer Edge AS 65102
+created:
+  date: "2026-04-30"
+  agent: claude-sonnet-4-6
+  skill: lab-assembler
+  skill_version: "2026-04-30"
+  files:
+    - workbook.md
+    - topology/topology.drawio
+    - topology/README.md
+    - setup_lab.py
+    - README.md
+    - decisions.md
+    - initial-configs/R1.cfg
+    - initial-configs/R2.cfg
+    - initial-configs/R3.cfg
+    - initial-configs/R4.cfg
+    - initial-configs/CE1.cfg
+    - initial-configs/CE2.cfg
+    - solutions/R1.cfg
+    - solutions/R2.cfg
+    - solutions/R3.cfg
+    - solutions/R4.cfg
+    - solutions/CE1.cfg
+    - solutions/CE2.cfg
+    - scripts/fault-injection/inject_scenario_01.py
+    - scripts/fault-injection/inject_scenario_02.py
+    - scripts/fault-injection/inject_scenario_03.py
+    - scripts/fault-injection/apply_solution.py
+    - scripts/fault-injection/README.md
+updated:
+  - date: "2026-04-30"
+    reason: Full rebuild — corrected workbook.md structure violations (wrong section names, missing TOC, missing Device Inventory and Loopback tables)
+    agent: claude-sonnet-4-6
+  - date: "2026-04-30"
+    agent: claude-opus-4-7
+    skill: build-lab
+    skill_version: "2026-04-30"
+    files:
+      - decisions.md
+      - initial-configs/CE1.cfg
+      - initial-configs/CE2.cfg
+      - initial-configs/R1.cfg
+      - initial-configs/R2.cfg
+      - initial-configs/R3.cfg
+      - initial-configs/R4.cfg
+      - README.md
+      - scripts/fault-injection/apply_solution.py
+      - scripts/fault-injection/inject_scenario_01.py
+      - scripts/fault-injection/inject_scenario_02.py
+      - scripts/fault-injection/inject_scenario_03.py
+      - scripts/fault-injection/README.md
+      - setup_lab.py
+      - solutions/CE1.cfg
+      - solutions/CE2.cfg
+      - solutions/R1.cfg
+      - solutions/R2.cfg
+      - solutions/R3.cfg
+      - solutions/R4.cfg
+      - topology/README.md
+      - topology/topology.drawio
+      - workbook.md

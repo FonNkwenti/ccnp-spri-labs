@@ -10,26 +10,25 @@ import sys
 from pathlib import Path
 
 SCRIPT_DIR = Path(__file__).resolve().parent
-# Depth: scripts/fault-injection -> scripts -> lab-03 -> segment-routing -> labs/
+# Depth: scripts/fault-injection -> scripts -> lab-04 -> segment-routing -> labs/
 sys.path.insert(0, str(SCRIPT_DIR.parents[3] / "common" / "tools"))
 from eve_ng import EveNgError, connect_node, discover_ports, find_open_lab, require_host  # noqa: E402
 
-DEVICE_NAME = "R4"
+DEVICE_NAME = "R1"
 FAULT_COMMANDS = [
     "segment-routing",
     " traffic-eng",
-    "  interface GigabitEthernet0/0/0/0",
-    "   no affinity",
+    "  pcc",
+    "   no pce address ipv4 10.0.0.99",
+    "   pce address ipv4 10.0.0.98",
 ]
 
-# Pre-flight: verify the SR-TE interface affinity is present (known-good state).
-# This is a removal fault — the fault state has no positive indicator string,
-# so PREFLIGHT_FAULT_MARKER is None and only the solution-state check is performed.
-PREFLIGHT_CMD = "show segment-routing traffic-eng interface GigabitEthernet0/0/0/0"
-# If this string is absent → not in solution state; bail out.
-PREFLIGHT_SOLUTION_MARKER = "name RED"
-# Removal fault: no distinct string appears post-injection; skip fault-marker check.
-PREFLIGHT_FAULT_MARKER = None
+# Pre-flight: verify the PCC peer address is correct on R1.
+PREFLIGHT_CMD = "show segment-routing traffic-eng pcc ipv4 peer"
+# If this string is already present the fault is already injected — bail out.
+PREFLIGHT_FAULT_MARKER = "10.0.0.98"
+# If this string is absent the lab is not in the expected solution state — bail out.
+PREFLIGHT_SOLUTION_MARKER = "10.0.0.99"
 
 
 def preflight(conn) -> bool:
@@ -38,7 +37,7 @@ def preflight(conn) -> bool:
         print("[!] Pre-flight failed: lab not in expected pre-injection state.")
         print("    Run apply_solution.py first to restore the known-good config.")
         return False
-    if PREFLIGHT_FAULT_MARKER is not None and PREFLIGHT_FAULT_MARKER in output:
+    if PREFLIGHT_FAULT_MARKER in output:
         print("[!] Pre-flight failed: scenario appears already injected.")
         print("    Restore with apply_solution.py.")
         return False
