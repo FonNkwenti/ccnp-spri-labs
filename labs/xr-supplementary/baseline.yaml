@@ -80,6 +80,7 @@ labs:
     type: progressive
     time_minutes: 60
     devices: [XR1, XR2, R-IOS]
+    build_phase: A
     blueprint_refs: ["platform-fluency"]
     objectives:
       - Boot XRv-light and verify XR process model (sysadmin vs XR plane)
@@ -99,6 +100,7 @@ labs:
     time_minutes: 75
     devices: [XR1, XR2, R-IOS]
     extends: lab-00-platform-basics
+    build_phase: A
     blueprint_refs: ["platform-fluency"]
     objectives:
       - Interface naming model (GigabitEthernet0/0/0/0 — sub/slot/instance/port)
@@ -117,6 +119,7 @@ labs:
     time_minutes: 90
     devices: [XR1, XR2, R-IOS]
     extends: lab-01-config-foundations
+    build_phase: A
     blueprint_refs: ["platform-fluency", "1.x-bgp-policy"]
     objectives:
       - Define prefix-sets and route-policy (if/then/else/done semantics)
@@ -136,6 +139,7 @@ labs:
     time_minutes: 75
     devices: [XR1, XR2, R-IOS]
     extends: lab-02-routing-policy-language
+    build_phase: A
     blueprint_refs: ["platform-fluency"]
     objectives:
       - XR show command structure and pivot navigation
@@ -155,11 +159,16 @@ labs:
     type: capstone_i
     clean_slate: true
     time_minutes: 150
+    build_phase: B                  # deferred until source BGP capstone is stable
     inherits_topology_from: bgp/lab-07-capstone-config
     inherited_topology_translation:
-      - all-routers: iosv-and-csr1000v -> xrv-light
-      - memory-budget-gb: 28
-      - reduction-allowed: "drop R7 and one CE if host memory < 32GB usable"
+      - default-platform: xrv-light  # ~4 GB per node
+      - escalations:
+          - node: R5
+            platform: xrv9k          # ~12 GB; required for FlowSpec install (XRv-light unsupported)
+            reason: "BGP FlowSpec install is not supported on XRv-light 6.1.x"
+      - memory-budget-gb: 36         # 6 × 4 + 1 × 12 = 36 GB; within 50 GB host ceiling
+      - reduction-allowed: false     # mixed-platform allocation already fits under ceiling
     blueprint_refs: ["1.x-bgp-comprehensive"]
     objectives:
       - Translate the entire BGP capstone scenario to IOS XR
@@ -178,9 +187,11 @@ labs:
     type: capstone_i
     clean_slate: true
     time_minutes: 120
+    build_phase: A                  # ships in Phase A — Phase A test capstone
     inherits_topology_from: ospf/lab-04-capstone-config
     inherited_topology_translation:
-      - all-routers: iosv -> xrv-light
+      - default-platform: xrv-light
+      - escalations: []
       - memory-budget-gb: 24
       - reduction-allowed: false
     blueprint_refs: ["2.1-ospf"]
@@ -198,9 +209,11 @@ labs:
     type: capstone_i
     clean_slate: true
     time_minutes: 120
+    build_phase: B                  # deferred until isis/lab-03-capstone-config is built or scope decision made
     inherits_topology_from: isis/lab-03-capstone-config        # source not yet built
     inherited_topology_translation:
-      - all-routers: iosv -> xrv-light
+      - default-platform: xrv-light
+      - escalations: []
       - memory-budget-gb: 24
       - reduction-allowed: false
       - source-status: "not-yet-built — decide at build kickoff whether to wait or use isis/lab-02 as topology basis"
@@ -219,9 +232,11 @@ labs:
     type: capstone_i
     clean_slate: true
     time_minutes: 150
+    build_phase: B                  # deferred until source MPLS capstone is fully validated
     inherits_topology_from: mpls/lab-04-capstone-config
     inherited_topology_translation:
-      - all-routers: iosv -> xrv-light
+      - default-platform: xrv-light
+      - escalations: []
       - memory-budget-gb: 24
       - reduction-allowed: false
     blueprint_refs: ["3.x-mpls"]

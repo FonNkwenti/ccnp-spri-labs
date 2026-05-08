@@ -77,16 +77,22 @@ can compare interface, IGP, and BGP state on both platforms in real time.
 ## Capstone-XR Topologies (Labs 04–07)
 
 Each capstone-XR lab inherits its topology from the source capstone listed
-below, with **all routers translated to IOS-XRv (6.1.x light unless noted)**.
-Initial configs and solutions are re-derived in XR syntax; the topology
-shape, addressing plan, and scenario goals are preserved verbatim.
+below. Default platform is **IOS-XRv 6.1.x light (~4 GB)**; specific roles
+that require a feature unsupported by XRv-light (notably **FlowSpec** in
+lab-04) escalate to **xrv9k (~12 GB)** for that one node only. Initial
+configs and solutions are re-derived in XR syntax; the topology shape,
+addressing plan, and scenario goals are preserved verbatim.
 
-| XR Lab | Source Capstone                              | Source Nodes | XR Image     | Mem (GB) |
-| ------ | -------------------------------------------- | ------------ | ------------ | -------- |
-| 04     | `bgp/lab-07-capstone-config`                  | R1–R7 (7)    | XRv-light    | ~28      |
-| 05     | `ospf/lab-04-capstone-config`                 | R1–R6 (6)    | XRv-light    | ~24      |
-| 06     | `isis/lab-03-capstone-config` (TBD; see note) | TBD          | XRv-light    | ~20-24   |
-| 07     | `mpls/lab-04-capstone-config`                 | PE1, P1, P2, PE2, CE1, CE2 (6) | XRv-light | ~24 |
+**Host memory ceiling: 50 GB.** Mixed XRv-light + xrv9k allocation is the
+primary lever for staying under the ceiling — escalate individual nodes
+to xrv9k only where a feature genuinely requires it.
+
+| XR Lab | Source Capstone                              | Source Nodes | Image Plan                                  | Mem (GB) |
+| ------ | -------------------------------------------- | ------------ | ------------------------------------------- | -------- |
+| 04     | `bgp/lab-07-capstone-config`                  | R1–R7 (7)    | 6× XRv-light + 1× xrv9k (FlowSpec installer) | ~36      |
+| 05     | `ospf/lab-04-capstone-config`                 | R1–R6 (6)    | 6× XRv-light                                 | ~24      |
+| 06     | `isis/lab-03-capstone-config` (TBD; see note) | TBD          | 6× XRv-light                                 | ~24      |
+| 07     | `mpls/lab-04-capstone-config`                 | PE1, P1, P2, PE2, CE1, CE2 (6) | 6× XRv-light                | ~24      |
 
 > **Note on lab-06 (IS-IS-XR).** `isis/lab-03-capstone-config` is currently
 > a scaffolded but **unbuilt** folder. Two options at build time: (a) wait
@@ -94,10 +100,10 @@ shape, addressing plan, and scenario goals are preserved verbatim.
 > standalone XR IS-IS scenario directly, using `isis/lab-02-dual-stack-summarization`
 > as the topology reference. Decision deferred to lab-06 build kickoff.
 
-> **Memory caveat.** lab-04 (BGP-XR) is the largest at ~28 GB. On a host with
-> < 32 GB usable RAM, the BGP-XR topology may need reduction (drop R7 or
-> consolidate two CEs). This decision is deferred to lab-04 build kickoff —
-> no reduction is mandated at the spec level.
+> **Note on lab-04 (BGP-XR) FlowSpec.** XRv-light does not support BGP
+> FlowSpec install. The FlowSpec installer node (R5 in the source) escalates
+> to xrv9k (~12 GB); the remaining six routers stay on XRv-light (~4 GB
+> each). Total ≈ 36 GB — within the 50 GB ceiling.
 
 ## Lab Progression
 
@@ -111,6 +117,41 @@ shape, addressing plan, and scenario goals are preserved verbatim.
 | 05 | lab-05-ospf-capstone-xr             | OSPF Multi-Area + Stub Variants — XR        | Advanced     | 120m | capstone_i       | ospf/lab-04-capstone-config     |
 | 06 | lab-06-isis-capstone-xr             | IS-IS Dual-Stack + Summarization — XR       | Advanced     | 120m | capstone_i       | isis/lab-03 (TBD)               |
 | 07 | lab-07-mpls-capstone-xr             | MPLS LDP + RSVP-TE + L3VPN — XR             | Advanced     | 150m | capstone_i       | mpls/lab-04-capstone-config     |
+
+## Build Order
+
+Not all eight labs are built in one pass. The current build plan is:
+
+**Phase A — ships now:**
+
+1. lab-00 — Platform Basics
+2. lab-01 — Config Foundations + IOS↔XR Reference
+3. lab-02 — Route-Policy Language (RPL) and Prefix-Sets
+4. lab-03 — XR Operations and Troubleshooting
+5. lab-05 — OSPF Multi-Area + Stub Variants — XR Capstone
+
+Phase A delivers the basics + one fully-translated capstone (OSPF) as a
+test of the capstone-XR pattern end to end. OSPF was chosen as the test
+case because (a) the source capstone `ospf/lab-04-capstone-config`
+already exists, (b) the OSPF topology is mid-sized (~24 GB) so it
+exercises the multi-router XR scenario without hitting the memory ceiling,
+and (c) OSPF in XR has clear translation patterns (area block, stub
+variants, redistribution via route-policy) without exotic features.
+
+**Phase B — deferred until source capstones are mature:**
+
+6. lab-04 — BGP Comprehensive — XR Capstone *(returns when the BGP
+   capstone is stable in IOSv and the FlowSpec node escalation to xrv9k
+   has been validated)*
+7. lab-06 — IS-IS Dual-Stack and Summarization — XR Capstone *(returns
+   when `isis/lab-03-capstone-config` is built, OR a scope decision is
+   made to base it on `isis/lab-02-dual-stack-summarization`)*
+8. lab-07 — MPLS LDP + RSVP-TE + L3VPN — XR Capstone *(returns when the
+   MPLS capstone is fully validated in IOSv)*
+
+The Phase A/B split is not a quality gate — Phase B labs are not lower
+quality, just sequenced later so the corresponding IOSv capstones serve
+as the authoritative reference for the XR translations.
 
 ## Lab Objectives Summary
 
@@ -234,15 +275,21 @@ behavior on a second platform:
   modern SR-PCE features (which would require xrv9k) are out of scope —
   those live in the SRv6 and segment-routing topics.
 
-- **Side-by-side IOS↔XR coverage uses both inline callouts and an
-  appendix.** Inline `> IOS equivalent: <command>` callouts appear next
-  to each XR command as it is first introduced (teaches translation in
-  context); a consolidated **Appendix A — IOS↔XR Reference Table** at the
-  end of every basics workbook indexes the same content as a study
-  reference (teaches lookup). The two formats serve different reading
-  modes; both are mandatory in the basics labs (00–03). Capstone-XR labs
-  (04–07) include the inline callouts where helpful but **do not** repeat
-  the appendix — by lab-04 the learner is expected to use the basics
+- **Side-by-side IOS↔XR coverage: selective inline callouts + complete
+  appendix.** Inline `> IOS equivalent: <command>` callouts are
+  **selective, not exhaustive** — they appear only where the IOS↔XR
+  translation is non-obvious, syntactically distinct, or operationally
+  different (e.g., two-stage commit, RPL apply semantics, address-family
+  block structure, prefix-set vs prefix-list). Routine same-on-both
+  commands (`show version`, `ping`, `traceroute`, basic `interface`
+  config) **do not** get an inline callout — they would clutter the
+  workbook without adding value. The consolidated **Appendix A —
+  IOS↔XR Reference Table** at the end of every basics workbook indexes
+  the **complete** mapping for that lab's command surface (including the
+  same-on-both rows), so the appendix remains the authoritative reference
+  even though the inline callouts are pruned. Capstone-XR labs (04–07)
+  use inline callouts only where genuinely useful and do not repeat the
+  appendix — by lab-04 the learner is expected to use the basics
   appendices as their reference.
 
 - **Basics labs share a 3-node topology; capstones inherit from source.**
