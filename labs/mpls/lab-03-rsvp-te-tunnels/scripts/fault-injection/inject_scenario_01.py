@@ -16,27 +16,21 @@ from eve_ng import EveNgError, connect_node, discover_ports, find_open_lab, requ
 
 DEVICE_NAME = "PE1"
 FAULT_COMMANDS = [
-    "interface GigabitEthernet0/2",
-    "ip rsvp bandwidth 10 10",
+    "no ip explicit-path name PE1-via-P2",
 ]
 
-PREFLIGHT_CMD = "show running-config interface GigabitEthernet0/2"
-# Solution state: full RSVP bandwidth configured on this interface.
-# NOTE: "ip rsvp bandwidth 10 10" does not appear as a substring of
-# "ip rsvp bandwidth 100000 100000" so the markers are unambiguous.
-PREFLIGHT_SOLUTION_MARKER = "ip rsvp bandwidth 100000"
-PREFLIGHT_FAULT_MARKER = "ip rsvp bandwidth 10 10"
+# Preflight: verify the named explicit path exists (known-good state).
+# "show run | section explicit-path" lists all ip explicit-path blocks.
+# The path name must appear for the lab to be in pre-injection state.
+PREFLIGHT_CMD = "show run | section explicit-path"
+PREFLIGHT_SOLUTION_MARKER = "PE1-via-P2"
 
 
 def preflight(conn) -> bool:
     output = conn.send_command(PREFLIGHT_CMD)
     if PREFLIGHT_SOLUTION_MARKER not in output:
-        print("[!] Pre-flight failed: lab not in expected pre-injection state.")
-        print("    Run apply_solution.py first to restore the known-good config.")
-        return False
-    if PREFLIGHT_FAULT_MARKER in output:
-        print("[!] Pre-flight failed: scenario appears already injected.")
-        print("    Restore with apply_solution.py.")
+        print("[!] Pre-flight failed: PE1-via-P2 explicit path not found on PE1.")
+        print("    Run apply_solution.py to restore, or setup_lab.py if lab is not yet initialized.")
         return False
     return True
 

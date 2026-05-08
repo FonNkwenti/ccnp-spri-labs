@@ -734,32 +734,32 @@ python3 scripts/fault-injection/apply_solution.py --host <eve-ng-ip>       # res
 
 ### Ticket 1 — Tunnel20 DOWN After Routine Maintenance
 
-Tunnel20 (explicit path via P2) went down after a maintenance window that included bandwidth adjustments on core interfaces. Tunnel10 is unaffected and customer traffic continues to flow. The operations team reports that IS-IS adjacencies and LDP sessions are fully intact.
+Tunnel20 (explicit path via P2) went down after a maintenance window on PE1. Tunnel10 is unaffected and customer traffic continues to flow. IS-IS adjacencies, LDP sessions, and RSVP interfaces are all fully intact. The operator reports that the change script touched "explicit path policy" on the headend.
 
 **Inject:** `python3 scripts/fault-injection/inject_scenario_01.py --host <eve-ng-ip>`
 
-**Success criteria:** `show mpls traffic-eng tunnels tunnel20` shows `Admin: up  Oper: up`. `show mpls traffic-eng topology` on PE1 shows L3 (Intf Address: 10.10.13.1 ↔ 10.10.13.3) with ≥ 100,000 kbps available. `show ip rsvp interface` on PE1 shows Gi0/2 at 100,000 kbps.
+**Success criteria:** `show mpls traffic-eng tunnels tunnel20` shows `Admin: up  Oper: up  Signalling: connected`. `show ip explicit-paths` on PE1 lists `PATH PE1-via-P2` with two `next-address loose` entries (10.0.0.3 and 10.0.0.4).
 
 <details>
 <summary>Click to view Diagnosis Steps</summary>
 
-1. Confirm the symptom: `show mpls traffic-eng tunnels tunnel20` — `Oper: down`, path-option 10 (`explicit PE1-via-P2`) shows `[failed]`.
-2. Understand the path: `PE1-via-P2` uses loose waypoints P2 (10.0.0.3) → PE2 (10.0.0.4). CSPF must route PE1 → P2 via L3 (PE1 Gi0/2 ↔ P2 Gi0/0). If L3 has insufficient bandwidth, CSPF prunes it and the explicit path cannot be satisfied.
-3. Check the TE topology: `show mpls traffic-eng topology` on PE1 — find the L3 link entry (Intf Address: 10.10.13.1). The BW column will show an abnormally low value instead of 100,000 kbps.
-4. Confirm the RSVP misconfiguration: `show ip rsvp interface` on PE1 — Gi0/2 shows `i/f max` ≈ 10 kbps. This is the source of the low TED bandwidth value.
-5. Confirm the tunnel's requested bandwidth: `show mpls traffic-eng tunnels Tunnel20` — 10,000 kbps requested. The link offers only ~10 kbps. CSPF eliminates L3, making the explicit path unroutable.
+1. Confirm the symptom: `show mpls traffic-eng tunnels tunnel20` — `Oper: down`, `Path: not valid`, `Signalling: Down`. Path-option 10 is configured as `explicit PE1-via-P2`.
+2. Check IS-IS and RSVP — both are intact. The fault is not in the transport or RSVP bandwidth layer. Focus on the explicit path reference itself.
+3. Inspect the explicit path definition: `show ip explicit-paths` on PE1 — `PATH PE1-via-P2` is absent from the output. Without this definition, CSPF has no waypoint list to compute from; path-option 10 immediately fails.
+4. Confirm: `show mpls traffic-eng tunnels Tunnel20` — the `Active Path Option Parameters` section shows no state (tunnel cannot establish any LSP). Tunnel10 is unaffected because it uses a dynamic path-option with no explicit path reference.
 </details>
 
 <details>
 <summary>Click to view Fix</summary>
 
-On PE1 (Gi0/2):
+On PE1 — recreate the explicit path definition:
 ```bash
-interface GigabitEthernet0/2
- ip rsvp bandwidth 100000 100000
+ip explicit-path name PE1-via-P2 enable
+ next-address loose 10.0.0.3
+ next-address loose 10.0.0.4
 ```
 
-IS-IS TE flooding propagates the corrected bandwidth within seconds. Verify: `show mpls traffic-eng topology` on PE1 shows L3 with 100,000 kbps available — CSPF can now route through L3 to P2. Tunnel20 re-signals automatically and returns to `Oper: up`.
+Tunnel20 re-runs CSPF within seconds and re-signals via P2. Verify: `show mpls traffic-eng tunnels Tunnel20` returns `Oper: up  Signalling: connected` and the ERO confirms P2 (10.0.0.3) as a transit hop.
 </details>
 
 ---
