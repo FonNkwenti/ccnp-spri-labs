@@ -4,8 +4,8 @@ chapter: mpls
 exam: 300-510
 devices:
   - name: PE1
-    platform: xrv
-    role: SP Edge — RSVP-TE headend, iBGP+LU to PE2, eBGP to CE1 (XR-mixed retrofit)
+    platform: iosv
+    role: SP Edge — RSVP-TE headend, iBGP+LU to PE2, eBGP to CE1
   - name: P1
     platform: iosv
     role: SP Core (BGP-free) — IS-IS L2 + MPLS LDP + RSVP-TE transit
@@ -13,8 +13,8 @@ devices:
     platform: iosv
     role: SP Core (BGP-free) — IS-IS L2 + MPLS LDP + RSVP-TE transit
   - name: PE2
-    platform: xrv
-    role: SP Edge — RSVP-TE tail, iBGP+LU to PE1, eBGP to CE2 (XR-mixed retrofit)
+    platform: iosv
+    role: SP Edge — RSVP-TE tail, iBGP+LU to PE1, eBGP to CE2
   - name: CE1
     platform: iosv
     role: Customer Edge AS 65101 — announces 192.0.2.0/24
