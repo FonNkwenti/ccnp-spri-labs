@@ -764,66 +764,64 @@ Tunnel20 re-runs CSPF within seconds and re-signals via P2. Verify: `show mpls t
 
 ---
 
-### Ticket 2 — Tunnel20 Flapping After Core Maintenance
+### Ticket 2 — Tunnel20 DOWN After Config Audit
 
-Tunnel20 (explicit path via P2) has been flapping since a P2 maintenance operation. It was working before the window. Tunnel10 (via P1) is unaffected. The operations team made "only IS-IS changes" on P2.
+Tunnel20 (explicit path via P2) went down after a config audit pass on PE1. Tunnel10 is unaffected. IS-IS adjacencies, LDP sessions, and the explicit path definition (`show ip explicit-paths` lists `PE1-via-P2`) are all intact. The engineer who ran the audit says they "only removed redundant tunnel interface commands."
 
 **Inject:** `python3 scripts/fault-injection/inject_scenario_02.py --host <eve-ng-ip>`
 
-**Success criteria:** `show mpls traffic-eng tunnels tunnel20` shows `Oper: up` and `Signalling: connected`. `show mpls traffic-eng topology` includes P2 (10.0.0.3) as a TE node.
+**Success criteria:** `show mpls traffic-eng tunnels tunnel20` shows `Admin: up  Oper: up  Signalling: connected`. `show running-config interface Tunnel20` confirms `tunnel mpls traffic-eng path-option 10 explicit name PE1-via-P2`.
 
 <details>
 <summary>Click to view Diagnosis Steps</summary>
 
-1. Confirm the symptom: `show mpls traffic-eng tunnels tunnel20` — `Oper: down`, path-option 10 shows `[failed]`.
-2. Inspect the TE topology: `show mpls traffic-eng topology` on PE1 — P2 (10.0.0.3) is absent from the node list even though P2 is reachable via IS-IS (`show ip route 10.0.0.3` returns valid).
-3. Connect to P2 and check IS-IS TE config: `show running-config | section isis` on P2 — `mpls traffic-eng level-2` and `mpls traffic-eng router-id Loopback0` are missing.
-4. Confirm the root cause: without TE flooding enabled, P2 does not send Extended IS Reachability TLVs. Other routers build the TE topology without P2's links, so CSPF has no path through P2.
+1. Confirm the symptom: `show mpls traffic-eng tunnels tunnel20` — `Oper: down`, `Path: not valid`, `Signalling: Down`. The output also reads `no path options defined`.
+2. Verify the explicit path definition is intact: `show ip explicit-paths` on PE1 — `PATH PE1-via-P2` is present with both `next-address loose` hops. The path definition itself is not the fault.
+3. Inspect the tunnel interface: `show running-config interface Tunnel20` — the `tunnel mpls traffic-eng path-option 10 explicit name PE1-via-P2` line is absent. The path definition exists but the tunnel has no path-option referencing it.
+4. Root cause: CSPF cannot signal an LSP for Tunnel20 because no path-option is configured. Without a path-option, the headend has no instruction to initiate RSVP-TE signalling.
 </details>
 
 <details>
 <summary>Click to view Fix</summary>
 
-On P2:
+On PE1, re-add the path-option to Tunnel20:
 ```bash
-router isis CORE
- mpls traffic-eng level-2
- mpls traffic-eng router-id Loopback0
+interface Tunnel20
+ tunnel mpls traffic-eng path-option 10 explicit name PE1-via-P2
 ```
 
-IS-IS TE LSAs propagate within a few seconds. Verify on PE1: `show mpls traffic-eng topology` — P2 reappears with its L3, L4, and L6 links. Tunnel20 re-signals automatically and returns to `Oper: up`.
+CSPF runs immediately and Tunnel20 re-signals via P2. Verify: `show mpls traffic-eng tunnels Tunnel20` returns `Oper: up  Signalling: connected` and the ERO confirms P2 (10.0.0.3) as a transit hop.
 </details>
 
 ---
 
-### Ticket 3 — Tunnel10 Down After Routine Config Push
+### Ticket 3 — Tunnel10 Down After PE1 Optimization Push
 
-Tunnel10 went down after a routine config push to P1. All IS-IS adjacencies on P1 are intact and LDP sessions are up. The LDP-based LFIB forwarding path PE1→P1→PE2 is working (confirmed by `ping mpls ipv4 10.0.0.4/32`). The RSVP-TE tunnel, however, is not signalling.
+Tunnel10 (dynamic path) went down after an engineer pushed a "path optimization" change to PE1. Tunnel20 (explicit path via P2) is unaffected. IS-IS adjacencies, LDP sessions, RSVP bandwidth, and the TE topology are all intact. The change description says "added link color constraints to improve path selection."
 
 **Inject:** `python3 scripts/fault-injection/inject_scenario_03.py --host <eve-ng-ip>`
 
-**Success criteria:** `show mpls traffic-eng tunnels tunnel10` shows `Admin: up Oper: up` and `Signalling: connected`.
+**Success criteria:** `show mpls traffic-eng tunnels tunnel10` shows `Admin: up  Oper: up  Signalling: connected`. `show running-config interface Tunnel10` shows no `tunnel mpls traffic-eng affinity` line.
 
 <details>
 <summary>Click to view Diagnosis Steps</summary>
 
-1. Confirm the symptom: `show mpls traffic-eng tunnels tunnel10` — `Oper: down`, `Signalling: Down`.
-2. Check the RSVP PATH flow: the headend PE1 sends PATH toward P1. On P1, check: `show ip rsvp interface` — the interfaces toward PE1 and PE2 are not listed. RSVP is not enabled on P1 at all.
-3. Verify P1 global TE state: `show mpls traffic-eng tunnels` on P1 — returns without output (no tunnels on a transit P router, this is expected). `show mpls interfaces detail` on P1 — interfaces show `LSP Tunnel labeling not enabled` instead of `LSP Tunnel labeling enabled`.
-4. Check P1 running config: `show running-config | include traffic-eng` — the global `mpls traffic-eng tunnels` command is missing. Without it, P1 drops RSVP PATH messages silently.
+1. Confirm the symptom: `show mpls traffic-eng tunnels tunnel10` — `Oper: down`, `Path: not valid`, `Signalling: Down`. Path-option 10 (dynamic) is configured but failing.
+2. Check the TE topology: `show mpls traffic-eng topology` on PE1 — all four nodes are present and all links show 100,000 kbps available. CSPF has a full view of the network.
+3. Inspect the tunnel signalling parameters: `show mpls traffic-eng tunnels Tunnel10` — the `Active Path Option Parameters` section shows `Affinity: 0x1/0xFFFF`. This means CSPF requires all selected links to have attribute bit 0 set.
+4. Check link affinities: `show mpls traffic-eng link-management interfaces` on PE1 — all core links show `Attribute Flags: 0x00000000`. No link has the required affinity bit, so CSPF eliminates every link and fails to build a path. Tunnel20 is unaffected because it uses an explicit path-option that bypasses affinity-based CSPF filtering.
 </details>
 
 <details>
 <summary>Click to view Fix</summary>
 
-On P1:
+On PE1, remove the affinity constraint from Tunnel10:
 ```bash
-mpls traffic-eng tunnels
+interface Tunnel10
+ no tunnel mpls traffic-eng affinity
 ```
 
-The single global command re-enables TE on P1. All previously-configured per-interface `mpls traffic-eng tunnels` settings become active. RSVP PATH messages now pass through P1, RESV returns, and Tunnel10 re-establishes within seconds.
-
-Verify: `show ip rsvp interface` on P1 shows all three core interfaces listed. `show mpls traffic-eng tunnels tunnel10` shows `Oper: up`.
+CSPF immediately retries with no affinity constraint (default `0x0/0x0`). All links become eligible and the dynamic LSP re-signals. Verify: `show mpls traffic-eng tunnels Tunnel10` shows `Oper: up  Signalling: connected` and `Affinity: 0x0/0xFFFF` (or no affinity line in running-config).
 </details>
 
 ---
@@ -845,9 +843,9 @@ Verify: `show ip rsvp interface` on P1 shows all three core interfaces listed. `
 
 ### Troubleshooting
 
-- [ ] Ticket 1 resolved: Tunnel20 restored after RSVP bandwidth corrected on L3 (PE1 Gi0/2)
-- [ ] Ticket 2 resolved: Tunnel20 restored after IS-IS TE extensions re-added on P2
-- [ ] Ticket 3 resolved: Tunnel10 restored after `mpls traffic-eng tunnels` re-added globally on P1
+- [ ] Ticket 1 resolved: Tunnel20 restored after explicit path definition `PE1-via-P2` re-added on PE1
+- [ ] Ticket 2 resolved: Tunnel20 restored after `path-option 10 explicit name PE1-via-P2` re-added on Tunnel20 interface
+- [ ] Ticket 3 resolved: Tunnel10 restored after `no tunnel mpls traffic-eng affinity` removed the link color constraint on PE1
 
 ---
 

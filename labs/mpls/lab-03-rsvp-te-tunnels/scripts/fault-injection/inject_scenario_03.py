@@ -14,29 +14,26 @@ SCRIPT_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(SCRIPT_DIR.parents[3] / "common" / "tools"))
 from eve_ng import EveNgError, connect_node, discover_ports, find_open_lab, require_host  # noqa: E402
 
-DEVICE_NAME = "P1"
+DEVICE_NAME = "PE1"
 FAULT_COMMANDS = [
-    "no mpls traffic-eng tunnels",
+    "interface Tunnel10",
+    "tunnel mpls traffic-eng affinity 0x1",
 ]
 
-# The `show running-config | include ^mpls traffic-eng tunnels` command uses an
-# anchored regex: it matches only lines beginning with "mpls traffic-eng tunnels"
-# (the global command, no leading whitespace), not the indented interface sub-commands.
-PREFLIGHT_CMD = "show running-config | include ^mpls traffic-eng tunnels"
-# Solution state: global TE command present — this line appears in the output.
-PREFLIGHT_SOLUTION_MARKER = "mpls traffic-eng tunnels"
-# IOS never stores "no X" — use a sentinel that can never appear in running-config.
-PREFLIGHT_FAULT_MARKER = "__FAULT_SENTINEL_NEVER_MATCHES__"
+# Preflight: confirm Tunnel10 has no affinity constraint (known-good state).
+# In the solution config, Tunnel10 has no affinity command — default 0x0/0x0.
+# After injection, "affinity 0x1" appears in the interface config.
+PREFLIGHT_CMD = "show running-config interface Tunnel10"
+PREFLIGHT_SOLUTION_MARKER = "bandwidth 10000"
+PREFLIGHT_FAULT_MARKER = "affinity 0x1"
 
 
 def preflight(conn) -> bool:
     output = conn.send_command(PREFLIGHT_CMD)
     if PREFLIGHT_SOLUTION_MARKER not in output:
-        print("[!] Pre-flight failed: lab not in expected pre-injection state.")
-        print("    Global 'mpls traffic-eng tunnels' is missing — lab may already be faulted.")
-        print("    Run apply_solution.py first to restore the known-good config.")
+        print("[!] Pre-flight failed: Tunnel10 not in expected pre-injection state on PE1.")
+        print("    Run apply_solution.py to restore, or setup_lab.py if lab is not yet initialized.")
         return False
-    # PREFLIGHT_FAULT_MARKER can never appear in IOS running-config — check is a no-op.
     if PREFLIGHT_FAULT_MARKER in output:
         print("[!] Pre-flight failed: scenario appears already injected.")
         print("    Restore with apply_solution.py.")

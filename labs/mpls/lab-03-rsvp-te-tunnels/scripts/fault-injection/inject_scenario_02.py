@@ -14,31 +14,23 @@ SCRIPT_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(SCRIPT_DIR.parents[3] / "common" / "tools"))
 from eve_ng import EveNgError, connect_node, discover_ports, find_open_lab, require_host  # noqa: E402
 
-DEVICE_NAME = "P2"
+DEVICE_NAME = "PE1"
 FAULT_COMMANDS = [
-    "router isis CORE",
-    "no mpls traffic-eng level-2",
-    "no mpls traffic-eng router-id Loopback0",
+    "interface Tunnel20",
+    "no tunnel mpls traffic-eng path-option 10",
 ]
 
-# Preflight: inspect the IS-IS section to confirm TE extensions are present.
-PREFLIGHT_CMD = "show running-config | section isis"
-# Solution state: TE flooding is enabled on P2.
-PREFLIGHT_SOLUTION_MARKER = "mpls traffic-eng level-2"
-# IOS never stores "no X" in running-config — use a sentinel that never appears.
-PREFLIGHT_FAULT_MARKER = "__FAULT_SENTINEL_NEVER_MATCHES__"
+# Preflight: confirm Tunnel20 has path-option 10 configured (known-good state).
+PREFLIGHT_CMD = "show running-config interface Tunnel20"
+PREFLIGHT_SOLUTION_MARKER = "path-option 10 explicit"
+PREFLIGHT_FAULT_MARKER = "no path options defined"
 
 
 def preflight(conn) -> bool:
     output = conn.send_command(PREFLIGHT_CMD)
     if PREFLIGHT_SOLUTION_MARKER not in output:
-        print("[!] Pre-flight failed: lab not in expected pre-injection state.")
-        print("    Run apply_solution.py first to restore the known-good config.")
-        return False
-    # PREFLIGHT_FAULT_MARKER can never appear in IOS running-config — check is a no-op.
-    if PREFLIGHT_FAULT_MARKER in output:
-        print("[!] Pre-flight failed: scenario appears already injected.")
-        print("    Restore with apply_solution.py.")
+        print("[!] Pre-flight failed: Tunnel20 path-option 10 not found on PE1.")
+        print("    Run apply_solution.py to restore, or setup_lab.py if lab is not yet initialized.")
         return False
     return True
 
