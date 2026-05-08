@@ -33,6 +33,23 @@ All labs in a topic are progressive: lab-N's initial-configs chain from lab-(N-1
 solutions. Capstones (config + troubleshooting) use clean_slate and start from IP
 addressing only.
 
+## Branching
+
+See `BRANCHING.md` for the full rule. Short version:
+
+- **Default to `master`.** `/build-lab` runs, lab fixes from EVE-NG testing,
+  skill submodule pointer bumps, and doc/index updates all go on trunk.
+- **Branch only when the change is cross-cutting or might be abandoned.** Use
+  `experiment/<name>` (must include a kill-date in the first commit message)
+  or `feat/<name>` (definitely shipping, big enough to want a single revert
+  handle).
+- **Never branch-per-lab** — progressive labs chain solutions on trunk; per-lab
+  branches turn into merge hell.
+- **Cross-cutting features that touch `.agent/skills/` need parallel branches
+  in both repos.** Submodule `main` is a published API — other Cisco lab
+  projects inherit it. Speculative skill changes belong on a submodule branch
+  with the same name as the parent branch, not on submodule `main`.
+
 ## Three-Phase Workflow (slash commands)
 
 1. Phase 1 - Plan: Upload blueprint to blueprint/300-510/blueprint.md, then run /plan-exam
