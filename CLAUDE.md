@@ -57,6 +57,29 @@ capstone project(s) for that topic and fix them too.
 Capstone locations follow the pattern `labs/<topic>/lab-NN-capstone-*/workbook.md`.
 A topic may have both a config capstone and a troubleshooting capstone — check both.
 
+## Command Compatibility Rule
+
+Whenever a command fails at runtime (Invalid input, wrong syntax, platform rejection,
+silent no-op) — during live lab work, apply_solution.py, workbook review, or
+troubleshooting — do all of the following **without waiting to be asked**:
+
+1. **Fix the command** in the immediate file.
+2. **Search all built labs** across all topics (`labs/`) for the same command
+   pattern and apply the identical fix. Do not limit the search to the current
+   topic or only capstones — command bugs are cross-topic.
+3. **Update `ios-compatibility.yaml`** in the skills submodule:
+   - Mark the failed form as `fail` on the affected platform.
+   - Add or update the correct form with `pass` and a `notes` entry that explains
+     the platform difference and the correct syntax.
+4. **Add a `LESSONS_LEARNED.md` entry** if the fix requires a non-obvious workaround
+   (wrong keyword order, missing keyword, IOSv-specific syntax, etc.). Skip if the
+   fix is already documented in `ios-compatibility.yaml` notes and is self-evident.
+5. **Commit the submodule** (both `LESSONS_LEARNED.md` and `ios-compatibility.yaml`
+   changes in one commit) and bump the parent repo's submodule pointer.
+
+This rule fires on every command failure, every session. It is not optional and does
+not require a user prompt.
+
 ## Common Commands
 
 ```bash
