@@ -1,0 +1,80 @@
+<mxfile host="65bd71144e">
+    <diagram id="mpls-ldp-foundations" name="Page-1">
+        <mxGraphModel dx="1221" dy="612" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="827" background="#1a1a2e" math="0" shadow="0">
+            <root>
+                <mxCell id="0"/>
+                <mxCell id="1" parent="0"/>
+                <mxCell id="title" value="&lt;font style=&quot;font-size:16px;&quot; color=&quot;#FFFFFF&quot;&gt;&lt;b&gt;Lab 00: MPLS LDP Foundations — IS-IS L2 + LDP Diamond Core (AS 65100)&lt;/b&gt;&lt;/font&gt;" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;strokeColor=none;fillColor=none;" parent="1" vertex="1">
+                    <mxGeometry x="80" y="18" width="1000" height="35" as="geometry"/>
+                </mxCell>
+                <mxCell id="mpls_zone" value="AS 65100 — MPLS Core (IS-IS L2 + LDP)" style="rounded=1;arcSize=5;whiteSpace=wrap;html=1;dashed=1;strokeColor=#37474F;strokeWidth=2;fillColor=#1a2226;opacity=35;fontSize=12;fontStyle=1;verticalAlign=top;fontColor=#FFFFFF;spacingTop=6;" parent="1" vertex="1">
+                    <mxGeometry x="50" y="110" width="860" height="450" as="geometry"/>
+                </mxCell>
+                <mxCell id="PE1" value="&lt;b style=&quot;color:#FFFFFF;&quot;&gt;PE1&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#CCCCCC&quot; style=&quot;font-size:10px;&quot;&gt;SP Core Edge; IS-IS L2 + LDP&lt;br&gt;Lo0: 10.0.0.1/32&lt;/font&gt;" style="sketch=0;points=[[0.5,0,0],[1,0.5,0],[0.5,1,0],[0,0.5,0],[0.145,0.145,0],[0.8555,0.145,0],[0.855,0.8555,0],[0.145,0.855,0]];html=1;aspect=fixed;pointerEvents=1;shape=mxgraph.cisco19.rect;prIcon=router;fillColor=#FAFAFA;strokeColor=#005073;verticalLabelPosition=middle;verticalAlign=middle;align=right;labelPosition=left;" parent="1" vertex="1">
+                    <mxGeometry x="200" y="150" width="60" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="PE2" value="&lt;b style=&quot;color:#FFFFFF;&quot;&gt;PE2&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#CCCCCC&quot; style=&quot;font-size:10px;&quot;&gt;SP Core Edge; IS-IS L2 + LDP&lt;br&gt;Lo0: 10.0.0.4/32&lt;/font&gt;" style="sketch=0;points=[[0.5,0,0],[1,0.5,0],[0.5,1,0],[0,0.5,0],[0.145,0.145,0],[0.8555,0.145,0],[0.855,0.8555,0],[0.145,0.855,0]];html=1;aspect=fixed;pointerEvents=1;shape=mxgraph.cisco19.rect;prIcon=router;fillColor=#FAFAFA;strokeColor=#005073;verticalLabelPosition=middle;verticalAlign=middle;align=left;labelPosition=right;" parent="1" vertex="1">
+                    <mxGeometry x="700" y="150" width="60" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="P1" value="&lt;b style=&quot;color:#FFFFFF;&quot;&gt;P1&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#CCCCCC&quot; style=&quot;font-size:10px;&quot;&gt;SP Core; IS-IS L2 + LDP&lt;br&gt;Lo0: 10.0.0.2/32&lt;/font&gt;" style="sketch=0;points=[[0.5,0,0],[1,0.5,0],[0.5,1,0],[0,0.5,0],[0.145,0.145,0],[0.8555,0.145,0],[0.855,0.8555,0],[0.145,0.855,0]];html=1;aspect=fixed;pointerEvents=1;shape=mxgraph.cisco19.rect;prIcon=router;fillColor=#FAFAFA;strokeColor=#005073;verticalLabelPosition=middle;verticalAlign=middle;align=right;labelPosition=left;" parent="1" vertex="1">
+                    <mxGeometry x="200" y="450" width="60" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="P2" value="&lt;b style=&quot;color:#FFFFFF;&quot;&gt;P2&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#CCCCCC&quot; style=&quot;font-size:10px;&quot;&gt;SP Core; IS-IS L2 + LDP&lt;br&gt;Lo0: 10.0.0.3/32&lt;/font&gt;" style="sketch=0;points=[[0.5,0,0],[1,0.5,0],[0.5,1,0],[0,0.5,0],[0.145,0.145,0],[0.8555,0.145,0],[0.855,0.8555,0],[0.145,0.855,0]];html=1;aspect=fixed;pointerEvents=1;shape=mxgraph.cisco19.rect;prIcon=router;fillColor=#FAFAFA;strokeColor=#005073;verticalLabelPosition=middle;verticalAlign=middle;align=left;labelPosition=right;" parent="1" vertex="1">
+                    <mxGeometry x="700" y="450" width="60" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="link_L2" value="Gi0/1 - Gi0/0&#10;10.10.12.0/24" style="endArrow=none;html=1;strokeWidth=2;strokeColor=#FFFFFF;fillColor=#f5f5f5;fontColor=#FFFFFF;fontSize=10;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" parent="1" source="PE1" target="P1" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="link_L3" value="Gi0/2 - Gi0/0&#10;10.10.13.0/24" style="endArrow=none;html=1;strokeWidth=2;strokeColor=#FFFFFF;fillColor=#f5f5f5;fontColor=#FFFFFF;fontSize=10;exitX=1;exitY=1;exitDx=0;exitDy=0;entryX=0;entryY=0;entryDx=0;entryDy=0;" parent="1" source="PE1" target="P2" edge="1">
+                    <mxGeometry x="-0.3567" y="-3" relative="1" as="geometry">
+                        <mxPoint as="offset"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="link_L4" value="Gi0/1 - Gi0/1&#10;10.10.23.0/24" style="endArrow=none;html=1;strokeWidth=2;strokeColor=#FFFFFF;fillColor=#f5f5f5;fontColor=#FFFFFF;fontSize=10;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" parent="1" source="P1" target="P2" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="link_L5" value="Gi0/2 - Gi0/1&#10;10.10.24.0/24" style="endArrow=none;html=1;strokeWidth=2;strokeColor=#FFFFFF;fillColor=#f5f5f5;fontColor=#FFFFFF;fontSize=10;exitX=1;exitY=0;exitDx=0;exitDy=0;entryX=0;entryY=1;entryDx=0;entryDy=0;" parent="1" source="P1" target="PE2" edge="1">
+                    <mxGeometry x="0.2675" y="-2" relative="1" as="geometry">
+                        <mxPoint y="1" as="offset"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="link_L6" value="Gi0/2 - Gi0/2&#10;10.10.34.0/24" style="endArrow=none;html=1;strokeWidth=2;strokeColor=#FFFFFF;fillColor=#f5f5f5;fontColor=#FFFFFF;fontSize=10;exitX=0.5;exitY=0;exitDx=0;exitDy=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;" parent="1" source="P2" target="PE2" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="L2_PE1_octet" value=".1" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=10;fontColor=#FFFFFF;" parent="1" vertex="1" connectable="0">
+                    <mxGeometry x="235" y="225" as="geometry"/>
+                </mxCell>
+                <mxCell id="L2_P1_octet" value=".2" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=10;fontColor=#FFFFFF;" parent="1" vertex="1" connectable="0">
+                    <mxGeometry x="235" y="435" as="geometry"/>
+                </mxCell>
+                <mxCell id="L3_PE1_octet" value=".1" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=10;fontColor=#FFFFFF;" parent="1" vertex="1" connectable="0">
+                    <mxGeometry x="278" y="228" as="geometry"/>
+                </mxCell>
+                <mxCell id="L3_P2_octet" value=".3" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=10;fontColor=#FFFFFF;" parent="1" vertex="1" connectable="0">
+                    <mxGeometry x="682" y="438" as="geometry"/>
+                </mxCell>
+                <mxCell id="L4_P1_octet" value=".2" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=10;fontColor=#FFFFFF;" parent="1" vertex="1" connectable="0">
+                    <mxGeometry x="283" y="475" as="geometry"/>
+                </mxCell>
+                <mxCell id="L4_P2_octet" value=".3" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=10;fontColor=#FFFFFF;" parent="1" vertex="1" connectable="0">
+                    <mxGeometry x="672" y="475" as="geometry"/>
+                </mxCell>
+                <mxCell id="L5_P1_octet" value=".2" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=10;fontColor=#FFFFFF;" parent="1" vertex="1" connectable="0">
+                    <mxGeometry x="278" y="438" as="geometry"/>
+                </mxCell>
+                <mxCell id="L5_PE2_octet" value=".4" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=10;fontColor=#FFFFFF;" parent="1" vertex="1" connectable="0">
+                    <mxGeometry x="682" y="228" as="geometry"/>
+                </mxCell>
+                <mxCell id="L6_P2_octet" value=".3" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=10;fontColor=#FFFFFF;" parent="1" vertex="1" connectable="0">
+                    <mxGeometry x="725" y="435" as="geometry"/>
+                </mxCell>
+                <mxCell id="L6_PE2_octet" value=".4" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=10;fontColor=#FFFFFF;" parent="1" vertex="1" connectable="0">
+                    <mxGeometry x="725" y="225" as="geometry"/>
+                </mxCell>
+                <mxCell id="legend" value="&lt;b&gt;LEGEND&lt;/b&gt;&lt;br&gt;━━━  Physical Link (white)&lt;br&gt;[gray dashed] AS 65100 / MPLS Core&lt;br&gt;IS-IS Level: 2-only · NET 49.0001&lt;br&gt;LDP Router-id: Loopback0" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#000000;strokeColor=#FFFFFF;fontColor=#FFFFFF;fontSize=10;align=left;verticalAlign=top;spacingLeft=8;spacingTop=8;arcSize=3;" parent="1" vertex="1">
+                    <mxGeometry x="870" y="560" width="250" height="110" as="geometry"/>
+                </mxCell>
+            </root>
+        </mxGraphModel>
+    </diagram>
+</mxfile>

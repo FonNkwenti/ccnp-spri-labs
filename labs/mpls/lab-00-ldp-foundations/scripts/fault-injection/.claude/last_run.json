@@ -1,0 +1,17 @@
+{
+  "session_id": "b44b777e-679f-488b-9ed1-123b9914148d",
+  "model": "claude-sonnet-4-6",
+  "tool_calls": 36,
+  "duration_seconds": 8170,
+  "tokens": {
+    "input": 4028,
+    "output": 96347,
+    "cache_read": 6471838,
+    "cache_creation_5m": 7736,
+    "cache_creation_1h": 367866
+  },
+  "cost_usd_estimate": 5.635,
+  "pricing_date": "2026-05-06",
+  "written_at": "2026-05-06T14:01:54.974909+00:00",
+  "source": "stop-hook"
+}

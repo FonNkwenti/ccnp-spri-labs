@@ -1,0 +1,81 @@
+# Auto-generated — do not edit manually. Use /tag-lab to stamp external agent runs.
+lab: lab-02-bgp-free-core-and-unified-bgp
+chapter: mpls
+exam: 300-510
+devices:
+  - name: PE1
+    platform: iosv
+    role: SP Edge — eBGP to CE1, iBGP to PE2
+  - name: P1
+    platform: iosv
+    role: SP Core (BGP-free) — IS-IS L2 + MPLS LDP only
+  - name: P2
+    platform: iosv
+    role: SP Core (BGP-free) — IS-IS L2 + MPLS LDP only
+  - name: PE2
+    platform: iosv
+    role: SP Edge — eBGP to CE2, iBGP to PE1
+  - name: CE1
+    platform: iosv
+    role: Customer Edge AS 65101 — announces 192.0.2.0/24
+  - name: CE2
+    platform: iosv
+    role: Customer Edge AS 65102 — announces 198.51.100.0/24
+created:
+  date: "2026-04-30"
+  agent: claude-sonnet-4-6
+  skill: lab-assembler
+  skill_version: "2026-04-30"
+  files:
+    - workbook.md
+    - setup_lab.py
+    - README.md
+    - decisions.md
+    - topology/topology.drawio
+    - topology/README.md
+    - initial-configs/PE1.cfg
+    - initial-configs/P1.cfg
+    - initial-configs/P2.cfg
+    - initial-configs/PE2.cfg
+    - initial-configs/CE1.cfg
+    - initial-configs/CE2.cfg
+    - solutions/PE1.cfg
+    - solutions/P1.cfg
+    - solutions/P2.cfg
+    - solutions/PE2.cfg
+    - solutions/CE1.cfg
+    - solutions/CE2.cfg
+    - scripts/fault-injection/inject_scenario_01.py
+    - scripts/fault-injection/inject_scenario_02.py
+    - scripts/fault-injection/inject_scenario_03.py
+    - scripts/fault-injection/apply_solution.py
+    - scripts/fault-injection/README.md
+updated:
+  - date: "2026-04-30"
+    agent: claude-sonnet-4-6
+    skill: build-lab
+    skill_version: "2026-04-30"
+    files:
+      - decisions.md
+      - initial-configs/CE1.cfg
+      - initial-configs/CE2.cfg
+      - initial-configs/P1.cfg
+      - initial-configs/P2.cfg
+      - initial-configs/PE1.cfg
+      - initial-configs/PE2.cfg
+      - README.md
+      - scripts/fault-injection/apply_solution.py
+      - scripts/fault-injection/inject_scenario_01.py
+      - scripts/fault-injection/inject_scenario_02.py
+      - scripts/fault-injection/inject_scenario_03.py
+      - scripts/fault-injection/README.md
+      - setup_lab.py
+      - solutions/CE1.cfg
+      - solutions/CE2.cfg
+      - solutions/P1.cfg
+      - solutions/P2.cfg
+      - solutions/PE1.cfg
+      - solutions/PE2.cfg
+      - topology/README.md
+      - topology/topology.drawio
+      - workbook.md

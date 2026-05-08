@@ -1,0 +1,65 @@
+# Auto-generated — do not edit manually. Use /tag-lab to stamp external agent runs.
+lab: lab-01-lsp-verification-and-troubleshooting
+chapter: mpls
+exam: 300-510
+devices:
+  - name: PE1
+    platform: iosv
+    role: SP Edge Router (ingress LSR)
+  - name: P1
+    platform: iosv
+    role: SP Core Router (transit LSR)
+  - name: P2
+    platform: iosv
+    role: SP Core Router (transit LSR)
+  - name: PE2
+    platform: iosv
+    role: SP Edge Router (egress LSR)
+created:
+  date: "2026-04-30"
+  agent: claude-sonnet-4-6
+  skill: lab-assembler
+  skill_version: "2026-04-30"
+  files:
+    - workbook.md
+    - topology/topology.drawio
+    - topology/README.md
+    - setup_lab.py
+    - README.md
+    - decisions.md
+    - initial-configs/PE1.cfg
+    - initial-configs/P1.cfg
+    - initial-configs/P2.cfg
+    - initial-configs/PE2.cfg
+    - solutions/PE1.cfg
+    - solutions/P1.cfg
+    - solutions/P2.cfg
+    - solutions/PE2.cfg
+    - scripts/fault-injection/inject_scenario_01.py
+    - scripts/fault-injection/inject_scenario_02.py
+    - scripts/fault-injection/apply_solution.py
+    - scripts/fault-injection/README.md
+updated:
+  - date: "2026-04-29"
+    agent: claude-sonnet-4-6
+    skill: build-lab
+    skill_version: "2026-04-30"
+    files:
+      - decisions.md
+      - initial-configs/P1.cfg
+      - initial-configs/P2.cfg
+      - initial-configs/PE1.cfg
+      - initial-configs/PE2.cfg
+      - README.md
+      - scripts/fault-injection/apply_solution.py
+      - scripts/fault-injection/inject_scenario_01.py
+      - scripts/fault-injection/inject_scenario_02.py
+      - scripts/fault-injection/README.md
+      - setup_lab.py
+      - solutions/P1.cfg
+      - solutions/P2.cfg
+      - solutions/PE1.cfg
+      - solutions/PE2.cfg
+      - topology/README.md
+      - topology/topology.drawio
+      - workbook.md

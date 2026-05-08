@@ -1,0 +1,65 @@
+# Auto-generated — do not edit manually. Use /tag-lab to stamp external agent runs.
+lab: lab-00-ldp-foundations
+chapter: mpls
+exam: 300-510
+devices:
+  - name: PE1
+    platform: iosv
+    role: SP edge — IS-IS L2 + LDP (AS 65100)
+  - name: P1
+    platform: iosv
+    role: SP core — IS-IS L2 + LDP (BGP-free, AS 65100)
+  - name: P2
+    platform: iosv
+    role: SP core — IS-IS L2 + LDP (BGP-free, AS 65100)
+  - name: PE2
+    platform: iosv
+    role: SP edge — IS-IS L2 + LDP (AS 65100)
+created:
+  date: "2026-04-28"
+  agent: claude-opus-4-7
+  skill: lab-assembler
+  skill_version: "2026-04-27"
+  files:
+    - workbook.md
+    - topology/topology.drawio
+    - topology/README.md
+    - setup_lab.py
+    - README.md
+    - decisions.md
+    - initial-configs/PE1.cfg
+    - initial-configs/P1.cfg
+    - initial-configs/P2.cfg
+    - initial-configs/PE2.cfg
+    - solutions/PE1.cfg
+    - solutions/P1.cfg
+    - solutions/P2.cfg
+    - solutions/PE2.cfg
+    - scripts/fault-injection/inject_scenario_01.py
+    - scripts/fault-injection/verify_scenario_01.py
+    - scripts/fault-injection/inject_scenario_02.py
+    - scripts/fault-injection/verify_scenario_02.py
+updated:
+  - date: "2026-04-28"
+    agent: claude-opus-4-7
+    skill: build
+    skill_version: "2026-04-28"
+    files:
+      - decisions.md
+      - initial-configs/P1.cfg
+      - initial-configs/P2.cfg
+      - initial-configs/PE1.cfg
+      - initial-configs/PE2.cfg
+      - README.md
+      - scripts/fault-injection/inject_scenario_01.py
+      - scripts/fault-injection/inject_scenario_02.py
+      - scripts/fault-injection/verify_scenario_01.py
+      - scripts/fault-injection/verify_scenario_02.py
+      - setup_lab.py
+      - solutions/P1.cfg
+      - solutions/P2.cfg
+      - solutions/PE1.cfg
+      - solutions/PE2.cfg
+      - topology/README.md
+      - topology/topology.drawio
+      - workbook.md

@@ -51,7 +51,7 @@ def preflight(conn, target: dict) -> bool:
         print("    Run apply_solution.py first to restore the known-good config.")
         return False
     if target["preflight_fault_marker"] in output:
-        print("[!] Pre-flight failed: lab not in expected pre-injection state.")
+        print("[!] Pre-flight failed: scenario appears already injected.")
         print("    Restore with apply_solution.py.")
         return False
     return True
