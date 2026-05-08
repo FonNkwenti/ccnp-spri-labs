@@ -1,6 +1,6 @@
-﻿#!/usr/bin/env python3
+#!/usr/bin/env python3
 """
-Fault Injection: Scenario 02. Restore with: python3 apply_solution.py --host <eve-ng-ip>
+Fault Injection: Scenario 03. Restore with: python3 apply_solution.py --host <eve-ng-ip>
 """
 
 from __future__ import annotations
@@ -16,17 +16,16 @@ from eve_ng import EveNgError, connect_node, discover_ports, find_open_lab, requ
 
 DEVICE_NAME = "P1"
 FAULT_COMMANDS = [
-    "interface GigabitEthernet0/2",
-    "no mpls mtu override 1508",
+    "interface GigabitEthernet0/1",
+    "ip rsvp bandwidth 10 10",
 ]
 
-# Pre-flight: verify mpls mtu override 1508 is configured on P1 Gi0/2 before injecting.
-PREFLIGHT_CMD = "show running-config interface GigabitEthernet0/2"
-# Present only in the known-good state (mpls mtu raised).
-PREFLIGHT_SOLUTION_MARKER = "mpls mtu override 1508"
-# A sentinel: this literal string will never appear in running-config.
-# The solution-marker-absent check carries the full pre-flight load for this fault type.
-PREFLIGHT_FAULT_MARKER = "__fault_already_injected_sentinel__"
+# Pre-flight: verify RSVP bandwidth is set to 100000 on L4 (P1 Gi0/1).
+PREFLIGHT_CMD = "show ip rsvp interface GigabitEthernet0/1 | include Max"
+# If this string is already present → fault already injected, bail out.
+PREFLIGHT_FAULT_MARKER = "10K"
+# If this string is absent → not in solution state, bail out.
+PREFLIGHT_SOLUTION_MARKER = "100M"
 
 
 def preflight(conn) -> bool:
@@ -43,19 +42,19 @@ def preflight(conn) -> bool:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Inject Scenario 02 fault")
+    parser = argparse.ArgumentParser(description="Inject Scenario 03 fault")
     parser.add_argument("--host", default="192.168.x.x",
                         help="EVE-NG server IP (required)")
     parser.add_argument("--lab-path", default=None,
                         help="Lab .unl path in EVE-NG (auto-discovered if omitted)")
     parser.add_argument("--skip-preflight", action="store_true",
-                        help="Skip sanity check â€” use only if lab state is known-good")
+                        help="Skip sanity check — use only if lab state is known-good")
     args = parser.parse_args()
 
     host = require_host(args.host)
 
     print("=" * 60)
-    print("Fault Injection: Scenario 02")
+    print("Fault Injection: Scenario 03")
     print("=" * 60)
 
     if args.lab_path:
@@ -64,8 +63,7 @@ def main() -> int:
         print("[*] Detecting open lab in EVE-NG...")
         lab_path = find_open_lab(host, node_names=[DEVICE_NAME])
         if lab_path is None:
-            print(f"[!] No running lab found with {DEVICE_NAME}. Start all nodes first.",
-                  file=sys.stderr)
+            print(f"[!] No running lab found with {DEVICE_NAME}. Start all nodes first.", file=sys.stderr)
             return 3
 
     try:
@@ -95,7 +93,7 @@ def main() -> int:
     finally:
         conn.disconnect()
 
-    print(f"[+] Fault injected on {DEVICE_NAME}. Scenario 02 is now active.")
+    print(f"[+] Fault injected on {DEVICE_NAME}. Scenario 03 is now active.")
     print("=" * 60)
     return 0
 

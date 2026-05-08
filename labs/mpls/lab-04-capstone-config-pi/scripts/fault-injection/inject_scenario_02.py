@@ -1,4 +1,4 @@
-﻿#!/usr/bin/env python3
+#!/usr/bin/env python3
 """
 Fault Injection: Scenario 02. Restore with: python3 apply_solution.py --host <eve-ng-ip>
 """
@@ -14,19 +14,20 @@ SCRIPT_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(SCRIPT_DIR.parents[3] / "common" / "tools"))
 from eve_ng import EveNgError, connect_node, discover_ports, find_open_lab, require_host  # noqa: E402
 
-DEVICE_NAME = "P1"
+DEVICE_NAME = "PE2"
 FAULT_COMMANDS = [
-    "interface GigabitEthernet0/2",
-    "no mpls mtu override 1508",
+    "router bgp 65100",
+    "address-family ipv4",
+    "no neighbor 10.0.0.1 next-hop-self",
 ]
 
-# Pre-flight: verify mpls mtu override 1508 is configured on P1 Gi0/2 before injecting.
-PREFLIGHT_CMD = "show running-config interface GigabitEthernet0/2"
-# Present only in the known-good state (mpls mtu raised).
-PREFLIGHT_SOLUTION_MARKER = "mpls mtu override 1508"
-# A sentinel: this literal string will never appear in running-config.
-# The solution-marker-absent check carries the full pre-flight load for this fault type.
-PREFLIGHT_FAULT_MARKER = "__fault_already_injected_sentinel__"
+# Pre-flight: verify next-hop-self is configured on PE2 toward PE1.
+PREFLIGHT_CMD = "show running-config | include neighbor 10.0.0.1 next-hop-self"
+# If this string is already present → fault already injected. Since we cannot
+# positively detect "next-hop-self is absent," check for a non-matching marker.
+PREFLIGHT_FAULT_MARKER = "NEXTHOP_SELF_FAULT_89A2F1C4_INJECTED"
+# If this string is absent → not in solution state, bail out.
+PREFLIGHT_SOLUTION_MARKER = "neighbor 10.0.0.1 next-hop-self"
 
 
 def preflight(conn) -> bool:
@@ -49,7 +50,7 @@ def main() -> int:
     parser.add_argument("--lab-path", default=None,
                         help="Lab .unl path in EVE-NG (auto-discovered if omitted)")
     parser.add_argument("--skip-preflight", action="store_true",
-                        help="Skip sanity check â€” use only if lab state is known-good")
+                        help="Skip sanity check — use only if lab state is known-good")
     args = parser.parse_args()
 
     host = require_host(args.host)
@@ -64,8 +65,7 @@ def main() -> int:
         print("[*] Detecting open lab in EVE-NG...")
         lab_path = find_open_lab(host, node_names=[DEVICE_NAME])
         if lab_path is None:
-            print(f"[!] No running lab found with {DEVICE_NAME}. Start all nodes first.",
-                  file=sys.stderr)
+            print(f"[!] No running lab found with {DEVICE_NAME}. Start all nodes first.", file=sys.stderr)
             return 3
 
     try:

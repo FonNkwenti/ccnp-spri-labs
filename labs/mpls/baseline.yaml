@@ -1,4 +1,4 @@
-topic: mpls
+﻿topic: mpls
 topic_name: "MPLS"
 exam: "300-510"
 version: 1.0
@@ -11,13 +11,13 @@ meta:
     skill_version: "2026-04-24"
   updated: []
 
-# ──────────────────────────────────────────────────────────────────────────────
-# Core topology — present in every lab of this topic. IPs never change.
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# Core topology â€” present in every lab of this topic. IPs never change.
 #   - PE1, P1, P2, PE2: AS 65100 SP core, IS-IS L2, MPLS LDP on all core links.
 #     iBGP lives ONLY on PE1 and PE2 (P1/P2 are BGP-free by design).
 #   - CE1 (AS 65101) and CE2 (AS 65102): external customer edges, optional,
 #     boot at lab-02 when customer traffic crosses the BGP-free core.
-# ──────────────────────────────────────────────────────────────────────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 core_topology:
   devices:
     - name: PE1
@@ -32,7 +32,7 @@ core_topology:
       platform: iosv
       role: "SP core (BGP-free); IS-IS L2; MPLS LDP; RSVP-TE signaling from lab-03"
       loopback0: "10.0.0.2/32"
-      bgp_as: null                             # P routers have NO BGP — invariant
+      bgp_as: null                             # P routers have NO BGP â€” invariant
       isis_net: "49.0001.0000.0000.0002.00"
       console_port: null
 
@@ -40,7 +40,7 @@ core_topology:
       platform: iosv
       role: "SP core (BGP-free); IS-IS L2; MPLS LDP; RSVP-TE signaling from lab-03"
       loopback0: "10.0.0.3/32"
-      bgp_as: null                             # P routers have NO BGP — invariant
+      bgp_as: null                             # P routers have NO BGP â€” invariant
       isis_net: "49.0001.0000.0000.0003.00"
       console_port: null
 
@@ -57,32 +57,32 @@ core_topology:
       source: "PE1:GigabitEthernet0/1"
       target: "P1:GigabitEthernet0/0"
       subnet: "10.10.12.0/24"
-      purpose: "Core link (IS-IS L2, MPLS LDP, RSVP from lab-03); primary PE1↔P1 LSP leg"
+      purpose: "Core link (IS-IS L2, MPLS LDP, RSVP from lab-03); primary PE1â†”P1 LSP leg"
     - id: L3
       source: "PE1:GigabitEthernet0/2"
       target: "P2:GigabitEthernet0/0"
       subnet: "10.10.13.0/24"
-      purpose: "Core link (IS-IS L2, MPLS LDP, RSVP from lab-03); alternate PE1↔P2 LSP leg"
+      purpose: "Core link (IS-IS L2, MPLS LDP, RSVP from lab-03); alternate PE1â†”P2 LSP leg"
     - id: L4
       source: "P1:GigabitEthernet0/1"
       target: "P2:GigabitEthernet0/1"
       subnet: "10.10.23.0/24"
-      purpose: "Core P1↔P2 cross (IS-IS L2, MPLS LDP, RSVP from lab-03); enables RSVP-TE third path PE1→P1→P2→PE2"
+      purpose: "Core P1â†”P2 cross (IS-IS L2, MPLS LDP, RSVP from lab-03); enables RSVP-TE third path PE1â†’P1â†’P2â†’PE2"
     - id: L5
       source: "P1:GigabitEthernet0/2"
       target: "PE2:GigabitEthernet0/1"
       subnet: "10.10.24.0/24"
-      purpose: "Core link (IS-IS L2, MPLS LDP, RSVP from lab-03); primary P1↔PE2 LSP leg"
+      purpose: "Core link (IS-IS L2, MPLS LDP, RSVP from lab-03); primary P1â†”PE2 LSP leg"
     - id: L6
       source: "P2:GigabitEthernet0/2"
       target: "PE2:GigabitEthernet0/2"
       subnet: "10.10.34.0/24"
-      purpose: "Core link (IS-IS L2, MPLS LDP, RSVP from lab-03); alternate P2↔PE2 LSP leg"
+      purpose: "Core link (IS-IS L2, MPLS LDP, RSVP from lab-03); alternate P2â†”PE2 LSP leg"
 
-# ──────────────────────────────────────────────────────────────────────────────
-# Optional topology — CE1 and CE2 boot at lab-02 when the teaching shifts to
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# Optional topology â€” CE1 and CE2 boot at lab-02 when the teaching shifts to
 # carrying customer traffic across the BGP-free core.
-# ──────────────────────────────────────────────────────────────────────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 optional_devices:
   - name: CE1
     platform: iosv
@@ -102,7 +102,7 @@ optional_devices:
     bgp_as: 65102
     console_port: null
     available_from: lab-02-bgp-free-core-and-unified-bgp
-    purpose: "Sink for CE1→CE2 traffic that transits the BGP-free core on MPLS labels"
+    purpose: "Sink for CE1â†’CE2 traffic that transits the BGP-free core on MPLS labels"
 
 optional_links:
   - id: L1
@@ -110,18 +110,18 @@ optional_links:
     target: "PE1:GigabitEthernet0/0"
     subnet: "10.10.111.0/24"
     available_from: lab-02-bgp-free-core-and-unified-bgp
-    purpose: "eBGP session PE1 (AS 65100) ↔ CE1 (AS 65101); customer prefix ingress"
+    purpose: "eBGP session PE1 (AS 65100) â†” CE1 (AS 65101); customer prefix ingress"
 
   - id: L7
     source: "CE2:GigabitEthernet0/0"
     target: "PE2:GigabitEthernet0/0"
     subnet: "10.10.122.0/24"
     available_from: lab-02-bgp-free-core-and-unified-bgp
-    purpose: "eBGP session PE2 (AS 65100) ↔ CE2 (AS 65102); customer prefix egress"
+    purpose: "eBGP session PE2 (AS 65100) â†” CE2 (AS 65102); customer prefix egress"
 
-# ──────────────────────────────────────────────────────────────────────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 # Labs
-# ──────────────────────────────────────────────────────────────────────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 labs:
   - number: 0
     folder: lab-00-ldp-foundations
@@ -134,12 +134,12 @@ labs:
     objectives:
       - "Bring up IS-IS L2 on PE1, P1, P2, PE2 (loopback0 + all core interfaces L2, L3, L4, L5, L6); verify `show clns neighbors` shows a full adjacency on each core link and every PE loopback is reachable end-to-end"
       - "Enable MPLS LDP globally (`mpls label protocol ldp`, `mpls ldp router-id Loopback0 force`) and activate `mpls ip` on every core-facing interface on PE1, P1, P2, PE2"
-      - "Verify LDP neighbor discovery and TCP session establishment: `show mpls ldp discovery` (hello-level), `show mpls ldp neighbor` (session-level — expect one neighbor per directly connected core link, LDP ID sourced from loopback)"
-      - "Inspect the Label Information Base (LIB): `show mpls ldp bindings` — every core router learns a local and remote binding for every IS-IS-known /32 loopback. Identify the local binding (label this router assigned) vs the remote bindings (labels advertised by each LDP peer)"
-      - "Inspect the Label Forwarding Information Base (LFIB): `show mpls forwarding-table` — the LFIB only contains the *one* next-hop label the router will actually swap to, not every remote binding. Explain the LIB→LFIB filtering: only the label advertised by the IGP next-hop wins"
+      - "Verify LDP neighbor discovery and TCP session establishment: `show mpls ldp discovery` (hello-level), `show mpls ldp neighbor` (session-level â€” expect one neighbor per directly connected core link, LDP ID sourced from loopback)"
+      - "Inspect the Label Information Base (LIB): `show mpls ldp bindings` â€” every core router learns a local and remote binding for every IS-IS-known /32 loopback. Identify the local binding (label this router assigned) vs the remote bindings (labels advertised by each LDP peer)"
+      - "Inspect the Label Forwarding Information Base (LFIB): `show mpls forwarding-table` â€” the LFIB only contains the *one* next-hop label the router will actually swap to, not every remote binding. Explain the LIBâ†’LFIB filtering: only the label advertised by the IGP next-hop wins"
       - "Observe Penultimate Hop Popping (PHP): confirm PE loopback labels advertised as `implicit-null` (pop) by directly connected LDP peers, and that the LSR just before the egress PE pops the label so the PE receives native IP"
       - "Force a control-plane mismatch: configure `mpls ldp router-id Loopback1` on P1 (a non-existent loopback) and watch the LDP session flap until corrected. Teach why LDP router-id must be reachable and stable"
-      - "Troubleshoot a planted fault where LDP is enabled under `router isis` automatically via `mpls ldp autoconfig` on three of four devices but one interface still shows `mpls ldp` not running — diagnose using `show mpls interfaces` and the IS-IS `mpls ldp sync` state"
+      - "Troubleshoot a planted fault where LDP is enabled under `router isis` automatically via `mpls ldp autoconfig` on three of four devices but one interface still shows `mpls ldp` not running â€” diagnose using `show mpls interfaces` and the IS-IS `mpls ldp sync` state"
 
   - number: 1
     folder: lab-01-lsp-verification-and-troubleshooting
@@ -155,9 +155,9 @@ labs:
       - "Compare IP ping vs MPLS ping: a successful IP ping can mask a broken LSP if the router falls back to IP forwarding; MPLS ping fails the moment any hop's LSP is broken. Demonstrate this by planting an LDP filter (next objective) and running both"
       - "Plant a controlled LSP fault: on P1 configure an inbound LDP label filter that denies the advertisement for PE2's loopback (`mpls ldp neighbor <P2> labels accept` with a deny-all ACL for 10.0.0.4/32). From PE1, confirm `ping mpls` to PE2 fails on the P1 path while IP ping still works (IGP-routed fallback). Diagnose with `show mpls forwarding-table 10.0.0.4` and `show mpls ldp bindings 10.0.0.4 32`"
       - "Validate the label stack per hop: use `trace mpls ipv4` with `ttl 1`, `ttl 2`, `ttl 3` and correlate the reported label each LSR swapped. Explain how the TTL expiry + ICMP-with-label behavior exposes the LSP topology"
-      - "MTU gotcha: generate a 1500-byte payload from PE1 to PE2 and confirm it fragments or fails. Raise `mpls mtu 1508` on all core interfaces (two labels × 4 bytes headroom) and re-test; confirm the LSP now passes full-sized frames without fragmentation"
-      - "Demonstrate ECMP over LSPs: with equal-cost paths PE1→P1→PE2 and PE1→P2→PE2, confirm `show mpls forwarding-table 10.0.0.4` lists two outgoing interfaces. Use multiple source addresses in MPLS ping to observe hash distribution across both LSPs"
-      - "Troubleshoot a planted fault where `no mpls ip` was issued on one P1 interface (L5 toward PE2) — PE1's LSP to PE2 is half-broken. The LFIB entry shows `Untagged` in one direction. Diagnose by inspecting `show mpls interfaces` and `show mpls forwarding-table 10.0.0.4 detail`"
+      - "MTU gotcha: generate a 1500-byte payload from PE1 to PE2 and confirm it fragments or fails. Raise `mpls mtu override 1508` on all core interfaces (two labels Ã— 4 bytes headroom) and re-test; confirm the LSP now passes full-sized frames without fragmentation"
+      - "Demonstrate ECMP over LSPs: with equal-cost paths PE1â†’P1â†’PE2 and PE1â†’P2â†’PE2, confirm `show mpls forwarding-table 10.0.0.4` lists two outgoing interfaces. Use multiple source addresses in MPLS ping to observe hash distribution across both LSPs"
+      - "Troubleshoot a planted fault where `no mpls ip` was issued on one P1 interface (L5 toward PE2) â€” PE1's LSP to PE2 is half-broken. The LFIB entry shows `Untagged` in one direction. Diagnose by inspecting `show mpls interfaces` and `show mpls forwarding-table 10.0.0.4 detail`"
 
   - number: 2
     folder: lab-02-bgp-free-core-and-unified-bgp
@@ -169,14 +169,14 @@ labs:
     extends: lab-01-lsp-verification-and-troubleshooting
     blueprint_refs: ["4.1.c", "4.1.d"]
     objectives:
-      - "Boot CE1 (AS 65101) and CE2 (AS 65102); bring up L1 (CE1↔PE1) and L7 (CE2↔PE2) with the preassigned subnets; configure CE1 to announce 192.0.2.0/24 from loopback1 and CE2 to announce 198.51.100.0/24 from loopback1"
-      - "Establish eBGP PE1↔CE1 and PE2↔CE2 single-hop sessions. Verify each PE receives the customer prefix from its CE (`show ip bgp 192.0.2.0/24` on PE1, `198.51.100.0/24` on PE2)"
-      - "Establish iBGP PE1↔PE2 (loopback-sourced, `update-source Loopback0`). Critically: do NOT configure BGP on P1 or P2. Verify `show ip bgp summary` on P1 and P2 returns `% BGP not active` — this is the BGP-free core invariant"
-      - "Test end-to-end forwarding: from CE1, `ping 198.51.100.1 source 192.0.2.1`. The packet traverses CE1→PE1→(P1 or P2)→PE2→CE2. The P router has no BGP route to 198.51.100.0/24 — forwarding works *only* because PE1 pushed the LDP label for PE2's loopback and the P router swapped on that label, never inspecting the inner IP header"
+      - "Boot CE1 (AS 65101) and CE2 (AS 65102); bring up L1 (CE1â†”PE1) and L7 (CE2â†”PE2) with the preassigned subnets; configure CE1 to announce 192.0.2.0/24 from loopback1 and CE2 to announce 198.51.100.0/24 from loopback1"
+      - "Establish eBGP PE1â†”CE1 and PE2â†”CE2 single-hop sessions. Verify each PE receives the customer prefix from its CE (`show ip bgp 192.0.2.0/24` on PE1, `198.51.100.0/24` on PE2)"
+      - "Establish iBGP PE1â†”PE2 (loopback-sourced, `update-source Loopback0`). Critically: do NOT configure BGP on P1 or P2. Verify `show ip bgp summary` on P1 and P2 returns `% BGP not active` â€” this is the BGP-free core invariant"
+      - "Test end-to-end forwarding: from CE1, `ping 198.51.100.1 source 192.0.2.1`. The packet traverses CE1â†’PE1â†’(P1 or P2)â†’PE2â†’CE2. The P router has no BGP route to 198.51.100.0/24 â€” forwarding works *only* because PE1 pushed the LDP label for PE2's loopback and the P router swapped on that label, never inspecting the inner IP header"
       - "Prove the BGP-free invariant by inspection: on P1, `show ip route 198.51.100.0` returns 'not in routing table'; `show mpls forwarding-table 10.0.0.4` shows the LSP to PE2; `debug mpls packet` confirms incoming-labeled traffic is label-swapped, not re-routed on IP lookup. Students document why this is architecturally significant (core scales without holding DFZ)"
-      - "Enable Unified BGP (BGP labeled-unicast) on the iBGP PE1↔PE2 session: under `address-family ipv4 unicast`, add `neighbor <peer> send-label`. Verify with `show ip bgp labels` that PE loopbacks are now advertised between PEs with a label alongside the prefix. Explain why this matters for inter-AS MPLS (Option C / seamless MPLS) — it lets an ASBR in another SP learn the remote PE's label without speaking LDP"
+      - "Enable Unified BGP (BGP labeled-unicast) on the iBGP PE1â†”PE2 session: under `address-family ipv4 unicast`, add `neighbor <peer> send-label`. Verify with `show ip bgp labels` that PE loopbacks are now advertised between PEs with a label alongside the prefix. Explain why this matters for inter-AS MPLS (Option C / seamless MPLS) â€” it lets an ASBR in another SP learn the remote PE's label without speaking LDP"
       - "Compare the two label sources for 10.0.0.4/32 at PE1: LDP advertises a label via `show mpls ldp bindings`, and BGP-LU advertises a label via `show ip bgp labels`. They can be different labels for the same prefix; the router uses the IGP-next-hop-based LFIB entry for forwarding, and BGP-LU becomes the label source only when LDP is absent (inter-AS case)"
-      - "Troubleshoot a planted fault where BGP-LU is enabled on PE1 but not PE2 (mismatched `send-label`) — the session comes up but no labels are exchanged. Diagnose with `show ip bgp neighbor <peer> | include Address|label` and the capability-negotiation output"
+      - "Troubleshoot a planted fault where BGP-LU is enabled on PE1 but not PE2 (mismatched `send-label`) â€” the session comes up but no labels are exchanged. Diagnose with `show ip bgp neighbor <peer> | include Address|label` and the capability-negotiation output"
 
   - number: 3
     folder: lab-03-rsvp-te-tunnels
@@ -191,15 +191,15 @@ labs:
       - "Enable MPLS traffic engineering globally on all core routers: `mpls traffic-eng tunnels` under global config, and `mpls traffic-eng tunnels` under each core-facing interface on PE1, P1, P2, PE2"
       - "Enable IS-IS traffic engineering extensions: under `router isis`, add `mpls traffic-eng level-2` and `mpls traffic-eng router-id Loopback0`. Verify TE LSAs carry Extended IS Reachability (TLV 22) with link bandwidth and TE metric (`show mpls traffic-eng topology` on any core router lists every TE-enabled link)"
       - "Configure RSVP signaling and reservable bandwidth on every core link: `ip rsvp bandwidth 100000 100000` (100 Mbps reservable, 100 Mbps per-flow max) on L2, L3, L4, L5, L6. Verify with `show ip rsvp interface`"
-      - "Build Tunnel10 on PE1 (destination PE2 loopback) with *dynamic* path: `tunnel mpls traffic-eng path-option 10 dynamic` — let CSPF pick the route. Observe which path CSPF chose (PE1→P1→PE2 or PE1→P2→PE2) via `show mpls traffic-eng tunnels tunnel10`. Confirm a label-swap LSP now exists via `show mpls forwarding-table tunnel 10`"
-      - "Build Tunnel20 on PE1 with an *explicit* path that forces transit via the far P router (if dynamic chose P1, force P2 — or vice versa): create `ip explicit-path name PE1-via-FAR` listing the P router and PE2 loopbacks as next-addresses, attach with `tunnel mpls traffic-eng path-option 10 explicit name PE1-via-FAR`. Compare Tunnel10 (dynamic) vs Tunnel20 (explicit) — different LSPs, different RSVP reservations"
+      - "Build Tunnel10 on PE1 (destination PE2 loopback) with *dynamic* path: `tunnel mpls traffic-eng path-option 10 dynamic` â€” let CSPF pick the route. Observe which path CSPF chose (PE1â†’P1â†’PE2 or PE1â†’P2â†’PE2) via `show mpls traffic-eng tunnels tunnel10`. Confirm a label-swap LSP now exists via `show mpls forwarding-table tunnel 10`"
+      - "Build Tunnel20 on PE1 with an *explicit* path that forces transit via the far P router (if dynamic chose P1, force P2 â€” or vice versa): create `ip explicit-path name PE1-via-FAR` listing the P router and PE2 loopbacks as next-addresses, attach with `tunnel mpls traffic-eng path-option 10 explicit name PE1-via-FAR`. Compare Tunnel10 (dynamic) vs Tunnel20 (explicit) â€” different LSPs, different RSVP reservations"
       - "Use the tunnel for traffic: enable `tunnel mpls traffic-eng autoroute announce` on Tunnel10 so IS-IS installs PE2's loopback through the tunnel. Run `traceroute 10.0.0.4` from PE1 and confirm the `Tunnel10` output interface (not the physical core link)"
       - "Add resilience: configure Tunnel10 with a secondary path-option `20 dynamic lockdown` and run `show mpls traffic-eng tunnels tunnel10 | include path` to confirm both the primary (active) and secondary (standby) paths are signaled. Shut the primary path's first hop and observe the tunnel reoptimize to the secondary path"
-      - "Troubleshoot a planted fault where L4 (P1↔P2) has `ip rsvp bandwidth 10` (10 kbps — below the 100 Mbps the tunnel requests) — CSPF cannot use this link for the tunnel. Diagnose by walking `show mpls traffic-eng topology` (reserved vs available bandwidth per link) and fix the mis-sized reservation"
+      - "Troubleshoot a planted fault where L4 (P1â†”P2) has `ip rsvp bandwidth 10` (10 kbps â€” below the 100 Mbps the tunnel requests) â€” CSPF cannot use this link for the tunnel. Diagnose by walking `show mpls traffic-eng topology` (reserved vs available bandwidth per link) and fix the mis-sized reservation"
 
   - number: 4
     folder: lab-04-capstone-config
-    title: "MPLS Full Mastery — Capstone I"
+    title: "MPLS Full Mastery â€” Capstone I"
     type: capstone_i
     clean_slate: true
     difficulty: Advanced
@@ -210,16 +210,16 @@ labs:
       - "Starting from an interfaces-only baseline (all IP addresses and loopbacks pre-assigned, no protocols running), build the complete MPLS stack end-to-end"
       - "Configure IS-IS L2 on PE1, P1, P2, PE2 (NET and level-2 only); verify full adjacency on every core link and loopback reachability across the core"
       - "Enable MPLS LDP on every core interface with LDP router-id sourced from Loopback0; verify LDP session on every directly connected core pair; verify LIB bindings for every /32 loopback"
-      - "Configure iBGP PE1↔PE2 (loopback-sourced) with `send-label` — P1 and P2 must remain BGP-free (any BGP configuration on P1/P2 fails the lab)"
-      - "Configure eBGP PE1↔CE1 and PE2↔CE2; CEs announce 192.0.2.0/24 and 198.51.100.0/24 from loopback1 respectively"
+      - "Configure iBGP PE1â†”PE2 (loopback-sourced) with `send-label` â€” P1 and P2 must remain BGP-free (any BGP configuration on P1/P2 fails the lab)"
+      - "Configure eBGP PE1â†”CE1 and PE2â†”CE2; CEs announce 192.0.2.0/24 and 198.51.100.0/24 from loopback1 respectively"
       - "Enable MPLS-TE: global + per-interface `mpls traffic-eng tunnels`, IS-IS level-2 TE extensions, RSVP `ip rsvp bandwidth 100000 100000` on every core link"
       - "Build Tunnel10 on PE1 to PE2 with primary *dynamic* path-option and secondary *explicit* path-option that transits the P-router NOT chosen by the dynamic path; attach `autoroute announce` so PE1 steers PE2-destined traffic into the tunnel"
-      - "Verify: CE1→CE2 ping (`ping 198.51.100.1 source 192.0.2.1`) succeeds; `traceroute` from PE1 to 10.0.0.4 shows the `Tunnel10` interface; `show mpls traffic-eng tunnels` confirms both path-options signaled; `show ip bgp` on P1 and P2 returns 'BGP not active'"
+      - "Verify: CE1â†’CE2 ping (`ping 198.51.100.1 source 192.0.2.1`) succeeds; `traceroute` from PE1 to 10.0.0.4 shows the `Tunnel10` interface; `show mpls traffic-eng tunnels` confirms both path-options signaled; `show ip bgp` on P1 and P2 returns 'BGP not active'"
       - "Acceptance criteria: end-to-end customer reachability via LSP-protected path, BGP-free core invariant verified, tunnel primary + backup both signaled, LDP sessions UP on every core link"
 
   - number: 5
     folder: lab-05-capstone-troubleshooting
-    title: "MPLS Comprehensive Troubleshooting — Capstone II"
+    title: "MPLS Comprehensive Troubleshooting â€” Capstone II"
     type: capstone_ii
     clean_slate: true
     difficulty: Advanced
@@ -228,10 +228,10 @@ labs:
     devices: [PE1, P1, P2, PE2, CE1, CE2]
     objectives:
       - "Starting from a fully configured MPLS stack matching lab-04's acceptance criteria, diagnose and repair 5+ concurrent planted faults spanning every blueprint bullet"
-      - "Fault 1 (4.1.a LDP): LDP router-id on P1 sourced from a non-existent loopback — LDP session to P2 flaps every 30 s. Symptom: intermittent LFIB entries; `show mpls ldp neighbor` cycles through states. Fix: set `mpls ldp router-id Loopback0 force` on P1"
-      - "Fault 2 (4.1.b LSP): `mpls mtu 1400` configured on L5 — jumbo-ish traffic with two labels fragments or drops. Symptom: small pings work, 1480-byte pings fail end-to-end. Fix: restore `mpls mtu 1508` (or remove the override)"
-      - "Fault 3 (4.1.c unified BGP): PE1 has `neighbor <PE2> send-label` but PE2 does not — capability mismatch, no labels exchanged over BGP-LU. Symptom: `show ip bgp labels` is empty on PE2. Fix: add `send-label` to PE2's neighbor config"
-      - "Fault 4 (4.1.d BGP-free core): someone configured `router bgp 65100` on P1 and added a neighbor to PE1 — the 'BGP-free core' invariant is broken. Symptom: `show ip bgp summary` on P1 returns BGP process active. Fix: `no router bgp 65100` on P1 — there must be no BGP configuration on any P router"
-      - "Fault 5 (4.1.e RSVP-TE): L4 (P1↔P2) has `ip rsvp bandwidth 10` (10 kbps) — Tunnel10's secondary explicit path cannot signal because CSPF rejects the link. Symptom: `show mpls traffic-eng tunnels tunnel10` shows only the primary path up; the secondary is 'Signalling: Down'. Fix: raise RSVP bandwidth on L4 to match other links"
-      - "Fault 6 (4.1.e RSVP-TE + 4.1.a LDP interaction): IS-IS `mpls traffic-eng level-2` is missing on P2 — P2 is invisible to TE topology flooding, so no tunnel can transit P2. Symptom: `show mpls traffic-eng topology` on PE1 shows P2 absent from the TE graph. Fix: add `mpls traffic-eng level-2` and `mpls traffic-eng router-id Loopback0` under `router isis` on P2"
-      - "Acceptance criteria: CE1→CE2 traffic flows with native MPLS labels through the core via the LDP-learned LSP; Tunnel10 primary and secondary path-options both signaled and available; no BGP process on P1 or P2; LDP sessions UP on every core link; no IS-IS mpls-ldp-sync holddown states on any interface"
+      - "Fault 1 (4.1.a LDP): LDP router-id on P1 sourced from a non-existent loopback â€” LDP session to P2 flaps every 30 s. Symptom: intermittent LFIB entries; `show mpls ldp neighbor` cycles through states. Fix: set `mpls ldp router-id Loopback0 force` on P1"
+      - "Fault 2 (4.1.b LSP): `mpls mtu 1400` configured on L5 â€” jumbo-ish traffic with two labels fragments or drops. Symptom: small pings work, 1480-byte pings fail end-to-end. Fix: restore `mpls mtu override 1508` (or remove the override)"
+      - "Fault 3 (4.1.c unified BGP): PE1 has `neighbor <PE2> send-label` but PE2 does not â€” capability mismatch, no labels exchanged over BGP-LU. Symptom: `show ip bgp labels` is empty on PE2. Fix: add `send-label` to PE2's neighbor config"
+      - "Fault 4 (4.1.d BGP-free core): someone configured `router bgp 65100` on P1 and added a neighbor to PE1 â€” the 'BGP-free core' invariant is broken. Symptom: `show ip bgp summary` on P1 returns BGP process active. Fix: `no router bgp 65100` on P1 â€” there must be no BGP configuration on any P router"
+      - "Fault 5 (4.1.e RSVP-TE): L4 (P1â†”P2) has `ip rsvp bandwidth 10` (10 kbps) â€” Tunnel10's secondary explicit path cannot signal because CSPF rejects the link. Symptom: `show mpls traffic-eng tunnels tunnel10` shows only the primary path up; the secondary is 'Signalling: Down'. Fix: raise RSVP bandwidth on L4 to match other links"
+      - "Fault 6 (4.1.e RSVP-TE + 4.1.a LDP interaction): IS-IS `mpls traffic-eng level-2` is missing on P2 â€” P2 is invisible to TE topology flooding, so no tunnel can transit P2. Symptom: `show mpls traffic-eng topology` on PE1 shows P2 absent from the TE graph. Fix: add `mpls traffic-eng level-2` and `mpls traffic-eng router-id Loopback0` under `router isis` on P2"
+      - "Acceptance criteria: CE1â†’CE2 traffic flows with native MPLS labels through the core via the LDP-learned LSP; Tunnel10 primary and secondary path-options both signaled and available; no BGP process on P1 or P2; LDP sessions UP on every core link; no IS-IS mpls-ldp-sync holddown states on any interface"

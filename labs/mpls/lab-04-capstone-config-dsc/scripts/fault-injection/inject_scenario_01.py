@@ -1,6 +1,6 @@
-﻿#!/usr/bin/env python3
+#!/usr/bin/env python3
 """
-Fault Injection: Scenario 02. Restore with: python3 apply_solution.py --host <eve-ng-ip>
+Fault Injection: Scenario 01. Restore with: python3 apply_solution.py --host <eve-ng-ip>
 """
 
 from __future__ import annotations
@@ -14,19 +14,17 @@ SCRIPT_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(SCRIPT_DIR.parents[3] / "common" / "tools"))
 from eve_ng import EveNgError, connect_node, discover_ports, find_open_lab, require_host  # noqa: E402
 
-DEVICE_NAME = "P1"
+DEVICE_NAME = "P2"
 FAULT_COMMANDS = [
-    "interface GigabitEthernet0/2",
-    "no mpls mtu override 1508",
+    "router isis CORE",
+    "no mpls traffic-eng level-2",
+    "no mpls traffic-eng router-id Loopback0",
 ]
 
-# Pre-flight: verify mpls mtu override 1508 is configured on P1 Gi0/2 before injecting.
-PREFLIGHT_CMD = "show running-config interface GigabitEthernet0/2"
-# Present only in the known-good state (mpls mtu raised).
-PREFLIGHT_SOLUTION_MARKER = "mpls mtu override 1508"
-# A sentinel: this literal string will never appear in running-config.
-# The solution-marker-absent check carries the full pre-flight load for this fault type.
-PREFLIGHT_FAULT_MARKER = "__fault_already_injected_sentinel__"
+# Pre-flight: verify IS-IS TE extensions are present in the running config.
+PREFLIGHT_CMD = "show running-config | section router isis"
+# If this string is absent, the lab is not in the expected solution state.
+PREFLIGHT_SOLUTION_MARKER = "mpls traffic-eng router-id Loopback0"
 
 
 def preflight(conn) -> bool:
@@ -35,27 +33,23 @@ def preflight(conn) -> bool:
         print("[!] Pre-flight failed: lab not in expected pre-injection state.")
         print("    Run apply_solution.py first to restore the known-good config.")
         return False
-    if PREFLIGHT_FAULT_MARKER in output:
-        print("[!] Pre-flight failed: scenario appears already injected.")
-        print("    Restore with apply_solution.py.")
-        return False
     return True
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Inject Scenario 02 fault")
+    parser = argparse.ArgumentParser(description="Inject Scenario 01 fault")
     parser.add_argument("--host", default="192.168.x.x",
                         help="EVE-NG server IP (required)")
     parser.add_argument("--lab-path", default=None,
                         help="Lab .unl path in EVE-NG (auto-discovered if omitted)")
     parser.add_argument("--skip-preflight", action="store_true",
-                        help="Skip sanity check â€” use only if lab state is known-good")
+                        help="Skip sanity check -- use only if lab state is known-good")
     args = parser.parse_args()
 
     host = require_host(args.host)
 
     print("=" * 60)
-    print("Fault Injection: Scenario 02")
+    print("Fault Injection: Scenario 01")
     print("=" * 60)
 
     if args.lab_path:
@@ -64,8 +58,7 @@ def main() -> int:
         print("[*] Detecting open lab in EVE-NG...")
         lab_path = find_open_lab(host, node_names=[DEVICE_NAME])
         if lab_path is None:
-            print(f"[!] No running lab found with {DEVICE_NAME}. Start all nodes first.",
-                  file=sys.stderr)
+            print(f"[!] No running lab found with {DEVICE_NAME}. Start all nodes first.", file=sys.stderr)
             return 3
 
     try:
@@ -95,7 +88,7 @@ def main() -> int:
     finally:
         conn.disconnect()
 
-    print(f"[+] Fault injected on {DEVICE_NAME}. Scenario 02 is now active.")
+    print(f"[+] Fault injected on {DEVICE_NAME}. Scenario 01 is now active.")
     print("=" * 60)
     return 0
 

@@ -83,7 +83,7 @@ Explicit paths are powerful for traffic engineering:
 
 ### Traffic Steering with Autoroute
 
-By default, a TE tunnel is a forwarding device but nothing points traffic into it. `tunnel mpls traffic-eng autoroute announce` installs the tunnel's destination prefix (PE2 loopback) into IS-IS as if the tunnel were an IS-IS adjacency, with the tunnel's metric used as the IS-IS route cost. After this, `show ip route 10.0.0.4` on PE1 shows the tunnel interface, and `traceroute 10.0.0.4` exits via `Tunnel10` rather than a physical interface.
+By default, a TE tunnel is a forwarding device but nothing points traffic into it. `tunnel mpls traffic-eng autoroute announce` installs the tunnel's destination prefix (PE2 loopback) into IS-IS as if the tunnel were an IS-IS adjacency, with the tunnel's metric used as the IS-IS route cost. After this, `show ip route 10.0.0.4` on PE1 shows `via Tunnel10` as the outgoing interface. `traceroute 10.0.0.4` will show the first physical hop on the tunnel path with an `[MPLS: Label]` annotation — the tunnel interface itself is transparent to traceroute, but the label confirms the packet was forwarded through the RSVP-TE LSP.
 
 **Skills this lab develops:**
 
@@ -200,7 +200,7 @@ The following is **pre-loaded** via `setup_lab.py`:
 - Interface IP addressing (all routed links and loopbacks)
 - `no ip domain-lookup`
 - IS-IS L2 adjacencies (`router isis CORE`, area 49.0001, level-2-only, `metric-style wide`, loopback passive)
-- MPLS LDP on all core-facing interfaces (`mpls ip`, `mpls mtu 1508`, `mpls ldp router-id Loopback0 force`)
+- MPLS LDP on all core-facing interfaces (`mpls ip`, `mpls mtu override 1508`, `mpls ldp router-id Loopback0 force`)
 - iBGP PE1↔PE2 with `send-label` and `next-hop-self` (lab-02 solution state)
 - eBGP PE1↔CE1 and PE2↔CE2 with customer prefix advertisements (lab-02 solution state)
 
@@ -276,17 +276,17 @@ Explicit paths let you override CSPF and pin an RSVP-TE tunnel to a specific set
 
 > **Context help:** Explicit path definitions use `ip explicit-path name <name> enable` followed by `next-address` sub-commands. This is a **global config** command — enter it at `(config)#`, not inside the tunnel interface. Use `next-address ?` (before typing the address) to see the available hop-type keywords — they precede the IP address, not follow it.
 
-**Verification:** `show mpls traffic-eng tunnels tunnel20` must show `Oper: up` and the explicit path name in use. `show mpls traffic-eng tunnels tunnel20 detail` must list P2's address in the ERO hops, confirming the path transits through P2 rather than P1.
+**Verification:** `show mpls traffic-eng tunnels Tunnel20` must show `Oper: up` and the explicit path name in use. The ERO hops in the same output must include P2's address, confirming the path transits through P2 rather than P1.
 
 ---
 
 ### Task 6: Compare Tunnel10 and Tunnel20 Paths
 
 - From PE1, run `show mpls traffic-eng tunnels` to display both tunnels side by side. Note which physical path each tunnel uses (one should go via P1, the other via P2 — they represent two disjoint paths through the diamond core).
-- Run `traceroute 10.0.0.4` from PE1 to confirm PE2's loopback is reachable via `Tunnel10` (autoroute installed). The traceroute must exit the `Tunnel10` interface rather than the physical core link.
+- Run `traceroute 10.0.0.4` from PE1 to confirm traffic is flowing through the tunnel. Hop 1 will show the first physical router on the tunnel path (P1's interface address) with an `[MPLS: Label]` annotation — that annotation is the evidence the packet was MPLS-encapsulated by the tunnel. Tunnel interfaces are transparent to traceroute; you will not see `Tunnel10` listed as a hop address.
 - From CE1, ping 198.51.100.1 sourced from 192.0.2.1 to confirm end-to-end customer reachability is still intact with TE in place.
 
-**Verification:** `show mpls traffic-eng tunnels` must show both tunnels `UP`. `traceroute 10.0.0.4` from PE1 must show `Tunnel10` as the first hop interface. CE1-to-CE2 ping must succeed.
+**Verification:** `show mpls traffic-eng tunnels` must show both tunnels `UP`. `traceroute 10.0.0.4` from PE1 must show `[MPLS: Label ...]` annotated on hop 1 — this confirms the probe was MPLS-encapsulated via the tunnel. The hop 1 address will be the first physical router on the tunnel path (P1), not the tunnel interface name — tunnel interfaces are transparent to traceroute. CE1-to-CE2 ping must succeed 5/5.
 
 ---
 
@@ -374,7 +374,7 @@ Routing entry for 10.0.0.4/32
 ### Task 5: Tunnel20 Explicit Path
 
 ```
-PE1# show mpls traffic-eng tunnels tunnel20 detail
+PE1# show mpls traffic-eng tunnels Tunnel20
 Name:PE1_t20                             (Tunnel20) Destination: 10.0.0.4
   Status:
     Admin: up         Oper: up     Path: valid       Signalling: connected
@@ -393,12 +393,16 @@ Tunnel20  10.0.0.4  path option 10  explicit PE1-via-P2  UP  (path via P2)
 ### Task 6: End-to-End Verification
 
 ```
-PE1# traceroute 10.0.0.4
+PE1# traceroute 10.0.0.4 source Loopback0
 Type escape sequence to abort.
 Tracing the route to 10.0.0.4
 VRF info: (vrf in name/id, vrf out name/id)
-  1 10.0.0.4 [MPLS: Labels ...] 4 msec 4 msec 4 msec
-    ! or: via Tunnel10 — the first hop exits PE1 via Tunnel10, not Gi0/1 or Gi0/2
+  1 10.10.12.2 [MPLS: Label 21 Exp 0] 2 msec 1 msec 1 msec
+  ! ↑ hop 1 is P1's interface (10.10.12.2) — tunnel interfaces are transparent to traceroute.
+  !   The [MPLS: Label] annotation confirms the probe was forwarded via the RSVP-TE tunnel.
+  !   Without the tunnel, hop 1 would show no MPLS annotation (or an LDP label, not an RSVP label).
+  2 10.10.24.4 1 msec
+  ! ↑ PE2's Gi0/1 — P1 performed PHP, so PE2 received native IP with no label.
 
 CE1# ping 198.51.100.1 source 192.0.2.1
 Type escape sequence to abort.
@@ -480,7 +484,7 @@ interface Tunnel10
 | Command | Purpose |
 |---------|---------|
 | `show mpls traffic-eng tunnels tunnel10` | Tunnel state, active path, path-options |
-| `show mpls traffic-eng tunnels tunnel10 detail` | ERO hops, RSVP session details |
+| `show mpls traffic-eng tunnels Tunnel10` | ERO hops, RSVP session details — specifying a single tunnel returns full detail automatically on IOSv |
 | `show mpls forwarding-table tunnel 10` | Label forwarding entry for the tunnel |
 | `show ip route 10.0.0.4` | Confirm autoroute installed PE2 via tunnel |
 
@@ -494,7 +498,7 @@ interface Tunnel10
 | `show mpls traffic-eng tunnels` | Both tunnels in `UP` / `connected` state |
 | `show ip rsvp interface` | All 5 core links (L2–L6, both endpoints) RSVP-enabled at 100,000 kbps |
 | `show mpls traffic-eng tunnels detail` | ERO shows expected hops; bandwidth and priority correct |
-| `traceroute 10.0.0.4` from PE1 | First hop exits via `Tunnel10`, not a physical interface |
+| `traceroute 10.0.0.4` from PE1 | Hop 1 shows `[MPLS: Label ...]` — confirms the probe was forwarded via the tunnel; the address shown is P1's physical interface (tunnel interfaces are transparent to traceroute) |
 
 ### Common RSVP-TE Failure Causes
 
@@ -705,8 +709,8 @@ interface Tunnel20
 
 ```bash
 show mpls traffic-eng tunnels
-show mpls traffic-eng tunnels tunnel10 detail
-show mpls traffic-eng tunnels tunnel20 detail
+show mpls traffic-eng tunnels Tunnel10
+show mpls traffic-eng tunnels Tunnel20
 show ip route 10.0.0.4
 traceroute 10.0.0.4
 ```
@@ -743,7 +747,7 @@ Tunnel20 (explicit path via P2) went down after a maintenance window that includ
 2. Understand the path: `PE1-via-P2` uses loose waypoints P2 (10.0.0.3) → PE2 (10.0.0.4). CSPF must route PE1 → P2 via L3 (PE1 Gi0/2 ↔ P2 Gi0/0). If L3 has insufficient bandwidth, CSPF prunes it and the explicit path cannot be satisfied.
 3. Check the TE topology: `show mpls traffic-eng topology` on PE1 — find the L3 link entry (Intf Address: 10.10.13.1). The BW column will show an abnormally low value instead of 100,000 kbps.
 4. Confirm the RSVP misconfiguration: `show ip rsvp interface` on PE1 — Gi0/2 shows `i/f max` ≈ 10 kbps. This is the source of the low TED bandwidth value.
-5. Confirm the tunnel's requested bandwidth: `show mpls traffic-eng tunnels tunnel20 detail` — 10,000 kbps requested. The link offers only ~10 kbps. CSPF eliminates L3, making the explicit path unroutable.
+5. Confirm the tunnel's requested bandwidth: `show mpls traffic-eng tunnels Tunnel20` — 10,000 kbps requested. The link offers only ~10 kbps. CSPF eliminates L3, making the explicit path unroutable.
 </details>
 
 <details>
@@ -760,7 +764,7 @@ IS-IS TE flooding propagates the corrected bandwidth within seconds. Verify: `sh
 
 ---
 
-### Ticket 2 — Tunnel20 Down — P2 Missing from TE Topology
+### Ticket 2 — Tunnel20 Flapping After Core Maintenance
 
 Tunnel20 (explicit path via P2) has been flapping since a P2 maintenance operation. It was working before the window. Tunnel10 (via P1) is unaffected. The operations team made "only IS-IS changes" on P2.
 
@@ -792,7 +796,7 @@ IS-IS TE LSAs propagate within a few seconds. Verify on PE1: `show mpls traffic-
 
 ---
 
-### Ticket 3 — Tunnel10 DOWN After P1 Configuration Change
+### Ticket 3 — Tunnel10 Down After Routine Config Push
 
 Tunnel10 went down after a routine config push to P1. All IS-IS adjacencies on P1 are intact and LDP sessions are up. The LDP-based LFIB forwarding path PE1→P1→PE2 is working (confirmed by `ping mpls ipv4 10.0.0.4/32`). The RSVP-TE tunnel, however, is not signalling.
 
@@ -836,7 +840,7 @@ Verify: `show ip rsvp interface` on P1 shows all three core interfaces listed. `
 - [ ] `show ip rsvp interface` shows 100,000 kbps on all core-facing interfaces
 - [ ] Tunnel10 UP with dynamic path-option 10 and `autoroute announce` — `show ip route 10.0.0.4` exits via Tunnel10
 - [ ] Tunnel20 UP with explicit path `PE1-via-P2` — ERO confirms P2 transit
-- [ ] `traceroute 10.0.0.4` from PE1 shows Tunnel10 as first hop
+- [ ] `traceroute 10.0.0.4` from PE1 shows `[MPLS: Label]` on hop 1, confirming RSVP-TE tunnel forwarding
 - [ ] CE1-to-CE2 ping (192.0.2.1 → 198.51.100.1) succeeds
 
 ### Troubleshooting

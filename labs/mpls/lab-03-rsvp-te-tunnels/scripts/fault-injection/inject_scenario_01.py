@@ -14,26 +14,29 @@ SCRIPT_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(SCRIPT_DIR.parents[3] / "common" / "tools"))
 from eve_ng import EveNgError, connect_node, discover_ports, find_open_lab, require_host  # noqa: E402
 
-# Both L4 endpoints must be faulted — CSPF sees per-link bandwidth from both ends.
-TARGETS = [
-    ("P1", ["interface GigabitEthernet0/1", "ip rsvp bandwidth 10"]),
-    ("P2", ["interface GigabitEthernet0/1", "ip rsvp bandwidth 10"]),
+DEVICE_NAME = "PE1"
+FAULT_COMMANDS = [
+    "interface GigabitEthernet0/2",
+    "ip rsvp bandwidth 10 10",
 ]
 
-PREFLIGHT_CMD = "show running-config interface GigabitEthernet0/1"
-# Solution state: full bandwidth configured. Absence means either fault is injected
-# or lab is not in solution state — apply_solution.py required in either case.
-# NOTE: do not also check for "ip rsvp bandwidth 10" — it is a substring of
-# "ip rsvp bandwidth 100000" and would produce a false match on solution state.
+PREFLIGHT_CMD = "show running-config interface GigabitEthernet0/2"
+# Solution state: full RSVP bandwidth configured on this interface.
+# NOTE: "ip rsvp bandwidth 10 10" does not appear as a substring of
+# "ip rsvp bandwidth 100000 100000" so the markers are unambiguous.
 PREFLIGHT_SOLUTION_MARKER = "ip rsvp bandwidth 100000"
+PREFLIGHT_FAULT_MARKER = "ip rsvp bandwidth 10 10"
 
 
-def preflight(conn, device_name: str) -> bool:
+def preflight(conn) -> bool:
     output = conn.send_command(PREFLIGHT_CMD)
     if PREFLIGHT_SOLUTION_MARKER not in output:
         print("[!] Pre-flight failed: lab not in expected pre-injection state.")
-        print("    Either Scenario 01 is already active, or the lab is not in solution state.")
-        print("    Run apply_solution.py to restore the known-good config.")
+        print("    Run apply_solution.py first to restore the known-good config.")
+        return False
+    if PREFLIGHT_FAULT_MARKER in output:
+        print("[!] Pre-flight failed: scenario appears already injected.")
+        print("    Restore with apply_solution.py.")
         return False
     return True
 
@@ -54,15 +57,13 @@ def main() -> int:
     print("Fault Injection: Scenario 01")
     print("=" * 60)
 
-    all_names = [name for name, _ in TARGETS]
-
     if args.lab_path:
         lab_path = args.lab_path
     else:
         print("[*] Detecting open lab in EVE-NG...")
-        lab_path = find_open_lab(host, node_names=all_names)
+        lab_path = find_open_lab(host, node_names=[DEVICE_NAME])
         if lab_path is None:
-            print(f"[!] No running lab found with {all_names}. Start all nodes first.",
+            print(f"[!] No running lab found with {DEVICE_NAME}. Start all nodes first.",
                   file=sys.stderr)
             return 3
 
@@ -72,46 +73,28 @@ def main() -> int:
         print(f"[!] {exc}", file=sys.stderr)
         return 3
 
-    # Pre-flight pass: check all targets before injecting any
-    if not args.skip_preflight:
-        for name, _ in TARGETS:
-            port = ports.get(name)
-            if port is None:
-                print(f"[!] {name} not found in lab '{lab_path}'.")
-                return 3
-            print(f"[*] Pre-flight check on {name} ({host}:{port}) ...")
-            try:
-                conn = connect_node(host, port)
-            except Exception as exc:
-                print(f"[!] Connection to {name} failed: {exc}", file=sys.stderr)
-                return 3
-            try:
-                if not preflight(conn, name):
-                    return 4
-            finally:
-                conn.disconnect()
+    port = ports.get(DEVICE_NAME)
+    if port is None:
+        print(f"[!] {DEVICE_NAME} not found in lab '{lab_path}'.")
+        return 3
 
-    # Inject pass: apply fault commands to each target
-    for name, fault_cmds in TARGETS:
-        port = ports.get(name)
-        if port is None:
-            print(f"[!] {name} not found in lab '{lab_path}'.")
-            return 3
-        print(f"[*] Connecting to {name} on {host}:{port} ...")
-        try:
-            conn = connect_node(host, port)
-        except Exception as exc:
-            print(f"[!] Connection to {name} failed: {exc}", file=sys.stderr)
-            return 3
-        try:
-            print(f"[*] Injecting fault on {name} ...")
-            conn.send_config_set(fault_cmds)
-            conn.save_config()
-        finally:
-            conn.disconnect()
-        print(f"[+] Fault injected on {name}.")
+    print(f"[*] Connecting to {DEVICE_NAME} on {host}:{port} ...")
+    try:
+        conn = connect_node(host, port)
+    except Exception as exc:
+        print(f"[!] Connection failed: {exc}", file=sys.stderr)
+        return 3
 
-    print("[+] Scenario 01 is now active on P1 and P2.")
+    try:
+        if not args.skip_preflight and not preflight(conn):
+            return 4
+        print("[*] Injecting fault configuration ...")
+        conn.send_config_set(FAULT_COMMANDS)
+        conn.save_config()
+    finally:
+        conn.disconnect()
+
+    print(f"[+] Fault injected on {DEVICE_NAME}. Scenario 01 is now active.")
     print("=" * 60)
     return 0
 
