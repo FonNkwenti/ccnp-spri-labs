@@ -1,0 +1,91 @@
+# Auto-generated — do not edit manually. Use /tag-lab to stamp external agent runs.
+lab: lab-00-manual-and-6to4-tunnels
+chapter: ipv6-transition
+exam: "300-510"
+devices:
+  - name: R1
+    platform: iosv
+    role: "Dual-stack CE/PE West"
+  - name: R2
+    platform: iosv
+    role: "IPv4-only P Router"
+  - name: R3
+    platform: iosv
+    role: "IPv4-only P Router"
+  - name: R4
+    platform: iosv
+    role: "Dual-stack CE/PE East"
+created:
+  date: "2026-05-05"
+  agent: claude-sonnet-4-6
+  skill: lab-assembler
+  skill_version: "2026-05-05"
+  files:
+    - workbook.md
+    - topology/topology.drawio
+    - topology/README.md
+    - setup_lab.py
+    - README.md
+    - decisions.md
+    - initial-configs/R1.cfg
+    - initial-configs/R2.cfg
+    - initial-configs/R3.cfg
+    - initial-configs/R4.cfg
+    - solutions/R1.cfg
+    - solutions/R2.cfg
+    - solutions/R3.cfg
+    - solutions/R4.cfg
+    - scripts/fault-injection/inject_scenario_01.py
+    - scripts/fault-injection/inject_scenario_02.py
+    - scripts/fault-injection/inject_scenario_03.py
+    - scripts/fault-injection/apply_solution.py
+    - scripts/fault-injection/README.md
+updated:
+  - date: "2026-05-05"
+    agent: claude-sonnet-4-6
+    skill: build-lab
+    skill_version: "2026-05-05"
+    files:
+      - decisions.md
+      - initial-configs/R1.cfg
+      - initial-configs/R2.cfg
+      - initial-configs/R3.cfg
+      - initial-configs/R4.cfg
+      - README.md
+      - scripts/fault-injection/apply_solution.py
+      - scripts/fault-injection/inject_scenario_01.py
+      - scripts/fault-injection/inject_scenario_02.py
+      - scripts/fault-injection/inject_scenario_03.py
+      - scripts/fault-injection/README.md
+      - setup_lab.py
+      - solutions/R1.cfg
+      - solutions/R2.cfg
+      - solutions/R3.cfg
+      - solutions/R4.cfg
+      - topology/README.md
+      - topology/topology.drawio
+      - workbook.md
+  - date: "2026-05-05"
+    agent: claude-sonnet-4-6
+    skill: build-lab
+    skill_version: "2026-05-05"
+    files:
+      - decisions.md
+      - initial-configs/R1.cfg
+      - initial-configs/R2.cfg
+      - initial-configs/R3.cfg
+      - initial-configs/R4.cfg
+      - README.md
+      - scripts/fault-injection/apply_solution.py
+      - scripts/fault-injection/inject_scenario_01.py
+      - scripts/fault-injection/inject_scenario_02.py
+      - scripts/fault-injection/inject_scenario_03.py
+      - scripts/fault-injection/README.md
+      - setup_lab.py
+      - solutions/R1.cfg
+      - solutions/R2.cfg
+      - solutions/R3.cfg
+      - solutions/R4.cfg
+      - topology/README.md
+      - topology/topology.drawio
+      - workbook.md

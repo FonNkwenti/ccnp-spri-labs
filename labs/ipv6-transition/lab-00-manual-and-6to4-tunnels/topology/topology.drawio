@@ -1,0 +1,94 @@
+<mxfile host="65bd71144e">
+    <diagram id="_Zb_pOEt3LGt5ZBruRkK" name="Page-1">
+        <mxGraphModel dx="1814" dy="568" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" background="#1a1a2e" math="0" shadow="0">
+            <root>
+                <mxCell id="0"/>
+                <mxCell id="1" parent="0"/>
+                <mxCell id="title" value="&lt;font style=&quot;font-size:16px;&quot; color=&quot;#FFFFFF&quot;&gt;&lt;b&gt;Lab 00: Static IPv6-in-IPv4 and 6to4 Tunnels&lt;/b&gt;&lt;/font&gt;" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;strokeColor=default;fillColor=none;rounded=1;glass=0;" parent="1" vertex="1">
+                    <mxGeometry x="150" y="20" width="700" height="35" as="geometry"/>
+                </mxCell>
+                <mxCell id="R1" value="&lt;b style=&quot;color:#FFFFFF;&quot;&gt;R1&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#CCCCCC&quot; style=&quot;font-size:10px;&quot;&gt;CE/PE — Dual-Stack West&lt;br&gt;Lo0: 10.0.0.1/32&lt;br&gt;Lo1: 10.1.1.1/24&lt;/font&gt;" style="sketch=0;points=[[0.5,0,0],[1,0.5,0],[0.5,1,0],[0,0.5,0],[0.145,0.145,0],[0.8555,0.145,0],[0.855,0.8555,0],[0.145,0.855,0]];html=1;aspect=fixed;pointerEvents=1;shape=mxgraph.cisco19.rect;prIcon=router;fillColor=#FAFAFA;strokeColor=#005073;verticalLabelPosition=middle;verticalAlign=middle;align=right;labelPosition=left;" parent="1" vertex="1">
+                    <mxGeometry x="80" y="300" width="60" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="R2" value="&lt;b style=&quot;color:#FFFFFF;&quot;&gt;R2&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#CCCCCC&quot; style=&quot;font-size:10px;&quot;&gt;P — IPv4 Only&lt;br&gt;Lo0: 10.0.0.2/32&lt;br&gt;(no IPv6)&lt;/font&gt;" style="sketch=0;points=[[0.5,0,0],[1,0.5,0],[0.5,1,0],[0,0.5,0],[0.145,0.145,0],[0.8555,0.145,0],[0.855,0.8555,0],[0.145,0.855,0]];html=1;aspect=fixed;pointerEvents=1;shape=mxgraph.cisco19.rect;prIcon=router;fillColor=#FAFAFA;strokeColor=#005073;verticalLabelPosition=top;verticalAlign=bottom;align=center;labelPosition=center;" parent="1" vertex="1">
+                    <mxGeometry x="300" y="300" width="60" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="R3" value="&lt;b style=&quot;color:#FFFFFF;&quot;&gt;R3&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#CCCCCC&quot; style=&quot;font-size:10px;&quot;&gt;P — IPv4 Only&lt;br&gt;Lo0: 10.0.0.3/32&lt;br&gt;(no IPv6)&lt;/font&gt;" style="sketch=0;points=[[0.5,0,0],[1,0.5,0],[0.5,1,0],[0,0.5,0],[0.145,0.145,0],[0.8555,0.145,0],[0.855,0.8555,0],[0.145,0.855,0]];html=1;aspect=fixed;pointerEvents=1;shape=mxgraph.cisco19.rect;prIcon=router;fillColor=#FAFAFA;strokeColor=#005073;verticalLabelPosition=top;verticalAlign=bottom;align=center;labelPosition=center;" parent="1" vertex="1">
+                    <mxGeometry x="520" y="300" width="60" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="R4" value="&lt;b style=&quot;color:#FFFFFF;&quot;&gt;R4&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#CCCCCC&quot; style=&quot;font-size:10px;&quot;&gt;CE/PE — Dual-Stack East&lt;br&gt;Lo0: 10.0.0.4/32&lt;br&gt;Lo1: 10.1.4.1/24&lt;/font&gt;" style="sketch=0;points=[[0.5,0,0],[1,0.5,0],[0.5,1,0],[0,0.5,0],[0.145,0.145,0],[0.8555,0.145,0],[0.855,0.8555,0],[0.145,0.855,0]];html=1;aspect=fixed;pointerEvents=1;shape=mxgraph.cisco19.rect;prIcon=router;fillColor=#FAFAFA;strokeColor=#005073;verticalLabelPosition=middle;verticalAlign=middle;align=left;labelPosition=right;" parent="1" vertex="1">
+                    <mxGeometry x="740" y="300" width="60" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="link_L1" value="&lt;font color=&quot;#FFFFFF&quot; style=&quot;font-size:10px;&quot;&gt;Gi0/0 — Gi0/0&lt;br&gt;10.1.12.0/24&lt;/font&gt;" style="endArrow=none;html=1;strokeWidth=2;strokeColor=#FFFFFF;fillColor=#f5f5f5;edgeStyle=none;" parent="1" source="R1" target="R2" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="link_L2" value="&lt;font color=&quot;#FFFFFF&quot; style=&quot;font-size:10px;&quot;&gt;Gi0/1 — Gi0/0&lt;br&gt;10.1.23.0/24&lt;/font&gt;" style="endArrow=none;html=1;strokeWidth=2;strokeColor=#FFFFFF;fillColor=#f5f5f5;edgeStyle=none;" parent="1" source="R2" target="R3" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="link_L3" value="&lt;font color=&quot;#FFFFFF&quot; style=&quot;font-size:10px;&quot;&gt;Gi0/1 — Gi0/0&lt;br&gt;10.1.34.0/24&lt;/font&gt;" style="endArrow=none;html=1;strokeWidth=2;strokeColor=#FFFFFF;fillColor=#f5f5f5;edgeStyle=none;" parent="1" source="R3" target="R4" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="L1_R1_octet" value=".1" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=10;fontColor=#FFFFFF;" parent="1" vertex="1" connectable="0">
+                    <mxGeometry x="155" y="318" as="geometry"/>
+                </mxCell>
+                <mxCell id="L1_R2_octet" value=".2" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=10;fontColor=#FFFFFF;" parent="1" vertex="1" connectable="0">
+                    <mxGeometry x="285" y="318" as="geometry"/>
+                </mxCell>
+                <mxCell id="L2_R2_octet" value=".1" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=10;fontColor=#FFFFFF;" parent="1" vertex="1" connectable="0">
+                    <mxGeometry x="375" y="318" as="geometry"/>
+                </mxCell>
+                <mxCell id="L2_R3_octet" value=".2" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=10;fontColor=#FFFFFF;" parent="1" vertex="1" connectable="0">
+                    <mxGeometry x="505" y="318" as="geometry"/>
+                </mxCell>
+                <mxCell id="L3_R3_octet" value=".1" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=10;fontColor=#FFFFFF;" parent="1" vertex="1" connectable="0">
+                    <mxGeometry x="595" y="318" as="geometry"/>
+                </mxCell>
+                <mxCell id="L3_R4_octet" value=".2" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=10;fontColor=#FFFFFF;" parent="1" vertex="1" connectable="0">
+                    <mxGeometry x="725" y="318" as="geometry"/>
+                </mxCell>
+                <mxCell id="tunnel0_R1_R4" value="" style="endArrow=none;html=1;strokeWidth=1;strokeColor=#FFFFFF;fillColor=none;dashed=1;dashPattern=1 4;curved=1;exitX=0.5;exitY=0;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" parent="1" source="R1" target="R4" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="110" y="200"/>
+                            <mxPoint x="770" y="200"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="tunnel0_lbl" value="&lt;font color=&quot;#FFFFFF&quot; style=&quot;font-size:10px;&quot;&gt;Tunnel0 — Static IPv6-in-IPv4&lt;br&gt;2001:db8:14::/64&lt;/font&gt;" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=10;" parent="tunnel0_R1_R4" vertex="1" connectable="0">
+                    <mxGeometry x="-0.1" y="-20" relative="1" as="geometry">
+                        <mxPoint x="43" y="-20" as="offset"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="tunnel1_R1_R4" value="" style="endArrow=none;html=1;strokeWidth=1;strokeColor=#FFFFFF;fillColor=none;dashed=1;dashPattern=1 4;curved=1;exitX=0.5;exitY=0;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" parent="1" source="R1" target="R4" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="50" y="140"/>
+                            <mxPoint x="440" y="100"/>
+                            <mxPoint x="850" y="140"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="tunnel1_lbl" value="&lt;font color=&quot;#FFFFFF&quot; style=&quot;font-size:10px;&quot;&gt;Tunnel1 — 6to4 Dynamic&lt;br&gt;2002::/16&lt;/font&gt;" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=10;" parent="tunnel1_R1_R4" vertex="1" connectable="0">
+                    <mxGeometry x="-0.1" y="-20" relative="1" as="geometry">
+                        <mxPoint x="47" y="-16" as="offset"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="tun0_R1_octet" value=".1" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=10;fontColor=#FFFFFF;" parent="1" vertex="1" connectable="0">
+                    <mxGeometry x="124" y="285" as="geometry"/>
+                </mxCell>
+                <mxCell id="tun0_R4_octet" value=".4" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=10;fontColor=#FFFFFF;" parent="1" vertex="1" connectable="0">
+                    <mxGeometry x="760" y="285" as="geometry"/>
+                </mxCell>
+                <mxCell id="tun1_R1_octet" value=".1" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=10;fontColor=#CCCCCC;" parent="1" vertex="1" connectable="0">
+                    <mxGeometry x="90" y="280" as="geometry"/>
+                </mxCell>
+                <mxCell id="tun1_R4_octet" value=".4" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=10;fontColor=#CCCCCC;" parent="1" vertex="1" connectable="0">
+                    <mxGeometry x="780" y="285" as="geometry"/>
+                </mxCell>
+                <mxCell id="legend" value="&lt;b&gt;LEGEND&lt;/b&gt;&lt;br&gt;━━━  Physical Link (IPv4)&lt;br&gt;- - -  Tunnel0: Static IPv6-in-IPv4&lt;br&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;2001:db8:14::/64&lt;br&gt;- - -  Tunnel1: 6to4 Dynamic&lt;br&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;2002::/16&lt;br&gt;R2 / R3: IPv4 core — no IPv6&lt;br&gt;R1 / R4: Dual-stack edge" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#000000;strokeColor=#FFFFFF;fontColor=#FFFFFF;fontSize=10;align=left;verticalAlign=top;spacingLeft=8;spacingTop=8;arcSize=3;" parent="1" vertex="1">
+                    <mxGeometry x="680" y="450" width="220" height="130" as="geometry"/>
+                </mxCell>
+            </root>
+        </mxGraphModel>
+    </diagram>
+</mxfile>
