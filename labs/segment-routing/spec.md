@@ -100,33 +100,23 @@ lab-04+), L7 R1↔CE1 (eBGP, lab-03+), L8 R3↔CE2 (eBGP, lab-03+).
 
 ## Blueprint Coverage Matrix
 
-| Bullet | Description | Covered In | XR Exercised? |
-|--------|-------------|------------|---------------|
-| 4.2 | Implement segment routing (umbrella) | lab-00 through lab-07 | yes — primary |
-| 4.2.a | SR extensions — IS-IS (lab-00), OSPF (lab-05 standalone), BGP-LS (lab-04) | lab-00 (IS-IS primary), lab-04 (BGP-LS), lab-05 (OSPF primary), lab-06, lab-07 | yes — primary |
-| 4.2.b | SRGB and SRLB (Global and Local Block allocation) | lab-00 (primary), lab-05, lab-06, lab-07 | yes — primary |
-| 4.2.c | TI-LFA (microloop-free post-convergence FRR) | lab-01 (primary), lab-06, lab-07 | yes — primary |
-| 4.2.d | Migration — SR mapping server + `sr-prefer` over LDP | lab-02 (primary), lab-06, lab-07 | yes — primary |
-| 4.3.a | Automated steering (color-based PE steering, on-demand next-hop) | lab-03 (primary), lab-06, lab-07 | yes — primary |
-| 4.3.b | SR-TE policies (constraints, metrics, attributes) | lab-03 (primary), lab-04, lab-06, lab-07 | yes — primary |
-| 4.3.c | PCE-based path calculation (PCEP, BGP-LS topology feed) | lab-04 (primary), lab-06, lab-07 | yes — primary |
-| 4.3.d | SRLG (Shared Risk Link Groups) | lab-04 (primary), lab-06, lab-07 | yes — primary |
-| 4.3.e | Tree SID (SR-MPLS P2MP, configuration + caveat) | lab-04 (primary), lab-06, lab-07 | yes — primary |
+| Bullet | Description | Covered In |
+|--------|-------------|------------|
+| 4.2 | Implement segment routing (umbrella) | lab-00 through lab-07 |
+| 4.2.a | SR extensions — IS-IS (lab-00), OSPF (lab-05 standalone), BGP-LS (lab-04) | lab-00 (IS-IS primary), lab-04 (BGP-LS), lab-05 (OSPF primary), lab-06, lab-07 |
+| 4.2.b | SRGB and SRLB (Global and Local Block allocation) | lab-00 (primary), lab-05, lab-06, lab-07 |
+| 4.2.c | TI-LFA (microloop-free post-convergence FRR) | lab-01 (primary), lab-06, lab-07 |
+| 4.2.d | Migration — SR mapping server + `sr-prefer` over LDP | lab-02 (primary), lab-06, lab-07 |
+| 4.3.a | Automated steering (color-based PE steering, on-demand next-hop) | lab-03 (primary), lab-06, lab-07 |
+| 4.3.b | SR-TE policies (constraints, metrics, attributes) | lab-03 (primary), lab-04, lab-06, lab-07 |
+| 4.3.c | PCE-based path calculation (PCEP, BGP-LS topology feed) | lab-04 (primary), lab-06, lab-07 |
+| 4.3.d | SRLG (Shared Risk Link Groups) | lab-04 (primary), lab-06, lab-07 |
+| 4.3.e | Tree SID (SR-MPLS P2MP, configuration + caveat) | lab-04 (primary), lab-06, lab-07 |
 
 Every blueprint bullet has a dedicated primary lab; capstones exercise
 every bullet again end-to-end.
 
 ## Design Decisions
-
-- **XR Coverage Posture: `XR-native`** (per `memory/xr-coverage-policy.md`).
-  All core nodes run IOS-XRv 9000; IOSv appears only as customer edges
-  (CE1, CE2). This is correct as designed — segment routing in §4.2 / §4.3
-  has features (Tree SID §4.3.e, full PCE §4.3.c, on-demand next-hop
-  §4.3.a) that are XR-only or only fully implemented on XR. No retrofit
-  required. The XRv 9000 platform is justified rather than gratuitous: SR
-  policies, PCEP server, and Tree SID all need the heavier image. RAM
-  budget (~80 GB peak with 5×XRv 9000) approaches the 64 GB host ceiling
-  and is documented in lab-00's prereq notes.
 
 - **Eight labs (+1 over the topic-plan estimate of 7).** 4.2 and 4.3
   between them have 9 sub-bullets. The progressive chain collapses

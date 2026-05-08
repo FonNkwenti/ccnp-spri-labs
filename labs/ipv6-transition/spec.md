@@ -74,30 +74,19 @@ introduce header translation.
 
 ## Blueprint Coverage Matrix
 
-| Bullet | Description | Covered In | XR Exercised? |
-|--------|-------------|------------|---------------|
-| 1.6 | Describe IPv6 tunneling mechanisms | lab-00 (umbrella), lab-04, lab-05 | no — deferred to `xr-bridge` |
-| 1.6.a | Static IPv6-in-IPv4 tunnels | lab-00 (primary), lab-04, lab-05 | no — deferred to `xr-bridge` |
-| 1.6.b | Dynamic 6to4 tunnels | lab-00 (primary), lab-04, lab-05 | no — deferred to `xr-bridge` |
-| 1.6.c | IPv6 provider edge (6PE) | lab-01 (primary), lab-04, lab-05 | no — deferred to `xr-bridge` |
-| 1.6.d | IPv6 policy enforcement | lab-02 (primary), lab-04, lab-05 | no — deferred to `xr-bridge` |
-| 1.6.e | NAT64 and MAP-T | lab-03 (primary), lab-04, lab-05 | no — IOS-XE-specific |
+| Bullet | Description | Covered In |
+|--------|-------------|------------|
+| 1.6 | Describe IPv6 tunneling mechanisms | lab-00 (umbrella), lab-04, lab-05 |
+| 1.6.a | Static IPv6-in-IPv4 tunnels | lab-00 (primary), lab-04, lab-05 |
+| 1.6.b | Dynamic 6to4 tunnels | lab-00 (primary), lab-04, lab-05 |
+| 1.6.c | IPv6 provider edge (6PE) | lab-01 (primary), lab-04, lab-05 |
+| 1.6.d | IPv6 policy enforcement | lab-02 (primary), lab-04, lab-05 |
+| 1.6.e | NAT64 and MAP-T | lab-03 (primary), lab-04, lab-05 |
 
 Every blueprint bullet has a dedicated primary lab; capstones exercise
 every bullet again end-to-end.
 
 ## Design Decisions
-
-- **XR Coverage Posture: `IOSv-only`** (per `memory/xr-coverage-policy.md`).
-  This topic stays on IOSv (+ CSR1000v for NAT64/MAP-T) by deliberate
-  choice — 6PE (§1.6.c) is the only XR-canonical bullet here, and the
-  cost/benefit of retrofitting an XR PE pair is poor compared to teaching
-  XR-native 6PE in the dedicated `xr-bridge` topic. NAT64 and MAP-T
-  (§1.6.e) are IOS-XE-specific and have no XR equivalent worth teaching.
-  XR coverage of 6PE for CCIE SP precursor candidates is deferred to
-  `labs/xr-bridge/lab-01-xr-bgp-and-policy` (build deferred — see
-  `memory/xr-coverage-policy.md` §3, "Documented gaps"). No Phase 3
-  retrofit is planned for this topic.
 
 - **Lab count: 6 (+1 over the topic-plan estimate of 5).** The estimate
   assigned one lab per bullet, but the project convention (see ospf,

@@ -148,44 +148,32 @@ sudo tcpdump -i ens3 host 239.1.1.1 -v
 
 ## Blueprint Coverage Matrix
 
-| Blueprint Bullet | Description | Covered In | XR Exercised? |
-|-----------------|-------------|------------|---------------|
-| 2.1 | Compare multicast concepts | lab-00 (SPT/RPT, ASM model), lab-02 (ASM vs SSM) | yes — capstone |
-| 2.1.a | Multicast domains, distribution trees, and IGMP operations | lab-00 ((*,G) and (S,G) trees, DR election, IGMP join from RCV1, RPF) | yes — capstone |
-| 2.1.b | ASM versus SSM | lab-00 (ASM), lab-02 (SSM 232.x.x.x, BIDIR vs ASM) | yes — capstone |
-| 2.1.c | Intra-domain versus inter-domain multicast routing | lab-03 (MSDP SA federation), lab-04 (MBGP RPF for inter-domain) | yes — capstone |
-| 2.2 | Describe multicast concepts | lab-00 through lab-05 | yes — capstone |
-| 2.2.a | Mapping of multicast IP addresses to MAC addresses | lab-00 (01:00:5e:xx:xx mapping rule, L3 group → L2 MAC, verified via tcpdump on RCV1) | no — protocol-agnostic |
-| 2.2.b | Multiprotocol BGP for IPv4 and IPv6 | lab-04 (address-family ipv4 multicast, separate RIB, RPF preference) | yes — capstone |
-| 2.2.c | Principles and operations of PIM-SM | lab-00 (DR, RP, register, join/prune, RPT→SPT switchover triggered by real traffic from SRC1) | yes — capstone |
-| 2.2.d | MSDP operations | lab-03 (SA messages, SA-cache, peer authentication, SA-filter) | yes — capstone |
-| 2.2.e | MLDP/P2MP | lab-05 (P2MP LSP, MLDP bindings, mLDP FIB, RCV1 receives over MPLS labels) | yes — capstone |
-| 2.2.f | IGMP, IGMPv3 and MLD | lab-00 (IGMPv2 from RCV1), lab-02 (IGMPv3 SSM join), lab-04 (MLD for IPv6) | yes — capstone |
-| 2.3 | Implement PIM-SM operations | lab-00 (static RP), lab-01 (RP mechanisms) | yes — capstone |
-| 2.3.a | Auto-RP, PIMv2 BSR, anycast RP, Phantom RP | lab-01 (all four mechanisms) | yes — capstone |
-| 2.3.b | BIDIR-PIM operations | lab-02 (DF election, bidir shared tree, no SPT switchover) | yes — capstone |
-| 2.3.c | SSM operations | lab-02 (SSM range, IGMPv3 include from RCV1, (S,G) join without RP) | yes — capstone |
-| 2.3.d | MSDP operations | lab-03 (MSDP peering, SA generation, SA filtering, anycast RP sync) | yes — capstone |
-| 2.4 | Troubleshoot multicast routing | integrated in labs 00-05; comprehensive in lab-07 | yes — capstone |
-| 2.4.a | Single domain | lab-00 (RPF failure, wrong RP), lab-01 (RP not elected), lab-05 (MLDP not established) | yes — capstone |
-| 2.4.b | Multidomain | lab-03 (MSDP peer down, SA blocked), lab-04 (MBGP RPF mismatch) | yes — capstone |
+| Blueprint Bullet | Description | Covered In |
+|-----------------|-------------|------------|
+| 2.1 | Compare multicast concepts | lab-00 (SPT/RPT, ASM model), lab-02 (ASM vs SSM) |
+| 2.1.a | Multicast domains, distribution trees, and IGMP operations | lab-00 ((*,G) and (S,G) trees, DR election, IGMP join from RCV1, RPF) |
+| 2.1.b | ASM versus SSM | lab-00 (ASM), lab-02 (SSM 232.x.x.x, BIDIR vs ASM) |
+| 2.1.c | Intra-domain versus inter-domain multicast routing | lab-03 (MSDP SA federation), lab-04 (MBGP RPF for inter-domain) |
+| 2.2 | Describe multicast concepts | lab-00 through lab-05 |
+| 2.2.a | Mapping of multicast IP addresses to MAC addresses | lab-00 (01:00:5e:xx:xx mapping rule, L3 group → L2 MAC, verified via tcpdump on RCV1) |
+| 2.2.b | Multiprotocol BGP for IPv4 and IPv6 | lab-04 (address-family ipv4 multicast, separate RIB, RPF preference) |
+| 2.2.c | Principles and operations of PIM-SM | lab-00 (DR, RP, register, join/prune, RPT→SPT switchover triggered by real traffic from SRC1) |
+| 2.2.d | MSDP operations | lab-03 (SA messages, SA-cache, peer authentication, SA-filter) |
+| 2.2.e | MLDP/P2MP | lab-05 (P2MP LSP, MLDP bindings, mLDP FIB, RCV1 receives over MPLS labels) |
+| 2.2.f | IGMP, IGMPv3 and MLD | lab-00 (IGMPv2 from RCV1), lab-02 (IGMPv3 SSM join), lab-04 (MLD for IPv6) |
+| 2.3 | Implement PIM-SM operations | lab-00 (static RP), lab-01 (RP mechanisms) |
+| 2.3.a | Auto-RP, PIMv2 BSR, anycast RP, Phantom RP | lab-01 (all four mechanisms) |
+| 2.3.b | BIDIR-PIM operations | lab-02 (DF election, bidir shared tree, no SPT switchover) |
+| 2.3.c | SSM operations | lab-02 (SSM range, IGMPv3 include from RCV1, (S,G) join without RP) |
+| 2.3.d | MSDP operations | lab-03 (MSDP peering, SA generation, SA filtering, anycast RP sync) |
+| 2.4 | Troubleshoot multicast routing | integrated in labs 00-05; comprehensive in lab-07 |
+| 2.4.a | Single domain | lab-00 (RPF failure, wrong RP), lab-01 (RP not elected), lab-05 (MLDP not established) |
+| 2.4.b | Multidomain | lab-03 (MSDP peer down, SA blocked), lab-04 (MBGP RPF mismatch) |
 
 ## Design Decisions
 
-- **XR Coverage Posture: `XR-mixed`** (per `memory/xr-coverage-policy.md`).
-  Foundation/intermediate labs (00–05) run on IOSv + Ubuntu to keep the
-  topology tight and the multicast plane easy to inspect; the capstones
-  flip 2 of the routers to IOS XRv via Phase 3 #7 of the
-  [`2026-05-06 XR Coverage Retrofit`](../../tasks/2026-05-06-xr-coverage-retrofit.md).
-  Driven by §2.2.c PIM-SM, §2.2.d MSDP, §2.2.e MLDP/P2MP — XR's `router pim`,
-  `router igmp`, `router msdp`, and `mpls ldp mldp` configuration hierarchy
-  is materially different and is the SP-production reality. Capstone peak ≈
-  11 GB (3×IOSv + 2×XRv + 2×Linux); see RAM table in
-  `memory/xr-coverage-policy.md` §5.
-
-- **All-IOSv routers + Ubuntu Linux VMs for traffic (foundation labs);
-  mixed IOSv + IOS XRv + Ubuntu for capstones (Phase 3 #7 retrofit).** —
-  IOSv 15.9(3)M6 supports all multicast control-plane features. Ubuntu 20.04 VMs (SRC1 on R2, RCV1 on R4) provide
+- **All-IOSv routers + Ubuntu Linux VMs for traffic** — IOSv 15.9(3)M6 supports all
+  multicast control-plane features. Ubuntu 20.04 VMs (SRC1 on R2, RCV1 on R4) provide
   real multicast socket joins and real UDP multicast streams via `mcjoin`. This makes
   IGMP snooping, IGMP membership report timing, and SPT switchover observable in a
   way that loopback-ping simulation cannot. Total RAM: 4 × 512 MB + 2 × 1024 MB ≈ 4 GB.

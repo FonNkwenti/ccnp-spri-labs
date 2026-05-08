@@ -76,30 +76,19 @@ Key relationships:
 
 ## Blueprint Coverage Matrix
 
-| Blueprint Bullet | Description | Covered In | XR Exercised? |
-|-----------------|-------------|------------|---------------|
-| 4.4 | Implement segment routing v6 (SRv6) | lab-00, lab-01, lab-02 | yes — primary |
-| 4.4.a | Control plane operations | lab-00 (IS-IS SRv6 extensions, locator advertisements, SID manager), lab-02 (BGP SRv6 L3VPN signaling, End.DT4 allocation) | yes — primary |
-| 4.4.b | Data plane operations | lab-01 (SRH, End/End.X/End.DT4, H.Encaps, PSP, transit behavior) | yes — primary |
-| 4.4.c | Flexible algorithm | lab-02 (Flex-Algo 128/129 definition, per-algo SID allocation, asymmetric TE metric steering) | yes — primary |
-| 4.4.d | Locator, micro-segment, encapsulation, and interworking gateway | lab-00 (locator config + verification), lab-01 (H.Encaps encapsulation source, SRH construction), lab-02 (uSID/micro-segment SID table, SRv6↔SR-MPLS binding-SID interworking) | yes — primary |
+| Blueprint Bullet | Description | Covered In |
+|-----------------|-------------|------------|
+| 4.4 | Implement segment routing v6 (SRv6) | lab-00, lab-01, lab-02 |
+| 4.4.a | Control plane operations | lab-00 (IS-IS SRv6 extensions, locator advertisements, SID manager), lab-02 (BGP SRv6 L3VPN signaling, End.DT4 allocation) |
+| 4.4.b | Data plane operations | lab-01 (SRH, End/End.X/End.DT4, H.Encaps, PSP, transit behavior) |
+| 4.4.c | Flexible algorithm | lab-02 (Flex-Algo 128/129 definition, per-algo SID allocation, asymmetric TE metric steering) |
+| 4.4.d | Locator, micro-segment, encapsulation, and interworking gateway | lab-00 (locator config + verification), lab-01 (H.Encaps encapsulation source, SRH construction), lab-02 (uSID/micro-segment SID table, SRv6↔SR-MPLS binding-SID interworking) |
 
 ## Design Decisions
 
-- **XR Coverage Posture: `XR-native`** (per `memory/xr-coverage-policy.md`).
-  SRv6 is the one feature in the 300-510 blueprint that absolutely requires
-  IOS-XRv 9000 — neither IOSv nor CSR1000v has any SRv6 capability. The
-  XR-native posture is therefore not a choice but a hard platform constraint;
-  every blueprint sub-bullet (4.4.a-d) is taught and verified on XR. No Phase 3
-  capstone retrofit is required because there is no IOSv portion of the topic
-  to retrofit *from*.
-
 - **Platform: full XRv9k** — SRv6 is not supported on IOSv (IOS 15.9) or CSR1000v
   (IOS-XE 17.3.x). IOS-XRv 9000 7.1.1 is the only installed image with SRv6
-  capability. Six nodes × 4096 MB = 24 GB — comfortably within the 64 GB host
-  limit. (The reduced 4 GB allocation works because SRv6 control/data plane
-  exercise less of the XRv 9000 feature surface than, e.g., the EVPN/Tree SID
-  workloads in `segment-routing`.)
+  capability. Six nodes × 4096 MB = 24 GB — comfortably within the 64 GB host limit.
 
 - **Four-node P ring + diagonal** — four P nodes in a ring (P1-P2-P3-P4) with a
   diagonal (P1↔P3) create three structurally distinct paths between PE1 and PE2

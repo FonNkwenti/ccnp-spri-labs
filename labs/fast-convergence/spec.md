@@ -87,34 +87,21 @@ eBGP — R5 dual-homed from lab-00).
 
 ## Blueprint Coverage Matrix
 
-| Bullet | Description | Covered In | XR Exercised? |
-|--------|-------------|------------|---------------|
-| 1.7 | Implement fast convergence (umbrella) | lab-00 through lab-05 | yes — capstone |
-| 1.7.a | BFD (single-hop on IS-IS, multi-hop on iBGP/eBGP-loopback) | lab-00 (primary), lab-04, lab-05 | yes — capstone |
-| 1.7.b | Nonstop Forwarding (graceful restart for IS-IS and BGP) | lab-01 (primary), lab-04, lab-05 | yes — capstone |
-| 1.7.c | NSR (Nonstop Routing — configured, with behavioral-gap caveat) | lab-01 (primary), lab-04 | yes — capstone (XR makes NSR demonstrable) |
-| 1.7.d | Timers (IS-IS hello/hold, SPF/PRC throttle, BGP keepalive/hold) | lab-00 (primary), lab-04, lab-05 | yes — capstone |
-| 1.7.e | BGP PIC Edge and Core | lab-03 (primary), lab-04, lab-05 | yes — capstone |
-| 1.7.f | LFA / IP-FRR (per-prefix LFA, Remote LFA) | lab-02 (primary), lab-04, lab-05 | yes — capstone |
-| 1.7.g | BGP additional and backup paths (add-paths, backup path install) | lab-03 (primary), lab-04, lab-05 | yes — capstone |
+| Bullet | Description | Covered In |
+|--------|-------------|------------|
+| 1.7 | Implement fast convergence (umbrella) | lab-00 through lab-05 |
+| 1.7.a | BFD (single-hop on IS-IS, multi-hop on iBGP/eBGP-loopback) | lab-00 (primary), lab-04, lab-05 |
+| 1.7.b | Nonstop Forwarding (graceful restart for IS-IS and BGP) | lab-01 (primary), lab-04, lab-05 |
+| 1.7.c | NSR (Nonstop Routing — configured, with behavioral-gap caveat) | lab-01 (primary), lab-04 |
+| 1.7.d | Timers (IS-IS hello/hold, SPF/PRC throttle, BGP keepalive/hold) | lab-00 (primary), lab-04, lab-05 |
+| 1.7.e | BGP PIC Edge and Core | lab-03 (primary), lab-04, lab-05 |
+| 1.7.f | LFA / IP-FRR (per-prefix LFA, Remote LFA) | lab-02 (primary), lab-04, lab-05 |
+| 1.7.g | BGP additional and backup paths (add-paths, backup path install) | lab-03 (primary), lab-04, lab-05 |
 
 Every blueprint bullet has a dedicated primary lab; capstones exercise
 every bullet again end-to-end.
 
 ## Design Decisions
-
-- **XR Coverage Posture: `XR-mixed`** (per `memory/xr-coverage-policy.md`).
-  Foundation/intermediate labs (00–03) run on IOSv to keep RAM low and
-  preserve fine-grained measurement of convergence times in a single image
-  family; the capstones flip 2 of the 5 nodes to IOS XRv via Phase 3 #2 of
-  the [`2026-05-06 XR Coverage Retrofit`](../../tasks/2026-05-06-xr-coverage-retrofit.md).
-  Driven by §1.7.c NSR (only physically demonstrable on a multi-RP image —
-  XR is the closest practical platform inside EVE-NG) and §1.7.e BGP PIC
-  (XR's PIC edge/core CLI under `address-family ipv4 unicast` differs
-  materially from IOS). The capstone retrofit is what closes the
-  long-standing NSR behavioral gap — see the NSR caveat below for the
-  pre-retrofit limitation. Capstone peak ≈ 10 GB (3×IOSv + 2×XRv); see
-  RAM table in `memory/xr-coverage-policy.md` §5.
 
 - **Single IGP (IS-IS L2) across the whole topic.** The scope note
   explicitly says the topic is "organized around the convergence

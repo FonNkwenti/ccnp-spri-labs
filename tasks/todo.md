@@ -7,16 +7,13 @@ For build progress run `/project-status` or check `README.md § Lab Chapters`.
 
 ## Current Session
 
-**Active plan:** [`tasks/2026-05-06-xr-coverage-retrofit.md`](2026-05-06-xr-coverage-retrofit.md)
-
-- [x] Phase 0 — Task 0.1: write `memory/xr-coverage-policy.md`
-- [x] Phase 0 — Task 0.2: update `STATUS.md` and `tasks/todo.md`
-- [ ] **`[REVIEW GATE 0]`** — user reviews policy doc + STATUS bookkeeping; authorize commits
-- [ ] Phase 1 — amend 11 topic specs (one task per spec, mid-gate after 4)
-- [ ] Phase 2 — scaffold `xr-bridge` topic
-- [ ] Phase 3 — capstone retrofits in order: mpls, fast-convergence, isis, ospf, bgp, multicast
-- [ ] Phase 4 — BGP XR appendices (lab-01, lab-05, lab-06)
-- [ ] Phase 5 — final sweep
+<!-- Claude writes the plan here per the global CLAUDE.md workflow.
+     Format: checkable items, one per concrete action.
+     Example:
+       - [ ] Run /create-spec eigrp
+       - [ ] Review spec, approve or iterate
+       - [ ] Run /build-lab eigrp/lab-00-classic-eigrp
+-->
 
 ## Outstanding Decisions
 

@@ -85,31 +85,19 @@ CE2↔PE2 (eBGP, lab-02+).
 
 ## Blueprint Coverage Matrix
 
-| Bullet | Description | Covered In | XR Exercised? |
-|--------|-------------|------------|---------------|
-| 4.1 | Troubleshoot MPLS (umbrella) | lab-00 through lab-05 | yes — capstone |
-| 4.1.a | LDP session, discovery, bindings, LIB/LFIB | lab-00 (primary), lab-01, lab-04, lab-05 | yes — capstone |
-| 4.1.b | LSP verification (mpls ping/traceroute, PHP, MTU) | lab-01 (primary), lab-04, lab-05 | yes — capstone |
-| 4.1.c | Unified BGP (BGP labeled-unicast, `send-label`) | lab-02 (primary), lab-04, lab-05 | yes — capstone |
-| 4.1.d | BGP-free core (P routers have no BGP) | lab-02 (primary), lab-04, lab-05 | yes — capstone |
-| 4.1.e | RSVP-TE tunnels (dynamic + explicit path) | lab-03 (primary), lab-04, lab-05 | yes — capstone |
+| Bullet | Description | Covered In |
+|--------|-------------|------------|
+| 4.1 | Troubleshoot MPLS (umbrella) | lab-00 through lab-05 |
+| 4.1.a | LDP session, discovery, bindings, LIB/LFIB | lab-00 (primary), lab-01, lab-04, lab-05 |
+| 4.1.b | LSP verification (mpls ping/traceroute, PHP, MTU) | lab-01 (primary), lab-04, lab-05 |
+| 4.1.c | Unified BGP (BGP labeled-unicast, `send-label`) | lab-02 (primary), lab-04, lab-05 |
+| 4.1.d | BGP-free core (P routers have no BGP) | lab-02 (primary), lab-04, lab-05 |
+| 4.1.e | RSVP-TE tunnels (dynamic + explicit path) | lab-03 (primary), lab-04, lab-05 |
 
 Every blueprint bullet has a dedicated primary lab; capstones exercise
 every bullet again end-to-end.
 
 ## Design Decisions
-
-- **XR Coverage Posture: `XR-mixed`** (per `memory/xr-coverage-policy.md`).
-  Foundation/intermediate labs (00–03) run on IOSv to keep the label-plane
-  focus tight (~3 GB RAM, fast boot); the capstones (lab-04, lab-05) flip
-  2 of the 6 nodes to IOS XRv via Phase 3 #1 of the
-  [`2026-05-06 XR Coverage Retrofit`](../../tasks/2026-05-06-xr-coverage-retrofit.md).
-  Driven by §4.1.a/b/c/e — XR's `mpls ldp`, `address-family ipv4
-  labeled-unicast`, and `mpls traffic-eng` configuration hierarchy is the
-  SP-production reality. CCIE SP candidates need XR-side LDP, BGP-LU, and
-  RSVP-TE fluency, and the capstone is where that landing happens. Capstone
-  peak ≈ 10 GB (4×IOSv + 2×XRv); see RAM table in
-  `memory/xr-coverage-policy.md` §5.
 
 - **Six labs (matches topic-plan estimate of 6).** One primary lab per
   blueprint bullet, with 4.1.c (Unified BGP) and 4.1.d (BGP-free core)
@@ -122,14 +110,12 @@ every bullet again end-to-end.
   IGP across the topic keeps the student focused on the label plane
   rather than mediating between OSPF and IS-IS. IOSv 15.9 supports
   IS-IS with MPLS-TE extensions natively.
-- **All IOSv for foundation labs (00–03); mixed IOSv + IOS XRv for
-  capstones (Phase 3 #1 retrofit).** IOSv 15.9(3)M6 supports LDP
+- **All IOSv — no heavy XRv/CSR.** IOSv 15.9(3)M6 supports LDP
   (platform + interface mode), MP-BGP with `send-label`, and MPLS
   traffic engineering with RSVP signaling, which is every feature the
-  blueprint lists for foundation coverage. Six IOSv nodes fit in 3 GB RAM
-  total; no XRv/CSR boot latency is incurred for the foundation labs.
-  Capstones add 2× IOS XRv to give CCIE SP precursor exposure to the
-  XR label-plane CLI; capstone peak ≈ 10 GB.
+  blueprint lists. Six IOSv nodes fit in 3 GB RAM total; no XRv/CSR
+  boot latency is incurred. Students who want IOS-XR production parity
+  can re-run on XRv9k later, but it is not required for exam coverage.
 - **Diamond core + P1↔P2 cross (L4).** A straight PE1-P1-PE2 chain
   would have only one LSP and no alternate, making RSVP-TE
   uninteresting (explicit paths would need to traverse the same hops).

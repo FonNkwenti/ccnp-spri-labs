@@ -87,43 +87,31 @@ the hierarchical/parameterized policy work that RPL is designed for.
 
 ## Blueprint Coverage Matrix
 
-| Bullet | Description | Covered In | XR Exercised? |
-|--------|-------------|------------|---------------|
-| 3.1 | Compare routing policy language and route maps | lab-02 (primary), lab-05, lab-06 | yes — primary |
-| 3.2 | Describe conditional matching | lab-00, lab-01, lab-02 (umbrella across foundation labs) | yes — primary (lab-02+) |
-| 3.2.a | Operations (match/set, permit/deny, sequencing) | lab-00 | no — IOSv foundation |
-| 3.2.b | Semantics of policy applications and statements | lab-00 | no — IOSv foundation |
-| 3.2.c | Regular expressions (AS-path regex, community regex) | lab-01 | no — IOSv foundation |
-| 3.2.d | Policy sets (prefix-set, community-set, as-path-set) | lab-02 | yes — primary (RPL-only feature) |
-| 3.2.e | Tags (route-tag for redistribution control) | lab-01 | no — IOSv foundation |
-| 3.2.f | ACLs (standard, extended, named) | lab-00 | no — IOSv foundation |
-| 3.2.g | Prefix lists and prefix sets | lab-00 (lists), lab-02 (sets) | yes — primary (sets on XR) |
-| 3.2.h | Route types (internal/external/E1/E2, L1/L2) | lab-01 | no — IOSv foundation |
-| 3.2.i | BGP attributes and communities | lab-01 | no — IOSv foundation |
-| 3.2.j | Hierarchical and parameterized structures | lab-02 | yes — primary (RPL-only feature) |
-| 3.3 | Troubleshoot route manipulation for IGPs | lab-03 (primary), lab-06 | yes — primary |
-| 3.3.a | IS-IS route manipulation (L1/L2 leaking, filter/redistribute) | lab-03 | yes — primary |
-| 3.3.b | OSPF route manipulation (distribute-list, filter-list, prefix suppression) | lab-03 | yes — primary |
-| 3.4 | Troubleshoot route manipulation for BGP | lab-04 (primary), lab-06 | yes — primary |
-| 3.4.a | Route filtering (prefix-list, as-path, community, RPL) | lab-04 | yes — primary |
-| 3.4.b | Traffic steering (LOCAL_PREF, MED, AS-path prepend, conditional advertisement) | lab-04 | yes — primary |
+| Bullet | Description | Covered In |
+|--------|-------------|------------|
+| 3.1 | Compare routing policy language and route maps | lab-02 (primary), lab-05, lab-06 |
+| 3.2 | Describe conditional matching | lab-00, lab-01, lab-02 (umbrella across foundation labs) |
+| 3.2.a | Operations (match/set, permit/deny, sequencing) | lab-00 |
+| 3.2.b | Semantics of policy applications and statements | lab-00 |
+| 3.2.c | Regular expressions (AS-path regex, community regex) | lab-01 |
+| 3.2.d | Policy sets (prefix-set, community-set, as-path-set) | lab-02 |
+| 3.2.e | Tags (route-tag for redistribution control) | lab-01 |
+| 3.2.f | ACLs (standard, extended, named) | lab-00 |
+| 3.2.g | Prefix lists and prefix sets | lab-00 (lists), lab-02 (sets) |
+| 3.2.h | Route types (internal/external/E1/E2, L1/L2) | lab-01 |
+| 3.2.i | BGP attributes and communities | lab-01 |
+| 3.2.j | Hierarchical and parameterized structures | lab-02 |
+| 3.3 | Troubleshoot route manipulation for IGPs | lab-03 (primary), lab-06 |
+| 3.3.a | IS-IS route manipulation (L1/L2 leaking, filter/redistribute) | lab-03 |
+| 3.3.b | OSPF route manipulation (distribute-list, filter-list, prefix suppression) | lab-03 |
+| 3.4 | Troubleshoot route manipulation for BGP | lab-04 (primary), lab-06 |
+| 3.4.a | Route filtering (prefix-list, as-path, community, RPL) | lab-04 |
+| 3.4.b | Traffic steering (LOCAL_PREF, MED, AS-path prepend, conditional advertisement) | lab-04 |
 
 Every blueprint bullet is covered by at least one dedicated lab. Capstones
 exercise every bullet again, end-to-end.
 
 ## Design Decisions
-
-- **XR Coverage Posture: `XR-mixed`** (per `memory/xr-coverage-policy.md`).
-  This topic was XR-mixed from inception — XR1 and XR2 join the SP core
-  from lab-02 onward to carry the RPL-vs-route-maps comparison (§3.1) and
-  the RPL-native abstractions (policy sets §3.2.d, hierarchical /
-  parameterized structures §3.2.j). No Phase 3 capstone retrofit is needed
-  because XR is already integral to lab-02 through the capstones.
-  *Platform note:* the existing baseline uses XRv 9000 for XR1/XR2; per the
-  policy doc's platform-selection rule, plain IOS XRv would now be
-  preferred (RPL works on XRv and the heavier image is unnecessary here).
-  A future cleanup task may downgrade XRv 9000 → IOS XRv; not in scope for
-  the 2026-05-06 retrofit.
 
 - **Mixed IOSv + XRv9k platform.** Bullet 3.1 explicitly requires comparing
   Routing Policy Language (IOS-XR only) with route-maps (IOS/IOS-XE). Going

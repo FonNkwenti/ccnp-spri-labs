@@ -82,44 +82,30 @@ dual-homed via R2 and R3; external SP peer AS 65002 terminates on R5 via R6.
 
 ## Blueprint Coverage Matrix
 
-| Bullet | Description | Covered In | XR Exercised? |
-|--------|-------------|------------|---------------|
-| 1.4 | Describe BGP scalability and performance | lab-00 (full-mesh scaling problem stated), lab-01 (RR solution), lab-06 (confederation solution), lab-07 | yes — capstone |
-| 1.4.a | BGP confederations | lab-06 (standalone), lab-07 | yes — capstone + lab-06 appendix |
-| 1.4.b | Route reflectors | lab-01, lab-07, lab-08 | yes — capstone + lab-01 appendix |
-| 1.5 | Troubleshoot BGP | every lab (focus varies); lab-08 concentrates 5+ concurrent faults | yes — capstone |
-| 1.5.a | Route advertisement | lab-00, lab-01, lab-02, lab-08 | yes — capstone |
-| 1.5.b | Route reflectors | lab-01, lab-08 | yes — capstone + lab-01 appendix |
-| 1.5.c | Confederations | lab-06, lab-08 | yes — capstone + lab-06 appendix |
-| 1.5.d | Multihoming | lab-02, lab-07, lab-08 | yes — capstone |
-| 1.5.e | TTL security and inter-domain security | lab-03, lab-07, lab-08 | yes — capstone |
-| 1.5.f | Maximum prefix | lab-03, lab-07, lab-08 | yes — capstone |
-| 1.5.g | Route dampening | lab-04, lab-07, lab-08 | yes — capstone |
-| 1.5.h | Dynamic neighbors | lab-04, lab-07, lab-08 | yes — capstone |
-| 1.5.i | Communities | lab-05, lab-07, lab-08 | yes — capstone |
-| 1.5.j | FlowSpec | lab-05, lab-07 (via R5/R7 CSR1000v nodes) | appendix (lab-05, XRv9000) |
+| Bullet | Description | Covered In |
+|--------|-------------|------------|
+| 1.4 | Describe BGP scalability and performance | lab-00 (full-mesh scaling problem stated), lab-01 (RR solution), lab-06 (confederation solution), lab-07 |
+| 1.4.a | BGP confederations | lab-06 (standalone), lab-07 |
+| 1.4.b | Route reflectors | lab-01, lab-07, lab-08 |
+| 1.5 | Troubleshoot BGP | every lab (focus varies); lab-08 concentrates 5+ concurrent faults |
+| 1.5.a | Route advertisement | lab-00, lab-01, lab-02, lab-08 |
+| 1.5.b | Route reflectors | lab-01, lab-08 |
+| 1.5.c | Confederations | lab-06, lab-08 |
+| 1.5.d | Multihoming | lab-02, lab-07, lab-08 |
+| 1.5.e | TTL security and inter-domain security | lab-03, lab-07, lab-08 |
+| 1.5.f | Maximum prefix | lab-03, lab-07, lab-08 |
+| 1.5.g | Route dampening | lab-04, lab-07, lab-08 |
+| 1.5.h | Dynamic neighbors | lab-04, lab-07, lab-08 |
+| 1.5.i | Communities | lab-05, lab-07, lab-08 |
+| 1.5.j | FlowSpec | lab-05, lab-07 (via R5/R7 CSR1000v nodes) |
 
 ## Design Decisions
 
-- **XR Coverage Posture: `XR-mixed + appendix`** (per
-  `memory/xr-coverage-policy.md`). Foundation/intermediate labs run on
-  IOSv + CSR1000v as today; the capstones (lab-07, lab-08) flip 2 IOSv nodes
-  to IOS XRv via Phase 3 #5 of the
-  [`2026-05-06 XR Coverage Retrofit`](../../tasks/2026-05-06-xr-coverage-retrofit.md),
-  and three labs receive workbook XR appendices via Phase 4 of the same
-  retrofit: lab-01 (RR on IOS XRv), lab-05 (FlowSpec on XRv 9000 — XRv lacks
-  FlowSpec SAFI), and lab-06 (confederations on IOS XRv). Driven by §1.4 and
-  §1.5 where XR's `router bgp` neighbor-group / address-family hierarchy is
-  the SP production reality and CCIE SP candidates need fluency with both
-  dialects. RPL-based filtering on XR is also exercised in the capstone.
-- **Mixed platform: IOSv + CSR1000v + IOS XRv (capstone retrofit).** R1–R4,
-  R6 are IOSv (IOS 15.9) for resource efficiency. R5 (and optional R7) are
-  CSR1000v (IOS-XE) because IOSv does not implement the BGP FlowSpec NLRI
-  (SAFI 133); IOS-XE does. This mirrors a real upgrade path where SP West PE
-  is refreshed to XE while East PEs still run classic IOS. The capstones
-  additionally flip 2 IOSv nodes to IOS XRv per the retrofit; capstone peak
-  ≈ 12 GB (4×IOSv + 1×CSR1000v + 2×XRv) — see RAM table in
-  `memory/xr-coverage-policy.md` §5.
+- **Mixed platform: IOSv + CSR1000v.** R1–R4, R6 are IOSv (IOS 15.9) for
+  resource efficiency. R5 (and optional R7) are CSR1000v (IOS-XE) because
+  IOSv does not implement the BGP FlowSpec NLRI (SAFI 133); IOS-XE does.
+  This mirrors a real upgrade path where SP West PE is refreshed to XE while
+  East PEs still run classic IOS.
 - **Single confederation lab, tagged `standalone`.** Converting AS 65100 from
   a plain-RR design to a confederation requires re-numbering AS-IDs on every
   SP router — fundamentally a rebuild, not an additive step. Per the

@@ -58,31 +58,19 @@ autonomous system for summary-address practice.
 
 ## Blueprint Coverage Matrix
 
-| Bullet | Description | Covered In | XR Exercised? |
-|--------|-------------|------------|---------------|
-| 1.1 | Compare OSPF and IS-IS routing protocols | lab-00 (concepts, LSA types, metrics), lab-02 (v2 vs v3 and cross-reference to IS-IS L1/L2) | no — deferred to `xr-bridge` |
-| 1.2 | Troubleshoot OSPF multiarea operations (IPv4 and IPv6) | lab-01 (IPv4), lab-02 (IPv6), lab-05 (troubleshooting) | yes — capstone |
-| 1.2.a | Route advertisement | lab-01, lab-02, lab-04 | yes — capstone |
-| 1.2.b | Summarization | lab-03 (area range + summary-address), lab-04, lab-05 | yes — capstone |
+| Bullet | Description | Covered In |
+|--------|-------------|------------|
+| 1.1 | Compare OSPF and IS-IS routing protocols | lab-00 (concepts, LSA types, metrics), lab-02 (v2 vs v3 and cross-reference to IS-IS L1/L2) |
+| 1.2 | Troubleshoot OSPF multiarea operations (IPv4 and IPv6) | lab-01 (IPv4), lab-02 (IPv6), lab-05 (troubleshooting) |
+| 1.2.a | Route advertisement | lab-01, lab-02, lab-04 |
+| 1.2.b | Summarization | lab-03 (area range + summary-address), lab-04, lab-05 |
 
 ## Design Decisions
 
-- **XR Coverage Posture: `XR-mixed`** (per `memory/xr-coverage-policy.md`).
-  Foundation labs (00–03) run on IOSv 15.9 to keep RAM low and focus on
-  OSPFv2/v3 mechanics; the capstones replace 2 of the 6 nodes with IOS XRv to
-  give CCIE SP precursor exposure to XR's `router ospf` address-family
-  hierarchy and ABR CLI. Driven by §1.2 multiarea — XR ABR/ASBR behavior is
-  materially different in dialect even though the protocol mechanics are
-  identical. Capstone exposure lands via Phase 3 #4 of the
-  [`2026-05-06 XR Coverage Retrofit`](../../tasks/2026-05-06-xr-coverage-retrofit.md);
-  XR coverage for §1.1 (OSPF vs IS-IS comparison on XR) is deferred to
-  `labs/xr-bridge/lab-00-xr-igp-foundations` (build deferred — see policy doc).
-- **Platform: `iosv` (IOS 15.9) for foundation labs; mixed IOSv + IOS XRv
-  for capstones (Phase 3 retrofit).** IOSv supports all required OSPFv2/v3
-  features (multiarea, stub/NSSA variants, area range, summary-address,
-  virtual links) and is far lighter than CSR1000v — a 5-router foundation
-  topology runs in ~2.5 GB of RAM. Capstone peak ≈ 9 GB (3×IOSv + 2×XRv);
-  see RAM table in `memory/xr-coverage-policy.md` §5.
+- **Platform: `iosv` (IOS 15.9).** IOSv supports all required OSPFv2/v3 features
+  (multiarea, stub/NSSA variants, area range, summary-address, virtual links)
+  and is far lighter than CSR1000v — a 5-router topology runs in ~2.5 GB of
+  RAM. SPRI's IOS-XR-specific labs land in later topics (segment-routing, mpls).
 - **Area 0 kept minimal (R2↔R3 only).** Puts the pedagogical weight on inter-area
   behavior, ABR roles, and LSA filtering rather than backbone design.
 - **Single triple-ABR (R3).** Concentrates Areas 2 and 3 on one router so
