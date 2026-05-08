@@ -81,6 +81,36 @@ Explicit paths are powerful for traffic engineering:
 - Keep high-priority flows off congested paths
 - Test alternate paths without disrupting primary traffic
 
+### CSPF Affinity Constraints (Link Coloring)
+
+Affinity is a 32-bit bitmask that CSPF uses to filter which links are eligible for a tunnel's path — think of it as "link coloring." Every physical interface has an **attribute flag** (default `0x00000000`); every tunnel has an **affinity value** and a **mask**. CSPF only considers a link if:
+
+```
+(link_attribute_flags & affinity_mask) == (tunnel_affinity & affinity_mask)
+```
+
+Configure link colors on physical interfaces:
+
+```
+interface GigabitEthernet0/1
+ mpls traffic-eng attribute-flags 0x1    ! set bit 0 — "gold" link
+```
+
+Configure affinity constraints on a tunnel:
+
+```
+interface Tunnel10
+ tunnel mpls traffic-eng affinity 0x1 mask 0x1   ! require bit 0 set
+```
+
+With this constraint, CSPF only selects links that have attribute bit 0 set. Any link with `attribute-flags 0x0` (the default) is pruned before Dijkstra runs — exactly like a link with insufficient bandwidth. The tunnel goes down with `Path: not valid` if no path through colored links exists.
+
+**Default behavior (no affinity configured):** Both tunnel affinity and mask default to `0x0/0xFFFF`. This matches every link (all links have attribute 0x0 by default), so CSPF considers all links — the expected behavior when affinity is not in use.
+
+**Explicit paths bypass affinity:** When a tunnel uses `path-option N explicit`, CSPF validates the named waypoints but does not apply affinity filtering to intermediate hops. Affinity constraints only apply to dynamic CSPF path selection.
+
+**Exam tip:** A tunnel that is `Oper: down` with `Path: not valid` and a full TE topology almost always points to either a bandwidth admission failure, a missing explicit path reference, or an affinity mismatch. Check `show mpls traffic-eng tunnels <TunnelN>` for the signalled affinity value and compare against `show mpls traffic-eng link-management interfaces` for per-link attribute flags.
+
 ### Traffic Steering with Autoroute
 
 By default, a TE tunnel is a forwarding device but nothing points traffic into it. `tunnel mpls traffic-eng autoroute announce` installs the tunnel's destination prefix (PE2 loopback) into IS-IS as if the tunnel were an IS-IS adjacency, with the tunnel's metric used as the IS-IS route cost. After this, `show ip route 10.0.0.4` on PE1 shows `via Tunnel10` as the outgoing interface. `traceroute 10.0.0.4` will show the first physical hop on the tunnel path with an `[MPLS: Label]` annotation — the tunnel interface itself is transparent to traceroute, but the label confirms the packet was forwarded through the RSVP-TE LSP.
@@ -96,7 +126,8 @@ By default, a TE tunnel is a forwarding device but nothing points traffic into i
 | Explicit path | Force a specific transit node using loose next-address hops |
 | Autoroute announce | Steer IS-IS traffic into a TE tunnel automatically |
 | Secondary path-option | Configure a hot-standby path for tunnel resilience |
-| TE troubleshooting | Diagnose CSPF failures, missing TE topology entries, and RSVP admission errors |
+| Affinity / link coloring | Tag links with attribute flags; constrain CSPF via tunnel affinity bitmask |
+| TE troubleshooting | Diagnose CSPF failures, missing TE topology entries, affinity mismatches, and RSVP admission errors |
 
 ---
 
