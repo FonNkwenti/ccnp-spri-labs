@@ -83,7 +83,7 @@
                     <mxGeometry x="585" y="612" width="20" height="16" as="geometry"/>
                 </mxCell>
                 <mxCell id="legend" value="&lt;b style=&quot;color:#FFFFFF;&quot;&gt;LEGEND&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#CCCCCC&quot; style=&quot;font-size:10px;&quot;&gt;&amp;#9473;&amp;#9473;  IS-IS Physical Link&lt;br&gt;- - -  External (Non-IS-IS) Link&lt;br&gt;&lt;br&gt;[green]  Area 49.0001 (L1 Domain)&lt;br&gt;[blue]   IS-IS L2 Backbone&lt;br&gt;[orange] Area 49.0002 (L1 Domain)&lt;br&gt;[grey]   External Zone&lt;br&gt;&lt;br&gt;L1 = Level-1 (intra-area)&lt;br&gt;L2 = Level-2 (inter-area backbone)&lt;br&gt;L1/L2 = ABR (Area Border Router)&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#000000;strokeColor=#FFFFFF;fontColor=#FFFFFF;fontSize=10;align=left;verticalAlign=top;spacingLeft=8;spacingTop=8;arcSize=3;" parent="1" vertex="1">
-                    <mxGeometry x="153" y="580" width="250" height="160" as="geometry"/>
+                    <mxGeometry x="145" y="510" width="250" height="160" as="geometry"/>
                 </mxCell>
             </root>
         </mxGraphModel>
