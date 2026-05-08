@@ -1,0 +1,234 @@
+topic: xr-supplementary
+topic_name: "IOS XR Supplementary"
+exam: "300-510"
+version: 1.0
+
+meta:
+  created:
+    date: "2026-05-08"
+    agent: claude-opus-4-7
+    skill: spec-creator
+    skill_version: "manual-draft-2026-05-08"
+  updated: []
+
+# ──────────────────────────────────────────────────────────────────────────────
+# This topic has an unusual two-part structure (see spec.md "Topic Structure"):
+#   - Basics labs (00–03) share `core_topology` below.
+#   - Capstone-XR labs (04–07) inherit topology from source IOSv capstones
+#     via the `inherits_topology_from` field on each lab entry.
+# ──────────────────────────────────────────────────────────────────────────────
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Core topology — used by basics labs (lab-00 through lab-03).
+#   XR1, XR2: IOS-XRv 6.1.x light, ~4 GB each. IS-IS L2 adjacency.
+#   R-IOS: IOSv reference node (~1.5 GB) — runs the IOS equivalent of every
+#     XR command shown in the basics labs, providing a side-by-side compare
+#     point inside the lab itself. Joins IS-IS L2 from lab-01 onward.
+#   Total memory: ~9.5 GB for basics labs.
+# ──────────────────────────────────────────────────────────────────────────────
+core_topology:
+  devices:
+    - name: XR1
+      platform: xrv
+      role: "IOS XR primary node — basics labs working router; IS-IS L2; runs every XR command first"
+      loopback0: "10.0.0.1/32"
+      bgp_as: null               # BGP only enabled in lab-02 (RPL lab)
+      isis_net: "49.0001.0000.0000.0001.00"
+      console_port: null
+
+    - name: XR2
+      platform: xrv
+      role: "IOS XR secondary node — IS-IS L2 peer to XR1; BGP peer in lab-02; alternate XR-side reference"
+      loopback0: "10.0.0.2/32"
+      bgp_as: null
+      isis_net: "49.0001.0000.0000.0002.00"
+      console_port: null
+
+    - name: R-IOS
+      platform: iosv
+      role: "IOSv reference node — runs IOS equivalents of every XR command shown in basics labs; joins IS-IS L2 from lab-01"
+      loopback0: "10.0.0.3/32"
+      bgp_as: null
+      isis_net: "49.0001.0000.0000.0003.00"
+      console_port: null
+
+  links:
+    - id: L1
+      source: "XR1:GigabitEthernet0/0/0/0"
+      target: "XR2:GigabitEthernet0/0/0/0"
+      subnet: "10.10.1.0/30"
+      purpose: "XR1↔XR2 IS-IS L2 adjacency; primary working network for all basics labs"
+
+    - id: L2
+      source: "XR1:GigabitEthernet0/0/0/1"
+      target: "R-IOS:GigabitEthernet0/0"
+      subnet: "10.10.2.0/30"
+      purpose: "XR1↔R-IOS IS-IS L2 adjacency from lab-01 onward; cross-platform IS-IS validation"
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Optional devices — none for this topic. Capstone labs (04–07) inherit the
+# source capstone's full device list via `inherits_topology_from`.
+# ──────────────────────────────────────────────────────────────────────────────
+optional_devices: []
+optional_links: []
+
+labs:
+  - number: 0
+    folder: lab-00-platform-basics
+    title: "XR Platform Basics"
+    difficulty: Foundation
+    type: progressive
+    time_minutes: 60
+    devices: [XR1, XR2, R-IOS]
+    blueprint_refs: ["platform-fluency"]
+    objectives:
+      - Boot XRv-light and verify XR process model (sysadmin vs XR plane)
+      - Use admin mode for chassis-level config vs router config-mode
+      - Two-stage commit workflow (commit, commit confirmed, commit replace, rollback)
+      - Compare with IOS single-stage save model on R-IOS
+      - Inspect installed packages, software state, and process health
+      - Build the IOS↔XR command map for show version, inventory, platform, running-config
+      - Side-by-side experiment: paste IOSv config into XR, observe what fails and why
+      - Appendix A — IOS↔XR command reference table (platform basics scope)
+
+  - number: 1
+    folder: lab-01-config-foundations
+    title: "Config Foundations and IOS↔XR Reference"
+    difficulty: Foundation
+    type: progressive
+    time_minutes: 75
+    devices: [XR1, XR2, R-IOS]
+    extends: lab-00-platform-basics
+    blueprint_refs: ["platform-fluency"]
+    objectives:
+      - Interface naming model (GigabitEthernet0/0/0/0 — sub/slot/instance/port)
+      - IPv4/IPv6 addressing on XR (inline form vs address-family blocks)
+      - Loopback configuration; admin-state semantics on XR
+      - Bring up IS-IS L2 adjacency XR1↔XR2 and XR1↔R-IOS (mixed-platform verify)
+      - AAA local users, SSH server enable, banner, hostname
+      - Management plane interface naming (MgmtEth0/RP0/CPU0/0 vs Mgmt0)
+      - Appendix A — IOS↔XR config-primitives reference table
+
+  - number: 2
+    folder: lab-02-routing-policy-language
+    title: "Route-Policy Language (RPL) and Prefix-Sets"
+    difficulty: Intermediate
+    type: progressive
+    time_minutes: 90
+    devices: [XR1, XR2, R-IOS]
+    extends: lab-01-config-foundations
+    blueprint_refs: ["platform-fluency", "1.x-bgp-policy"]
+    objectives:
+      - Define prefix-sets and route-policy (if/then/else/done semantics)
+      - Translate prefix-list → prefix-set, route-map → route-policy mechanically
+      - Bring up iBGP XR1↔XR2 and apply RPL on inbound and outbound directions
+      - Filter prefixes, set local-pref, set community, prepend AS-path with RPL
+      - Inspect compiled policy output (show rpl route-policy NAME)
+      - Cover translation gotchas (implicit-deny, community-set syntax, regex differences)
+      - Compare equivalent route-map config on R-IOS for the same neighbor relationship
+      - Appendix A — RPL ↔ route-map translation reference table
+
+  - number: 3
+    folder: lab-03-ops-and-troubleshooting
+    title: "XR Operations and Troubleshooting"
+    difficulty: Intermediate
+    type: progressive
+    time_minutes: 75
+    devices: [XR1, XR2, R-IOS]
+    extends: lab-02-routing-policy-language
+    blueprint_refs: ["platform-fluency"]
+    objectives:
+      - XR show command structure and pivot navigation
+      - Logging architecture (show logging, logging buffered, logging archive)
+      - Process introspection (show processes, show watchdog)
+      - Telemetry overview (model-driven concepts; sample config; no live streaming)
+      - Operational tools (monitor interface, monitor traffic, traceroute, ping mpls)
+      - Induce IS-IS misconfig on XR1 (broken NET) and diagnose using XR-native tools
+      - Induce RPL misconfig on XR1 (invalid apply) and diagnose
+      - Compare diagnostic workflow with R-IOS for the same fault classes
+      - Appendix A — IOS↔XR troubleshooting command map
+
+  - number: 4
+    folder: lab-04-bgp-capstone-xr
+    title: "BGP Comprehensive — XR Capstone"
+    difficulty: Advanced
+    type: capstone_i
+    clean_slate: true
+    time_minutes: 150
+    inherits_topology_from: bgp/lab-07-capstone-config
+    inherited_topology_translation:
+      - all-routers: iosv-and-csr1000v -> xrv-light
+      - memory-budget-gb: 28
+      - reduction-allowed: "drop R7 and one CE if host memory < 32GB usable"
+    blueprint_refs: ["1.x-bgp-comprehensive"]
+    objectives:
+      - Translate the entire BGP capstone scenario to IOS XR
+      - eBGP/iBGP, route-reflector, dual-CE multihoming patterns in XR
+      - Address-family hierarchy (XR's stricter AF-block model)
+      - Route-policy on every neighbor for inbound and outbound
+      - Community-sets vs IOS community-lists; extcommunity-set
+      - BGP RR-client config in XR
+      - Implicit-deny posture in XR (deny all unless permitted by RPL)
+      - FlowSpec install on XR (note as deferred to xrv9k if XRv-light cannot do it)
+
+  - number: 5
+    folder: lab-05-ospf-capstone-xr
+    title: "OSPF Multi-Area and Stub Variants — XR Capstone"
+    difficulty: Advanced
+    type: capstone_i
+    clean_slate: true
+    time_minutes: 120
+    inherits_topology_from: ospf/lab-04-capstone-config
+    inherited_topology_translation:
+      - all-routers: iosv -> xrv-light
+      - memory-budget-gb: 24
+      - reduction-allowed: false
+    blueprint_refs: ["2.1-ospf"]
+    objectives:
+      - Translate the OSPF multi-area capstone (areas + ABR + ASBR + stub variants) to XR
+      - OSPF area hierarchy in XR (router ospf -> area X -> interface)
+      - Stub, totally-stubby, NSSA semantics on XR
+      - Redistribution into OSPF via route-policy
+      - LSA database inspection differences
+
+  - number: 6
+    folder: lab-06-isis-capstone-xr
+    title: "IS-IS Dual-Stack and Summarization — XR Capstone"
+    difficulty: Advanced
+    type: capstone_i
+    clean_slate: true
+    time_minutes: 120
+    inherits_topology_from: isis/lab-03-capstone-config        # source not yet built
+    inherited_topology_translation:
+      - all-routers: iosv -> xrv-light
+      - memory-budget-gb: 24
+      - reduction-allowed: false
+      - source-status: "not-yet-built — decide at build kickoff whether to wait or use isis/lab-02 as topology basis"
+    blueprint_refs: ["2.2-isis"]
+    objectives:
+      - Translate the IS-IS capstone scenario to XR (multi-level + dual-stack + summarization)
+      - IS-IS NET in XR; per-address-family advertisement
+      - Wide metrics on XR (default vs IOS opt-in)
+      - Summarization at L1↔L2 boundary using XR syntax
+      - Multi-topology vs single-topology behavior
+
+  - number: 7
+    folder: lab-07-mpls-capstone-xr
+    title: "MPLS LDP + RSVP-TE + L3VPN — XR Capstone"
+    difficulty: Advanced
+    type: capstone_i
+    clean_slate: true
+    time_minutes: 150
+    inherits_topology_from: mpls/lab-04-capstone-config
+    inherited_topology_translation:
+      - all-routers: iosv -> xrv-light
+      - memory-budget-gb: 24
+      - reduction-allowed: false
+    blueprint_refs: ["3.x-mpls"]
+    objectives:
+      - Translate the MPLS capstone (BGP-free core + LDP + RSVP-TE + BGP-LU/L3VPN) to XR
+      - MPLS LDP block in XR (explicit interface enable, no-implicit pattern)
+      - RSVP-TE explicit-paths and tunnels in XR
+      - BGP-LU configuration on XR
+      - L3VPN VRF and VPNv4 exchange on XR
+      - MPLS forwarding-plane verification commands
