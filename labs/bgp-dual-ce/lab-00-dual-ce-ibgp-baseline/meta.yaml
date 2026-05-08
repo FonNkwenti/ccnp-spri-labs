@@ -1,0 +1,67 @@
+# Auto-generated — do not edit manually. Use /tag-lab to stamp external agent runs.
+lab: lab-00-dual-ce-ibgp-baseline
+chapter: bgp-dual-ce
+exam: 300-510
+devices:
+  - name: R1
+    platform: iosv
+    role: Customer CE1 (AS 65001) — eBGP to ISP-A, iBGP to CE2
+  - name: R2
+    platform: iosv
+    role: Customer CE2 (AS 65001) — eBGP to ISP-B, iBGP to CE1
+  - name: R3
+    platform: iosv
+    role: ISP-A PE (AS 65100)
+  - name: R4
+    platform: iosv
+    role: ISP-B PE (AS 65200)
+created:
+  date: "2026-04-28"
+  agent: claude-sonnet-4-6
+  skill: lab-assembler
+  skill_version: "2026-04-28"
+  files:
+    - workbook.md
+    - topology/topology.drawio
+    - topology/README.md
+    - setup_lab.py
+    - README.md
+    - decisions.md
+    - initial-configs/R1.cfg
+    - initial-configs/R2.cfg
+    - initial-configs/R3.cfg
+    - initial-configs/R4.cfg
+    - solutions/R1.cfg
+    - solutions/R2.cfg
+    - solutions/R3.cfg
+    - solutions/R4.cfg
+    - scripts/fault-injection/inject_scenario_01.py
+    - scripts/fault-injection/inject_scenario_02.py
+    - scripts/fault-injection/inject_scenario_03.py
+    - scripts/fault-injection/apply_solution.py
+    - scripts/fault-injection/README.md
+updated:
+  - date: "2026-04-28"
+    agent: claude-sonnet-4-6
+    skill: build-lab
+    skill_version: "2026-04-28"
+    files:
+      - README.md
+      - decisions.md
+      - initial-configs/R1.cfg
+      - initial-configs/R2.cfg
+      - initial-configs/R3.cfg
+      - initial-configs/R4.cfg
+      - scripts/fault-injection/README.md
+      - scripts/fault-injection/apply_solution.py
+      - scripts/fault-injection/inject_scenario_01.py
+      - scripts/fault-injection/inject_scenario_02.py
+      - scripts/fault-injection/inject_scenario_03.py
+      - setup_lab.py
+      - solutions/R1.cfg
+      - solutions/R2.cfg
+      - solutions/R3.cfg
+      - solutions/R4.cfg
+      - topology/README.md
+      - topology/topology.drawio
+      - workbook.md

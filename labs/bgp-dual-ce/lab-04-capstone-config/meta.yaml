@@ -1,0 +1,75 @@
+# Auto-generated — do not edit manually. Use /tag-lab to stamp external agent runs.
+lab: lab-04-capstone-config
+chapter: bgp-dual-ce
+exam: 300-510
+type: capstone_i
+difficulty: Advanced
+time_minutes: 120
+clean_slate: true
+devices:
+  - name: R1
+    platform: xrv
+    role: Customer CE1 (AS 65001) — eBGP to ISP-A, iBGP to CE2 (XR-mixed retrofit)
+  - name: R2
+    platform: xrv
+    role: Customer CE2 (AS 65001) — eBGP to ISP-B, iBGP to CE1 (XR-mixed retrofit)
+  - name: R3
+    platform: iosv
+    role: ISP-A PE (AS 65100) — eBGP to customer, iBGP to R5
+  - name: R4
+    platform: iosv
+    role: ISP-B PE (AS 65200) — eBGP to customer, iBGP to R6
+  - name: R5
+    platform: iosv
+    role: ISP-A internal (AS 65100) — iBGP to R3
+  - name: R6
+    platform: iosv
+    role: ISP-B internal (AS 65200) — iBGP to R4
+created:
+  date: "2026-04-28"
+  agent: claude-opus-4-7
+  skill: lab-assembler
+  skill_version: "2026-04-28"
+  files:
+    - workbook.md
+    - topology/topology.drawio
+    - topology/README.md
+    - setup_lab.py
+    - README.md
+    - decisions.md
+    - initial-configs/R1.cfg
+    - initial-configs/R2.cfg
+    - initial-configs/R3.cfg
+    - initial-configs/R4.cfg
+    - initial-configs/R5.cfg
+    - initial-configs/R6.cfg
+    - solutions/R1.cfg
+    - solutions/R2.cfg
+    - solutions/R3.cfg
+    - solutions/R4.cfg
+    - solutions/R5.cfg
+    - solutions/R6.cfg
+updated:
+  - date: "2026-04-28"
+    agent: claude-opus-4-7
+    skill: build-lab
+    skill_version: "2026-04-28"
+    files:
+      - README.md
+      - decisions.md
+      - initial-configs/R1.cfg
+      - initial-configs/R2.cfg
+      - initial-configs/R3.cfg
+      - initial-configs/R4.cfg
+      - initial-configs/R5.cfg
+      - initial-configs/R6.cfg
+      - setup_lab.py
+      - solutions/R1.cfg
+      - solutions/R2.cfg
+      - solutions/R3.cfg
+      - solutions/R4.cfg
+      - solutions/R5.cfg
+      - solutions/R6.cfg
+      - topology/README.md
+      - topology/topology.drawio
+      - workbook.md

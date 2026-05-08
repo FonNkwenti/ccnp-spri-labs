@@ -23,11 +23,20 @@ only AS number visible to external peers R1 and R6.
 
 ## next-hop-self Placement
 
-**Only on iBGP sessions; never on confederation eBGP sessions.**
+**REVISED 2026-04-30 — see INC-2026-0001.**
 
-Confederation eBGP behaves like regular eBGP: the next-hop is automatically rewritten
-to the peering interface address. Adding next-hop-self to confederation eBGP sessions
-(R2↔R4, R3↔R4) would be redundant and is omitted to keep the design clean.
+**Required on: R2→R4 (confederation eBGP), R3→R4 (confederation eBGP), R2↔R3 (iBGP), R4↔R5 (iBGP).**
+
+RFC 5065 specifies that confederation eBGP should auto-rewrite the next-hop, but Cisco IOS
+does not implement this automatically. Without `next-hop-self` on R2 and R3 toward R4,
+Customer A's prefix (172.16.1.0/24) is advertised to R4 with next-hop 10.1.12.1 (R1's
+interface IP), which is not in OSPF. R4 marks the route inaccessible and does not advertise
+it to R5, breaking return traffic from R6 to R1. Empirically confirmed — see incident report
+INC-2026-0001.
+
+R4 does NOT need next-hop-self toward R2/R3. R5 already rewrites R6's prefix next-hop to
+its own loopback (10.0.0.5) via iBGP next-hop-self before handing it to R4. That loopback
+is reachable via OSPF on R2/R3, so no additional rewrite is needed in the R4→R2/R3 direction.
 
 iBGP within sub-AS 65101 (R2↔R3) and sub-AS 65102 (R4↔R5) requires next-hop-self
 because iBGP preserves the original next-hop:
@@ -39,25 +48,25 @@ because iBGP preserves the original next-hop:
 
 ## Ticket 1 Baseline Objective Deviation
 
+**RESOLVED 2026-04-30 — empirical verification complete.**
+
 The baseline.yaml troubleshooting objective reads:
 - Fault: "confederation-peers statement missing on R2"
 - Symptom: "R1 sees AS-path including 65101"
 
-These do not match technically: removing `bgp confederation peers 65102` from R2 would
-cause R4's sub-AS (65102) to leak into the external AS-path, not 65101. The symptom
-"R1 sees 65101 in AS-path" is produced by removing `bgp confederation identifier 65100`
-from R2 — R2 then presents itself as AS 65101 to the external eBGP peer R1.
+The original workbook stated that removing `bgp confederation identifier 65100` from R2
+would cause sub-AS 65101 to appear in R1's AS_PATH. **This is incorrect.** Empirical
+testing on EVE-NG confirms that the actual behavior is an AS OPEN mismatch: R2 presents
+itself as AS 65101, but R1 has `neighbor 10.1.12.2 remote-as 65100`, so the session is
+refused and stays Idle. The R1↔R2 session goes down; R1 retains only the path via R3.
+No sub-AS leakage occurs because no OPEN or UPDATE is accepted.
 
-**Resolution:** The symptom from the baseline takes precedence. Ticket 1 injects
-`no bgp confederation identifier 65100` on R2, which produces exactly the stated symptom.
-This deviation is documented here.
+**Actual fault behavior (verified 2026-04-30):**
+- R1 `show ip bgp summary`: neighbor 10.1.12.2 is Idle
+- R1 `show ip bgp 172.16.6.0/24`: only one path (via 10.1.13.3/R3)
+- R2 `show ip bgp summary`: neighbor 10.1.12.1 is Idle
 
-**Empirical verification required:** Removing `bgp confederation identifier 65100` from R2
-may cause the R1↔R2 eBGP session to tear down (AS mismatch: R1 expects remote-as 65100,
-R2 presents as 65101 in BGP OPEN) rather than producing sub-AS leakage in the AS-path.
-The stated symptom ("R1 sees 65101 in AS-path") requires EVE-NG lab verification before
-the fault script is declared production-ready. If session teardown is the observed behavior,
-the fault injection should be changed to target `bgp confederation peers` instead.
+**Workbook updated** to reflect the real symptom (Idle session / single path).
 
 ## R1↔R3 eBGP Session (Backup Path)
 

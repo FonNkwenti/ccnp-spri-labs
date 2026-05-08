@@ -1,6 +1,6 @@
 <mxfile host="65bd71144e">
     <diagram id="_yTbdj_h6r3rQrzSMGbz" name="Page-1">
-        <mxGraphModel dx="2220" dy="612" grid="0" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="827" background="#1a1a2e" math="0" shadow="0">
+        <mxGraphModel dx="2602" dy="720" grid="0" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="827" background="#1a1a2e" math="0" shadow="0">
             <root>
                 <mxCell id="0"/>
                 <mxCell id="1" parent="0"/>
@@ -8,13 +8,13 @@
                     <mxGeometry x="200" y="18" width="740" height="36" as="geometry"/>
                 </mxCell>
                 <mxCell id="as65001_zone" value="AS 65001&#10;(Customer A)" style="rounded=1;arcSize=5;whiteSpace=wrap;html=1;dashed=1;strokeColor=#00838F;strokeWidth=2;fillColor=#003d45;opacity=35;fontSize=12;fontStyle=1;verticalAlign=top;fontColor=#FFFFFF;spacingTop=6;" parent="1" vertex="1">
-                    <mxGeometry x="-87" y="360" width="217" height="220" as="geometry"/>
+                    <mxGeometry x="-87" y="360" width="217" height="188" as="geometry"/>
                 </mxCell>
                 <mxCell id="as65100_zone" value="AS 65100 (SP Core — OSPF Area 0 / iBGP)" style="rounded=1;arcSize=5;whiteSpace=wrap;html=1;dashed=1;strokeColor=#F57F17;strokeWidth=2;fillColor=#4a2700;opacity=35;fontSize=12;fontStyle=1;verticalAlign=top;fontColor=#FFFFFF;spacingTop=6;" parent="1" vertex="1">
                     <mxGeometry x="195" y="78" width="600" height="707" as="geometry"/>
                 </mxCell>
                 <mxCell id="as65002_zone" value="AS 65002&#10;(Ext SP Peer)" style="rounded=1;arcSize=5;whiteSpace=wrap;html=1;dashed=1;strokeColor=#AD1457;strokeWidth=2;fillColor=#45072a;opacity=35;fontSize=12;fontStyle=1;verticalAlign=top;fontColor=#FFFFFF;spacingTop=6;" parent="1" vertex="1">
-                    <mxGeometry x="870" y="320" width="260" height="220" as="geometry"/>
+                    <mxGeometry x="870" y="320" width="260" height="175" as="geometry"/>
                 </mxCell>
                 <mxCell id="R1" value="&lt;b style=&quot;color:#FFFFFF;&quot;&gt;R1&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#CCCCCC&quot; style=&quot;font-size:10px;&quot;&gt;Customer A CE&lt;br&gt;AS 65001&lt;br&gt;Lo0: 10.0.0.1/32&lt;/font&gt;" style="sketch=0;points=[[0.5,0,0],[1,0.5,0],[0.5,1,0],[0,0.5,0],[0.145,0.145,0],[0.8555,0.145,0],[0.855,0.8555,0],[0.145,0.855,0]];html=1;aspect=fixed;pointerEvents=1;shape=mxgraph.cisco19.rect;prIcon=router;fillColor=#FAFAFA;strokeColor=#005073;verticalLabelPosition=middle;verticalAlign=middle;align=right;labelPosition=left;" parent="1" vertex="1">
                     <mxGeometry x="10" y="440" width="60" height="60" as="geometry"/>

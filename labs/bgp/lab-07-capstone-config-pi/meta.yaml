@@ -1,0 +1,58 @@
+# Auto-generated — do not edit manually. Use /tag-lab to stamp external agent runs.
+lab: lab-07-capstone-config-pi
+chapter: bgp
+exam: 300-510
+devices:
+  - name: R1
+    platform: iosv
+    role: Customer A CE (AS 65001) — dual-homed to R2/R3
+  - name: R2
+    platform: iosv
+    role: PE East-1 (AS 65100) — RR client, primary eBGP, local-pref, max-prefix, dynamic neighbors
+  - name: R3
+    platform: iosv
+    role: PE East-2 (AS 65100) — RR client, backup eBGP, SoO
+  - name: R4
+    platform: iosv
+    role: P / Route Reflector (AS 65100) — cluster-id 10.0.0.4, three RR clients
+  - name: R5
+    platform: csr1000v
+    role: PE West (AS 65100) — RR client, dampening, no-export, MD5 auth, max-prefix warning, FlowSpec
+  - name: R6
+    platform: iosv
+    role: External SP Peer (AS 65002) — no-export, MD5, TTL-security
+  - name: R7
+    platform: csr1000v
+    role: External FlowSpec Peer (AS 65003) — no-advertise, FlowSpec AFI
+created:
+  date: "2026-05-01"
+  agent: pi
+  skill: lab-assembler
+  skill_version: "2026-05-01"
+  files:
+    - workbook.md
+    - setup_lab.py
+    - README.md
+    - decisions.md
+    - topology/topology.drawio
+    - topology/README.md
+    - initial-configs/R1.cfg
+    - initial-configs/R2.cfg
+    - initial-configs/R3.cfg
+    - initial-configs/R4.cfg
+    - initial-configs/R5.cfg
+    - initial-configs/R6.cfg
+    - initial-configs/R7.cfg
+    - solutions/R1.cfg
+    - solutions/R2.cfg
+    - solutions/R3.cfg
+    - solutions/R4.cfg
+    - solutions/R5.cfg
+    - solutions/R6.cfg
+    - solutions/R7.cfg
+    - scripts/fault-injection/inject_scenario_01.py
+    - scripts/fault-injection/inject_scenario_02.py
+    - scripts/fault-injection/inject_scenario_03.py
+    - scripts/fault-injection/apply_solution.py
+    - scripts/fault-injection/README.md
+updated: []

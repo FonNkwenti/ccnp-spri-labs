@@ -1,0 +1,53 @@
+# Auto-generated -- do not edit manually. Use /tag-lab to stamp external agent runs.
+lab: lab-02-inbound-traffic-engineering
+chapter: bgp-dual-ce
+exam: 300-510
+devices:
+  - name: R1
+    platform: iosv
+    role: Customer CE1 (AS 65001) -- eBGP to ISP-A, iBGP to CE2; transit-prevention filter (no prepend) on outbound to R3
+  - name: R2
+    platform: iosv
+    role: Customer CE2 (AS 65001) -- eBGP to ISP-B, iBGP to CE1; transit-prevention filter + AS-path prepend ×2 on outbound to R4
+  - name: R3
+    platform: iosv
+    role: ISP-A edge (AS 65100) -- iBGP to R5 with next-hop-self
+  - name: R4
+    platform: iosv
+    role: ISP-B edge (AS 65200) -- iBGP to R6 with next-hop-self
+  - name: R5
+    platform: iosv
+    role: ISP-A internal (AS 65100) -- originates 10.100.2.0/24
+  - name: R6
+    platform: iosv
+    role: ISP-B internal (AS 65200) -- originates 10.200.2.0/24
+created:
+  date: "2026-04-28"
+  agent: claude-opus-4-7
+  skill: build-lab
+  skill_version: "2026-04-28"
+  files:
+    - workbook.md
+    - topology/topology.drawio
+    - topology/README.md
+    - setup_lab.py
+    - README.md
+    - decisions.md
+    - initial-configs/R1.cfg
+    - initial-configs/R2.cfg
+    - initial-configs/R3.cfg
+    - initial-configs/R4.cfg
+    - initial-configs/R5.cfg
+    - initial-configs/R6.cfg
+    - solutions/R1.cfg
+    - solutions/R2.cfg
+    - solutions/R3.cfg
+    - solutions/R4.cfg
+    - solutions/R5.cfg
+    - solutions/R6.cfg
+    - scripts/fault-injection/inject_scenario_01.py
+    - scripts/fault-injection/inject_scenario_02.py
+    - scripts/fault-injection/inject_scenario_03.py
+    - scripts/fault-injection/apply_solution.py
+    - scripts/fault-injection/README.md
+updated: []

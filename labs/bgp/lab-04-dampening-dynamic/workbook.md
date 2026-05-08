@@ -278,9 +278,10 @@ The following is **pre-loaded** via `setup_lab.py`:
   reuse-limit 750, suppress-limit 2000, maximum-suppress-time 60 minutes.
 - Dampening should apply globally to all eBGP-learned routes on R5.
 
-**Verification:** `show ip bgp dampening parameters` on R5 must show all four values
-matching the configured parameters. `show ip bgp 172.16.6.0` must NOT show the 'd' flag
-initially (prefix is stable at this point).
+**Verification:** 
+- `show ip bgp dampening parameters` on R5 must show all four values matching the configured parameters.
+- `show ip bgp` on R5 (table view) must show 172.16.6.0/24 without a 'd' status code initially (prefix is stable at this point).
+- `show ip bgp 172.16.6.0` on R5 (detailed view) must show "valid, external" without "dampened" keyword.
 
 ---
 
@@ -290,9 +291,11 @@ initially (prefix is stable at this point).
   withdraw/re-advertise cycles for 172.16.6.0/24.
 - After each cycle, check the penalty accumulation on R5.
 
-**Verification:** `show ip bgp dampening flap-statistics` on R5 must show a flap count
-of 5 and a penalty above 2000. `show ip bgp 172.16.6.0` must show the 'd' flag (route
-is suppressed). The prefix must be absent from `show ip route 172.16.6.0`.
+**Verification:**
+- `show ip bgp dampening flap-statistics` on R5 must show a flap count of 5 and a penalty above 2000.
+- `show ip bgp` on R5 (table view) must show 172.16.6.0/24 with a 'd' status code (route is suppressed).
+- `show ip bgp 172.16.6.0` on R5 (detailed view) must show "dampened" keyword in the path block with "Dampinfo: penalty" and "reuse in" times.
+- The prefix must be absent from `show ip route 172.16.6.0`.
 
 ---
 
@@ -301,23 +304,28 @@ is suppressed). The prefix must be absent from `show ip route 172.16.6.0`.
 - Clear the dampening history for the 172.16.6.0/24 prefix on R5.
 - Verify the prefix is reinstated in the BGP table after clearing.
 
-**Verification:** After clearing, `show ip bgp 172.16.6.0` must show a valid next-hop
-(no 'd' flag). The prefix must reappear in `show ip route`.
+**Verification:**
+- After clearing, `show ip bgp` on R5 (table view) must show 172.16.6.0/24 without the 'd' status code.
+- `show ip bgp 172.16.6.0` on R5 (detailed view) must show "valid, external, best" without "dampened" keyword.
+- The prefix must reappear in `show ip route 172.16.6.0`.
 
 ---
 
 ### Task 4: Configure Dynamic BGP Neighbors on R2
 
-- Create a peer-group named `DYN_CUST` on R2 with remote-AS 65001.
-- Set a description `Dynamic-Customer-AS65001` on the peer-group.
-- Set a listen limit of 10 concurrent dynamic sessions.
-- Configure R2 to accept incoming BGP sessions from the 10.99.0.0/24 range, applying
-  the `DYN_CUST` peer-group template to each accepted session.
-- Activate the `DYN_CUST` peer-group in the IPv4 unicast address-family and apply the
-  `FROM-CUST-A-PRIMARY` inbound route-map (already defined in the base config).
+Under router bgp 65100, configure:
+- Create a peer-group named `DYN_CUST` with `neighbor DYN_CUST peer-group`.
+- Set `neighbor DYN_CUST remote-as 65001` (specifies the expected remote AS for all dynamic peers in this range).
+- Set `neighbor DYN_CUST description Dynamic-Customer-AS65001`.
+- Set `bgp listen limit 10` (allow up to 10 concurrent dynamic sessions).
+- Configure `bgp listen range 10.99.0.0/24 peer-group DYN_CUST` (accept sessions from this range).
+- In the IPv4 unicast address-family:
+  - `neighbor DYN_CUST activate` (enable the peer-group for IPv4 routes).
+  - `neighbor DYN_CUST route-map FROM-CUST-A-PRIMARY in` (apply inbound route-map — already defined in base config).
 
-**Verification:** `show ip bgp listen range` on R2 must show `10.99.0.0/24` mapped to
-`DYN_CUST`. `show ip bgp peer-group DYN_CUST` must show the peer-group definition.
+**Verification:**
+- `show ip bgp summary` on R2 shows the output includes "BGP peergroup DYN_CUST listen range group members:" line listing `10.99.0.0/24`.
+- `show ip bgp peer-group DYN_CUST` on R2 shows the peer-group definition and members (initially empty until a dynamic peer connects).
 
 ---
 
@@ -348,6 +356,8 @@ dampening is enabled
 
 ### Task 2: Flap Statistics and Suppression
 
+**Use `show ip bgp dampening flap-statistics` (table view) to see the 'd' status code:**
+
 ```
 R5# show ip bgp dampening flap-statistics
 BGP table version is 5, local router ID is 10.0.0.5
@@ -357,6 +367,8 @@ Origin codes: i - IGP, e - EGP, ? - incomplete
    Network          From             Flaps Duration Reuse    Path
 *d 172.16.6.0/24   10.1.56.6        5     00:02:15  00:11:30 65002   ! ← 'd' means suppressed; Reuse time shows when prefix will return
 ```
+
+**Use `show ip bgp 172.16.6.0` (detailed view) to see full dampening info:**
 
 ```
 R5# show ip bgp 172.16.6.0
@@ -390,11 +402,19 @@ Paths: (1 available, best #1, table Default-IP-Routing-Table)
 
 ### Task 4: Listen Range Configuration
 
-```
-R2# show ip bgp listen range
-BGP listen range entry:
-  peer-group DYN_CUST, listen range 10.99.0.0/24   ! ← listen range must show here
+**Use `show ip bgp summary` (watch for listen range info):**
 
+```
+R2# show ip bgp summary | begin Neighbor
+Neighbor        V    AS MsgRcvd MsgSent   TblVer  InQ OutQ Up/Down  State/PfxRcd
+...
+BGP peergroup DYN_CUST listen range group members:
+  10.99.0.0/24                                      ! ← listen range is shown here (not in dedicated command)
+```
+
+**Use `show ip bgp peer-group DYN_CUST` for member details:**
+
+```
 R2# show ip bgp peer-group DYN_CUST
 BGP peer-group is DYN_CUST, remote AS 65001
   BGP version 4
@@ -454,10 +474,12 @@ clear ip bgp dampening <prefix/len>
 | Command | What to Look For |
 |---------|-----------------|
 | `show ip bgp dampening parameters` | Confirm half-life, reuse, suppress, max-suppress values |
-| `show ip bgp dampening flap-statistics` | Flap count, current penalty, time until reuse |
-| `show ip bgp dampening dampened-paths` | All currently suppressed prefixes |
-| `show ip bgp <prefix>` | 'd' flag = dampened; "Dampinfo" block shows penalty and reuse timer |
+| `show ip bgp dampening flap-statistics` | **Table view** — shows status codes (d = damped). Also shows flap count and current penalty |
+| `show ip bgp dampening dampened-paths` | **Table view** — all currently suppressed prefixes with 'd' status |
+| `show ip bgp <prefix>` | **Detailed view** — "dampened" keyword and "Dampinfo" block (not status codes). Use for penalty and reuse timer details |
 | `clear ip bgp dampening` | Reset all penalties immediately — prefix returns to active state |
+
+> **Critical:** Status codes (d, *, >, etc.) appear ONLY in table-view commands (`show ip bgp`, `show ip bgp dampening flap-statistics`). The detailed-view command `show ip bgp <prefix>` does NOT show status codes. Students mistakenly expect 'd' in `show ip bgp 172.16.6.0` output but will only see it in `show ip bgp` or `show ip bgp dampening flap-statistics`.
 
 ### Dynamic BGP Neighbor Configuration
 
@@ -494,7 +516,7 @@ router bgp 65100
 | Command | What to Look For |
 |---------|-----------------|
 | `show ip bgp summary` | State of all static BGP sessions; dynamic sessions appear once established |
-| `show ip bgp listen range` | Configured listen range and associated peer-group |
+| `show ip bgp summary` | Peer group section shows "BGP peergroup DYN_CUST listen range group members:" with ranges |
 | `show ip bgp peer-group DYN_CUST` | Members of the dynamic peer-group and session state |
 | `show ip bgp dampening parameters` | Active dampening parameters |
 | `show ip bgp dampening flap-statistics` | Per-prefix flap counts and current penalties |
