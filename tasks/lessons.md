@@ -19,6 +19,45 @@ New entries at the top. Review at the start of each session.
 
 -->
 
+## 2026-05-08 — Cross-cutting features need flags + opt-in, not in-place mutation
+
+**Correction:** The "XR coverage retrofit" applied IOS XR support to existing built
+labs by mutating their specs, configs, and workbooks in place. It contaminated two
+capstones whose underlying topology had been pure-IOSv (`mpls/lab-04-capstone-config`,
+`bgp-dual-ce/lab-04-capstone-config`), created a parallel `-dsc` capstone artifact with
+no IOSv ancestor, and interleaved 15 retrofit commits with ~17 unrelated commits so a
+clean revert wasn't possible. Two rollback phases were required: Phase 1 cherry-reverted
+the 15 retrofit commits; Phase 2 surgically restored configs/workbooks/meta.yaml on the
+two capstones whose XR contamination predated the reverts.
+
+**Rule:** When adding a cross-cutting capability (alternate platform, alternate protocol,
+optional feature) across an existing lab corpus:
+1. **Build-time flag, not in-place mutation.** Implement as `--<feature>-mode` on the
+   builder. Default off. Existing labs stay byte-identical unless rebuilt with the flag.
+2. **Side-by-side artifacts.** New variant lands as a sibling folder with a suffix
+   (`<lab-id>-<variant>`) — never overwrite the original. Tooling and indexes treat the
+   suffix as a first-class lab.
+3. **Per-lab opt-in.** Each lab decides whether the variant applies (some topologies
+   simply can't host the feature). Track opt-in in `baseline.yaml`, not by mass-rebuilding.
+4. **Spec extension, not rewrite.** Specs gain an optional appendix for the variant; the
+   IOSv body stays unchanged. Avoid "Platform Mix Notice" headers that bake variant text
+   into the primary workbook.
+5. **One-commit-per-lab.** Each variant build is one commit on top of an unchanged base,
+   so rollback is `git revert` of that single commit.
+
+**Why:** In-place retrofits couple unrelated labs to one mega-change, force every commit
+to touch many files, and make rollback combinatorially hard. The `-dsc` capstone showed
+the worst failure mode: a retrofit can create artifacts that have no clean origin to
+revert to. Flag + opt-in keeps the original corpus stable and makes the variant track
+independently versionable.
+
+**Touched:**
+- Phase 1 rollback: commit `66f3776` (15 cherry-reverts).
+- Phase 2 rollback: commit `637793c` (capstone surgical cleanup + `-dsc` deletion).
+- Future: design `--xr-mode` for `/build-lab` per this rule before re-attempting XR work.
+
+---
+
 ## 2026-05-03 — Verify third-party analysis against primary sources before acting
 
 **Correction:** A Pi-generated audit of the BGP capstone workbook (`lab-07-capstone-config`)
