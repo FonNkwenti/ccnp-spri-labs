@@ -25,13 +25,19 @@ NEVER hardcode a `DEFAULT_LAB_PATH` — lab paths vary across EVE-NG instances a
 
 For each scenario (minimum 3 per lab), generate `scripts/fault-injection/inject_scenario_0N.py`.
 
-Use `assets/inject_scenario_01_template.py` (and `_02`, `_03`) as base templates. Customise:
+**Capstone detection**: Check the lab slug. If it contains `capstone-troubleshooting`, use
+`assets/inject_scenario_01_capstone_template.py` (and `_02`, `_03`) as base templates instead.
+Capstone templates suppress all device name output in print statements so students cannot infer
+which router is affected by reading terminal output during live lab runs. For all other labs,
+use `assets/inject_scenario_01_template.py` (and `_02`, `_03`).
+
+Customise:
 - `DEVICE_NAME` — target device name (must match the node name in the EVE-NG lab)
 - `FAULT_COMMANDS` list — from the scenario's solution section (the inverse of the fix)
 - `PREFLIGHT_CMD` — `show` command whose output verifies pre-injection state
 - `PREFLIGHT_SOLUTION_MARKER` — string present only in the known-good config
 - `PREFLIGHT_FAULT_MARKER` — string present only after the fault is already injected
-- Docstring describing exactly what fault is injected
+- Docstring containing only the scenario number and restore instruction — **never** fault type, target device, or expected symptom (those would tip off the student before they troubleshoot)
 
 Each script must:
 1. Call `require_host(args.host)` to validate the `--host` argument (exits with code 2 if placeholder)
@@ -77,6 +83,8 @@ Use `assets/README_template.md` as the base. Fill in:
 - [ ] `--lab-path` defaults to `None` and is treated as optional override only
 - [ ] `RESTORE_TARGETS` in `apply_solution.py` covers every device touched by any scenario
 - [ ] `PREFLIGHT_SOLUTION_MARKER` and `PREFLIGHT_FAULT_MARKER` are distinct, unambiguous strings
+- [ ] **No script docstring, banner, print, or preflight error message reveals the fault type, affected device/interface, or expected symptom** — students must discover these through troubleshooting, not by reading the script
+- [ ] **Capstone labs only** (`capstone-troubleshooting` in lab slug): no inject script print statement references a router or device name — verify the `_capstone_template.py` variants were used, not the regular ones
 - [ ] Syntax-check every generated `.py` file WITHOUT creating cache files. Use one of:
   - `python3 -c "import ast, sys; [ast.parse(open(f).read(), f) for f in sys.argv[1:]]" inject_scenario_01.py ...`  (preferred — no filesystem side effects)
   - OR `python3 -m py_compile *.py && rm -rf __pycache__ scripts/fault-injection/__pycache__`  (acceptable — but MUST include the rm)
@@ -119,12 +127,7 @@ labs/<topic>/lab-NN-<slug>/
 ```python
 #!/usr/bin/env python3
 """
-Fault Injection: Scenario 0N — [SCENARIO_TITLE]
-
-Target:     [DEVICE_NAME] ([INTERFACE])
-Injects:    [ONE_LINE_FAULT_DESCRIPTION]
-Fault Type: [e.g. Timer Mismatch / Passive Interface / AS Mismatch]
-Result:     [OBSERVABLE_SYMPTOM]
+Fault Injection: Scenario 0N. Restore with: python3 apply_solution.py --host <eve-ng-ip>
 """
 
 from __future__ import annotations
@@ -146,10 +149,12 @@ PREFLIGHT_SOLUTION_MARKER = "[STRING_THAT_CONFIRMS_KNOWN_GOOD_STATE]"
 def preflight(conn) -> bool:
     output = conn.send_command(PREFLIGHT_CMD)
     if PREFLIGHT_SOLUTION_MARKER not in output:
-        print(f"[!] Pre-flight failed: '{PREFLIGHT_SOLUTION_MARKER}' not found.")
+        print("[!] Pre-flight failed: lab not in expected pre-injection state.")
+        print("    Run apply_solution.py first to restore the known-good config.")
         return False
     if PREFLIGHT_FAULT_MARKER in output:
-        print(f"[!] Pre-flight failed: '{PREFLIGHT_FAULT_MARKER}' already present.")
+        print("[!] Pre-flight failed: scenario appears already injected.")
+        print("    Restore with apply_solution.py.")
         return False
     return True
 

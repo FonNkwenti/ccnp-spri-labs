@@ -1,15 +1,6 @@
 #!/usr/bin/env python3
 """
-Fault Injection: Scenario 02 — [SCENARIO_TITLE]
-
-Target:     [DEVICE_NAME] ([INTERFACE] — link to [PEER])
-Injects:    [ONE_LINE_FAULT_DESCRIPTION]
-Fault Type: [FAULT_TYPE, e.g. Timer Mismatch / Passive Interface / AS Mismatch]
-
-Result:     [OBSERVABLE_SYMPTOM — what the student will see]
-
-Before running, ensure the lab is in the SOLUTION state:
-    python3 apply_solution.py --host <eve-ng-ip>
+Fault Injection: Scenario 02. Restore with: python3 apply_solution.py --host <eve-ng-ip>
 """
 
 from __future__ import annotations
@@ -41,12 +32,12 @@ PREFLIGHT_SOLUTION_MARKER = "[STRING_THAT_CONFIRMS_KNOWN_GOOD_STATE]"
 def preflight(conn) -> bool:
     output = conn.send_command(PREFLIGHT_CMD)
     if PREFLIGHT_SOLUTION_MARKER not in output:
-        print(f"[!] Pre-flight failed: '{PREFLIGHT_SOLUTION_MARKER}' not found.")
+        print("[!] Pre-flight failed: lab not in expected pre-injection state.")
         print("    Run apply_solution.py first to restore the known-good config.")
         return False
     if PREFLIGHT_FAULT_MARKER in output:
-        print(f"[!] Pre-flight failed: '{PREFLIGHT_FAULT_MARKER}' already present.")
-        print("    Scenario 02 appears already injected. Restore with apply_solution.py.")
+        print("[!] Pre-flight failed: scenario appears already injected.")
+        print("    Restore with apply_solution.py.")
         return False
     return True
 

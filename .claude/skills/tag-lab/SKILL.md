@@ -10,6 +10,35 @@ Records provenance for labs generated or modified by external agents (Gemini, Ki
 
 -# Instructions
 
+--# Step 0: Read telemetry sidecar (if present)
+
+Before parsing arguments, check for telemetry from the previous session.
+
+Source: `.claude/last_run.json` — written by the Stop hook when the previous session ended.
+
+If it exists, read it and store the contents as `telemetry`. If it does not exist, set `telemetry = null`. Do not delete it — it is a rolling session record overwritten on every Stop.
+
+Expected fields (all nullable — handle missing gracefully):
+```json
+{
+  "model": "claude-sonnet-4-6",
+  "tool_calls": 42,
+  "duration_seconds": 847,
+  "session_id": "abc123",
+  "tokens": {
+    "input": 1240,
+    "output": 18560,
+    "cache_read": 245100,
+    "cache_creation_5m": 32400,
+    "cache_creation_1h": 18676
+  },
+  "cost_usd_estimate": 0.8421,
+  "pricing_date": "2026-05-06",
+  "written_at": "2026-05-06T14:30:00+00:00",
+  "source": "stop-hook"
+}
+```
+
 --# Step 1: Parse Arguments
 
 Arguments format: `<chapter/lab-slug> <agent-name> <skill-name>`
@@ -63,9 +92,24 @@ updated:
     agent: [agent-name]
     skill: [skill-name]
     skill_version: "[YYYY-MM-DD from Step 2]"
+    telemetry:                            # omit this entire key if telemetry is null
+      model: "[telemetry.model]"
+      tool_calls: [telemetry.tool_calls]
+      duration_seconds: [telemetry.duration_seconds]
+      session_id: "[telemetry.session_id]"
+      tokens:
+        input: [telemetry.tokens.input]
+        output: [telemetry.tokens.output]
+        cache_read: [telemetry.tokens.cache_read]
+        cache_creation_5m: [telemetry.tokens.cache_creation_5m]
+        cache_creation_1h: [telemetry.tokens.cache_creation_1h]
+      cost_usd_estimate: [telemetry.cost_usd_estimate]
+      pricing_date: "[telemetry.pricing_date]"
     files:
       - [all files from Step 3]
 ```
+
+If `telemetry` is `null` (no sidecar was found in Step 0), omit the `telemetry:` key entirely — do not write null values.
 
 Write the updated file back.
 
@@ -88,9 +132,24 @@ updated:
     agent: [agent-name]
     skill: [skill-name]
     skill_version: "[YYYY-MM-DD from Step 2]"
+    telemetry:                            # omit this entire key if telemetry is null
+      model: "[telemetry.model]"
+      tool_calls: [telemetry.tool_calls]
+      duration_seconds: [telemetry.duration_seconds]
+      session_id: "[telemetry.session_id]"
+      tokens:
+        input: [telemetry.tokens.input]
+        output: [telemetry.tokens.output]
+        cache_read: [telemetry.tokens.cache_read]
+        cache_creation_5m: [telemetry.tokens.cache_creation_5m]
+        cache_creation_1h: [telemetry.tokens.cache_creation_1h]
+      cost_usd_estimate: [telemetry.cost_usd_estimate]
+      pricing_date: "[telemetry.pricing_date]"
     files:
       - [all files from Step 3]
 ```
+
+If `telemetry` is `null` (no sidecar was found in Step 0), omit the `telemetry:` key entirely.
 
 --# Step 5: Confirm
 
@@ -99,6 +158,8 @@ Report to the user:
 - Agent and skill recorded
 - Number of files listed
 - Whether this was a new `meta.yaml` or an append to an existing one
+- Telemetry source: `last_run.json` / none (omitted)
+- If `cost_usd_estimate` was non-null, surface the figure (e.g., `est. cost: $0.84`)
 
 -# Examples
 
