@@ -28,6 +28,12 @@ gap documentation to one device and keeps the exam intent clear: the student con
 observes the IOSv limitation, and understands the dual-RP requirement without confusion from
 seeing the same "no effect" on all four core routers.
 
+### BGP GR state string — live validation needed
+The workbook references `BGP state = Active (GR)` in the expected output for Task 3 Part B.
+This string was inferred from RFC 4724 behavior descriptions. IOSv 15.9(3)M6 may render
+the state differently (e.g., `Idle (GR)`, `Active`, or a separate `GR state:` field).
+Validate on a live lab and update the expected-output block in Task 3 Part B accordingly.
+
 ### Troubleshooting ticket fault choice
 Each ticket removes one GR command from a different router (R1, R5, R4) to reinforce that
 GR is cooperative — any single missing side breaks the protection for that pair. Ticket 1

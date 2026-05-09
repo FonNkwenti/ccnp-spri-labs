@@ -259,7 +259,7 @@ This task has two parts: an IS-IS NSF observation and a BGP GR live test.
 
 **Part A — IS-IS NSF capability advertisement:**
 - Run `show isis neighbors detail` on R1 and confirm that all three neighbors (R2, R3, R4) advertise restart capability.
-- Run `show isis database` on R1 — confirm all five IS-IS LSPs are present with non-zero sequence numbers.
+- Run `show isis database` on R1 — confirm all four IS-IS LSPs are present with non-zero sequence numbers (R1–R4 only; R5 runs no IS-IS process).
 - Simulate a graceful IS-IS restart on R2 by issuing the IS-IS process reset command on R2. Immediately switch to R1 and run `show isis neighbors` repeatedly. Observe that R2 briefly appears in a restarting/recovering state rather than disappearing immediately.
 
 **Part B — BGP GR live test:**
@@ -700,9 +700,9 @@ A colleague reports that during a planned IS-IS process restart on R2, the opera
 <details>
 <summary>Click to view Diagnosis Steps</summary>
 
-1. Run `show isis neighbors detail` on R1 — check the entry for R2. Look at the `Restart capable` field. It will show `no`, meaning R1 is not receiving GR capability from R2 OR R1 is not configured as a GR helper.
-2. Run `show running-config | section router isis` on R1 — observe that `nsf ietf` is absent from R1's IS-IS process. R1 is not configured to be a GR helper.
-3. Run the same command on R2 — R2 has `nsf ietf` present. R2 is advertising GR capability, but R1 does not have it, so R1 ignores the GR signal.
+1. Run `show running-config | section router isis` on R1 — observe that `nsf ietf` is absent from R1's IS-IS process. R1 is not configured as a GR participant or helper.
+2. Run the same command on R2 — R2 has `nsf ietf` present and is advertising GR capability in its IS-IS Hellos.
+3. Run `show isis neighbors detail` on R1 — R2 shows `Restart capable: yes` (R2 advertises the capability). R1 receives the advertisement but cannot act as a GR helper because its own `nsf ietf` is missing.
 4. Confirm the failure mode: trigger an IS-IS process restart on R2. Watch `show isis neighbors` on R1 — R2 disappears immediately rather than staying in a GR helper state, because R1 treats R2's restart as a normal failure.
 5. Root cause: `nsf ietf` was removed from R1's IS-IS process. GR requires both sides configured — R2 restarts gracefully, but R1 never received the GR helper configuration, so it withdraws R2's routes immediately.
 
