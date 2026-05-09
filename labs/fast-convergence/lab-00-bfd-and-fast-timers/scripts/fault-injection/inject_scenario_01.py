@@ -14,14 +14,22 @@ SCRIPT_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(SCRIPT_DIR.parents[3] / "common" / "tools"))
 from eve_ng import EveNgError, connect_node, discover_ports, find_open_lab, require_host  # noqa: E402
 
-DEVICE_NAME = "R2"
-FAULT_COMMANDS = [
+# Both sides of the L1 BFD session are faulted:
+#   R1 Gi0/0 → 500 ms intervals (slow side, drives the negotiated rate up)
+#   R2 Gi0/0 → 50 ms intervals, multiplier 1 (detection window = 500 × 1 = 500 ms)
+DEVICE_NAMES = ["R1", "R2"]
+
+R1_FAULT_COMMANDS = [
+    "interface GigabitEthernet0/0",
+    "bfd interval 500 min_rx 500 multiplier 3",
+]
+
+R2_FAULT_COMMANDS = [
     "interface GigabitEthernet0/0",
     "bfd interval 50 min_rx 50 multiplier 1",
 ]
 
-# Pre-flight: check GigabitEthernet0/0 BFD config to verify the lab is
-# in the expected solution state before injecting.
+# Pre-flight on R2: verify the lab is in the expected solution state before injecting.
 PREFLIGHT_CMD = "show running-config interface GigabitEthernet0/0"
 # If this string is already present → fault already injected, bail out.
 PREFLIGHT_FAULT_MARKER = "bfd interval 50 min_rx 50 multiplier 1"
@@ -39,6 +47,22 @@ def preflight(conn) -> bool:
         print("[!] Pre-flight failed: scenario appears already injected.")
         print("    Restore with apply_solution.py.")
         return False
+    return True
+
+
+def inject_device(host: str, port: int, name: str, commands: list) -> bool:
+    print(f"[*] Connecting to {name} on {host}:{port} ...")
+    try:
+        conn = connect_node(host, port)
+    except Exception as exc:
+        print(f"[!] Connection failed: {exc}", file=sys.stderr)
+        return False
+    try:
+        conn.send_config_set(commands)
+        conn.save_config()
+    finally:
+        conn.disconnect()
+    print(f"[+] Fault injected on {name}.")
     return True
 
 
@@ -62,9 +86,9 @@ def main() -> int:
         lab_path = args.lab_path
     else:
         print("[*] Detecting open lab in EVE-NG...")
-        lab_path = find_open_lab(host, node_names=[DEVICE_NAME])
+        lab_path = find_open_lab(host, node_names=DEVICE_NAMES)
         if lab_path is None:
-            print(f"[!] No running lab found with {DEVICE_NAME}. Start all nodes first.", file=sys.stderr)
+            print(f"[!] No running lab found with {DEVICE_NAMES}. Start all nodes first.", file=sys.stderr)
             return 3
 
     try:
@@ -73,28 +97,33 @@ def main() -> int:
         print(f"[!] {exc}", file=sys.stderr)
         return 3
 
-    port = ports.get(DEVICE_NAME)
-    if port is None:
-        print(f"[!] {DEVICE_NAME} not found in lab '{lab_path}'.")
+    r1_port = ports.get("R1")
+    r2_port = ports.get("R2")
+
+    if r1_port is None or r2_port is None:
+        missing = [n for n, p in [("R1", r1_port), ("R2", r2_port)] if p is None]
+        print(f"[!] Device(s) not found in lab ports: {', '.join(missing)}")
         return 3
 
-    print(f"[*] Connecting to {DEVICE_NAME} on {host}:{port} ...")
-    try:
-        conn = connect_node(host, port)
-    except Exception as exc:
-        print(f"[!] Connection failed: {exc}", file=sys.stderr)
-        return 3
-
-    try:
-        if not args.skip_preflight and not preflight(conn):
+    if not args.skip_preflight:
+        print("[*] Running pre-flight check on R2 ...")
+        try:
+            conn = connect_node(host, r2_port)
+            passed = preflight(conn)
+            conn.disconnect()
+        except Exception as exc:
+            print(f"[!] Pre-flight connection failed: {exc}", file=sys.stderr)
+            return 3
+        if not passed:
             return 4
-        print("[*] Injecting fault configuration ...")
-        conn.send_config_set(FAULT_COMMANDS)
-        conn.save_config()
-    finally:
-        conn.disconnect()
 
-    print(f"[+] Fault injected on {DEVICE_NAME}. Scenario 01 is now active.")
+    print("[*] Injecting fault configuration ...")
+    if not inject_device(host, r1_port, "R1", R1_FAULT_COMMANDS):
+        return 3
+    if not inject_device(host, r2_port, "R2", R2_FAULT_COMMANDS):
+        return 3
+
+    print("[+] Fault injected on R1 and R2. Scenario 01 is now active.")
     print("=" * 60)
     return 0
 

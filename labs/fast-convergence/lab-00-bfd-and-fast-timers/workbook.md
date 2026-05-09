@@ -278,12 +278,12 @@ The following is **pre-loaded** via `setup_lab.py`:
 
 ### Task 3: Measure Default IS-IS Convergence
 
-- From R5, start a sustained ping to R2's loopback (10.0.0.2) with a rapid interval (e.g., 100 ms). Note the time.
+- From R2, start a sustained extended ping to R3's loopback (10.0.0.3) with a rapid interval (e.g., 100 ms). Note the time.
 - Shut down interface L2 (R2's connection to R3 — GigabitEthernet0/1 on R2).
-- Record how many seconds elapse from the interface shutdown to when the ping resumes (the routing path will switch to the alternate via R1–R4–R3). The default hold time is 30 seconds, so expect ~27–30 seconds of packet loss.
+- Record how many seconds elapse from the interface shutdown to when the ping resumes (the routing path will switch to the alternate via R2→R1→R3 or R2→R1→R4→R3). The default hold time is 30 seconds, so expect ~27–30 seconds of packet loss.
 - Restore L2 before proceeding.
 
-**Verification:** `show isis neighbors` on R2 before the test must show L2 adjacencies with a Hold timer of approximately 29–30 seconds (default 10-second hello, 30-second multiplier). Record the observed convergence time in the table below and compare to the BFD result in Task 6.
+**Verification:** `show isis neighbors` on R2 before the test must show L2 adjacencies with a Hold timer of approximately 29–30 seconds (default 10-second hello interval, multiplier 3 — hold time = 30 seconds). Record the observed convergence time in the table below and compare to the BFD result in Task 6.
 
 | Test | Hold Timer | Observed Convergence |
 |------|------------|----------------------|
@@ -315,7 +315,7 @@ The following is **pre-loaded** via `setup_lab.py`:
 
 ### Task 6: Measure IS-IS Convergence with BFD
 
-- From R5, restart the sustained ping to R2's loopback (10.0.0.2).
+- From R2, restart the sustained extended ping to R3's loopback (10.0.0.3).
 - Shut down L2 on R2. Record the convergence time.
 - With BFD active, IS-IS detects the failure via BFD notification (~450 ms) rather than the hello hold timer (~3 s). Expect sub-500 ms convergence.
 - Restore L2 and record your result in the table from Task 3.
@@ -413,10 +413,10 @@ Paths: (1 available, best #1, table default)
 R2# show isis neighbors
 System Id      Interface   SNPA               State  Holdtime  Type Protocol
 R1             Gi0/0       xxxx.xxxx.xxxx     Up     29        L2   M-ISIS  ! ← Hold=29s (default)
-R3             Gi0/0       xxxx.xxxx.xxxx     Up     29        L2   M-ISIS
+R3             Gi0/1       xxxx.xxxx.xxxx     Up     29        L2   M-ISIS
 ```
 
-After shutting Gi0/1 on R2, observe ~30 seconds of ping loss before the alternate path via R1→R4→R3→R5 is installed.
+After shutting Gi0/1 on R2, observe ~30 seconds of ping loss before the alternate path via R2→R1→R3 (L1+L5) or R2→R1→R4→R3 (L1+L4+L3) is installed.
 
 ### Task 4 — Tuned Timers
 
@@ -424,7 +424,7 @@ After shutting Gi0/1 on R2, observe ~30 seconds of ping loss before the alternat
 R2# show isis neighbors
 System Id      Interface   SNPA               State  Holdtime  Type Protocol
 R1             Gi0/0       xxxx.xxxx.xxxx     Up     2         L2   M-ISIS  ! ← Hold=2s (1s × 3)
-R3             Gi0/0       xxxx.xxxx.xxxx     Up     2         L2   M-ISIS  ! ← Hold=2s
+R3             Gi0/1       xxxx.xxxx.xxxx     Up     2         L2   M-ISIS  ! ← Hold=2s
 ```
 
 ### Task 5 — BFD Single-Hop Sessions
@@ -995,15 +995,19 @@ A colleague reports that after a scheduled maintenance window on R2, `show bfd n
 <details>
 <summary>Click to view Fix</summary>
 
-On R2, correct the BFD interface configuration to match R1's symmetric values:
+Both R1 and R2 must be corrected to symmetric values. On R1, the slow-side misconfiguration is the root cause of the 500 ms negotiated interval; on R2, the multiplier of 1 causes the detection window to collapse to a single packet.
 
 ```bash
+! On R1 — GigabitEthernet0/0 (L1 toward R2)
+interface GigabitEthernet0/0
+ bfd interval 150 min_rx 150 multiplier 3
+
 ! On R2 — GigabitEthernet0/0 (L1 toward R1)
 interface GigabitEthernet0/0
  bfd interval 150 min_rx 150 multiplier 3
 ```
 
-After applying, run `show bfd neighbors` on R1 and confirm the Gi0/0 session transitions from Down to Up within one detection interval (~1-2 seconds).
+After applying both, run `show bfd neighbors` on R1 and confirm the Gi0/0 session transitions from Down to Up within one detection interval (~1-2 seconds).
 
 </details>
 
