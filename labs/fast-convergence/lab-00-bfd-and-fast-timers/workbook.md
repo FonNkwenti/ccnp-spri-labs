@@ -68,7 +68,7 @@ interface GigabitEthernet0/0
 bfd-template multi-hop BFD_MULTIHOP
  interval min-tx 150 min-rx 150 multiplier 3
 !
-ip bfd peer 10.0.0.5 multihop src 10.0.0.1 template BFD_MULTIHOP
+bfd map ipv4 10.0.0.5/32 10.0.0.1/32 BFD_MULTIHOP
 !
 router bgp 65100
  neighbor 10.0.0.5 fall-over bfd multi-hop
@@ -87,6 +87,18 @@ router isis
 ```
 
 On first trigger, SPF fires after 50 ms. If triggered again immediately, it waits 200 ms, then doubles up to 5 s maximum. This gives fast initial reaction while protecting the CPU from oscillating topologies.
+
+**PRC (Partial Route Computation)** handles a lighter-weight case: when a prefix is added, removed, or its metric changes but the **topology itself** (the set of routers and their adjacencies) remains unchanged. PRC does not re-run the full Dijkstra calculation — it only updates the reachable prefixes attached to each node in the existing SPF tree. This is significantly faster than a full SPF.
+
+The two throttle timers work together:
+
+| Event | Computation | Timer |
+|-------|-------------|-------|
+| Adjacency goes up/down (topology change) | Full SPF | `spf-interval` |
+| Prefix added/removed (no topology change) | PRC only | `prc-interval` |
+| Both at the same time | Full SPF (PRC is redundant) | `spf-interval` |
+
+In this lab, a link failure triggers a **full SPF** (topology changed). Configuring both timers ensures that a future prefix flap won't accidentally trigger an expensive full SPF. The same exponential-backoff values (`5 50 200`) are appropriate — there is no reason to tune them differently on the same network.
 
 ### BGP Keepalive and Hold Timers
 
@@ -111,7 +123,7 @@ With BFD multi-hop enabled (`fall-over bfd multi-hop`), BGP uses BFD's sub-secon
 | Loopback-sourced eBGP | ebgp-multihop, static host routes, loopback peering |
 | Convergence benchmarking | Controlled link failure + time measurement with ping |
 | BFD single-hop on IS-IS | bfd interval + isis bfd on core interfaces |
-| BFD multi-hop on BGP | bfd-template multi-hop, ip bfd peer, neighbor fall-over bfd multi-hop |
+| BFD multi-hop on BGP | bfd-template multi-hop, bfd map ipv4, neighbor fall-over bfd multi-hop |
 | IS-IS timer tuning | hello-interval, hello-multiplier, spf-interval, prc-interval |
 | BGP timer tuning | neighbor timers keepalive hold |
 
@@ -166,6 +178,7 @@ Your mandate: reduce IS-IS convergence from the default 30 seconds to under 500 
 | L7 | R3 Gi0/3 | R5 Gi0/1 | 10.1.35.0/24 | eBGP R3 (AS 65100) ↔ R5 (AS 65200) |
 
 **Key relationships:**
+
 - R1, R2, R3, R4 form a meshed core: R1↔R2 (L1), R2↔R3 (L2), R3↔R4 (L3), R1↔R4 (L4), R1↔R3 (L5). Every single-link failure has at least one alternate path — prerequisite for LFA in lab-02.
 - R5 is dual-homed via L6 (to R1) and L7 (to R3). Both sessions are active from day 1; BGP PIC in lab-03 exploits this pre-existing dual path.
 - eBGP uses loopback-to-loopback peering (ebgp-multihop 2 + static host routes), consistent with SP practice. BFD multi-hop monitors the loopback-sourced TCP session.
@@ -230,12 +243,14 @@ Your mandate: reduce IS-IS convergence from the default 30 seconds to under 500 
 The following is **pre-loaded** via `setup_lab.py`:
 
 **IS pre-loaded:**
+
 - Hostnames on all five routers
 - Interface IP addressing on all routed links and both loopbacks (Loopback0 and Loopback1 on R5)
 - `no ip domain-lookup` on all routers
 - Interface descriptions matching the link IDs (L1 through L7)
 
 **IS NOT pre-loaded** (student configures this):
+
 - IS-IS Level-2 routing process and NET addressing on R1–R4
 - IS-IS on each core interface (Loopback0 passive, data interfaces active)
 - IS-IS hello and hold timer tuning
@@ -265,10 +280,10 @@ The following is **pre-loaded** via `setup_lab.py`:
 
 ### Task 2: Build iBGP Full Mesh and eBGP Dual-Homing
 
-- On R1, R2, R3, and R4, establish a full-mesh iBGP within AS 65100. Source all iBGP sessions from Loopback0 (IS-IS carries the reachability).
-- On R1, establish an eBGP session to R5 (AS 65200). Source the session from Loopback0. Because R5's Loopback0 (10.0.0.5) is not reachable via IS-IS, add a static host route on R1 toward R5's loopback via the L6 next-hop. Set multihop to 2 so the loopback-sourced TCP can complete.
-- On R3, establish an equivalent eBGP session to R5 sourced from Loopback0, with a static host route via the L7 next-hop.
-- On R5, configure matching eBGP neighbors toward R1 and R3 loopbacks with identical multihop and update-source settings. Add static host routes on R5 for R1's and R3's loopbacks.
+- On R1, R2, R3, and R4, establish a full-mesh iBGP within AS 65100. Source all iBGP sessions from Loopback0 (IS-IS carries the reachability). On R1, set neighbor descriptions to `iBGP-R2`, `iBGP-R3`, and `iBGP-R4` for the three iBGP peers.
+- On R1, establish an eBGP session to R5 (AS 65200). Source the session from Loopback0. Because R5's Loopback0 (10.0.0.5) is not reachable via IS-IS, add a static host route on R1 toward R5's loopback via the L6 next-hop. Set multihop to 2 so the loopback-sourced TCP can complete. Set the neighbor description to `eBGP-R5-AS65200`.
+- On R3, establish an equivalent eBGP session to R5 sourced from Loopback0, with a static host route via the L7 next-hop. Use the same neighbor description pattern (`eBGP-R5-AS65200`).
+- On R5, configure matching eBGP neighbors toward R1 and R3 loopbacks with identical multihop and update-source settings. Add static host routes on R5 for R1's and R3's loopbacks. Set neighbor descriptions to `eBGP-R1-AS65100` and `eBGP-R3-AS65100`.
 - Have R5 originate its external prefix (192.0.2.0/24 — the Loopback1 network) into BGP using a network statement.
 - Apply `next-hop-self` on each iBGP neighbor on R1 and R3 so the external prefix (192.0.2.0/24) learned from R5 is re-advertised inward with the local loopback as next-hop, making it resolvable via IS-IS. Do not apply `next-hop-self` on the eBGP neighbor (R5).
 
@@ -278,18 +293,19 @@ The following is **pre-loaded** via `setup_lab.py`:
 
 ### Task 3: Measure Default IS-IS Convergence
 
-- From R2, start a sustained extended ping to R3's loopback (10.0.0.3) with a rapid interval (e.g., 100 ms). Note the time.
-- Shut down interface L2 (R2's connection to R3 — GigabitEthernet0/1 on R2).
-- Record how many seconds elapse from the interface shutdown to when the ping resumes (the routing path will switch to the alternate via R2→R1→R3 or R2→R1→R4→R3). The default hold time is 30 seconds, so expect ~27–30 seconds of packet loss.
-- Restore L2 before proceeding.
+- From R2, start a sustained extended ping to R3's loopback (10.0.0.3) using `ping 10.0.0.3 repeat 100000 timeout 1`. Note the time. (IOSv does not support the `interval` keyword — pings are sent at the default 1-second rate.)
+- On R3, shut down the interface toward R2 (GigabitEthernet0/0 on R3, link L2). Shutting the interface on R3 rather than R2 triggers an **LSP purge** from R3 — R3 immediately floods a purged LSP to its remaining neighbors, which reaches R2 via R1. R2 receives the topology change and runs SPF to find an alternate path to 10.0.0.3.
+- Count the number of lost ping replies (dots `.` in the output). With 1-second pings, the number of dots equals the convergence time in seconds.
+- The convergence is driven by **LSP flooding + SPF computation time**, not by the hello hold timer. The hold timer (30 seconds per-hop) would only apply in a silent failure where no LSP can be exchanged (e.g., a cable cut).
+- Restore L2 (`no shutdown` on R3 GigabitEthernet0/0) before proceeding.
 
-**Verification:** `show isis neighbors` on R2 before the test must show L2 adjacencies with a Hold timer of approximately 29–30 seconds (default 10-second hello interval, multiplier 3 — hold time = 30 seconds). Record the observed convergence time in the table below and compare to the BFD result in Task 6.
+**Verification:** `show isis neighbors` on R2 before the test must show L2 adjacencies with a Hold timer of approximately 29–30 seconds (default IS-IS hello interval 10 s × multiplier 3). After the test, `show ip route isis` on R2 should show 10.0.0.3/32 reachable via R1 (10.1.12.1). Record your observed convergence times in the table below.
 
-| Test | Hold Timer | Observed Convergence |
-|------|------------|----------------------|
-| Default IS-IS (Task 3) | ~30 s | ___ s |
-| Tuned hellos (Task 4) | ~3 s | ___ s |
-| With BFD (Task 6) | 450 ms | ___ ms |
+| Test | Detection Mechanism | Observed Convergence |
+|------|---------------------|----------------------|
+| Default IS-IS (Task 3) | LSP purge + SPF (shutdown) | ___ s |
+| BFD only (Task 6) | BFD notification | ___ s |
+| BFD + SPF throttle (Task 9) | BFD notification + fast SPF | ___ s |
 
 ---
 
@@ -297,9 +313,9 @@ The following is **pre-loaded** via `setup_lab.py`:
 
 - On every IS-IS data interface of R1, R2, R3, and R4 (not on Loopback0 — it is passive), configure a 1-second hello interval and a hello multiplier of 3. This gives a 3-second hold time.
 - Do not change the IS-IS hello settings on Loopback0.
-- Repeat the failure test from Task 3: shut L2, measure convergence time. Expect approximately 3 seconds.
+- **Do not repeat the failure test yet.** The hello timers affect **silent failure** detection (cable cut where no LSP purge is exchanged). With a `shutdown` test, R3 sends an immediate LSP purge regardless of hello timers. The improvement from hello timer tuning is demonstrated later when combined with BFD in the overall design.
 
-**Verification:** `show isis neighbors detail` on R2 must show a Hold timer in the 2–3 s range on all active interfaces. After the link-shut test, confirm the ping resumes in approximately 3 seconds.
+**Verification:** `show isis neighbors detail` on R2 must show a Hold timer in the 2–3 s range on all active interfaces. Compare this to the ~29–30 s hold seen in Task 3 — the configured hello multiplier (3 × 1 s = 3 s hold) is now visible.
 
 ---
 
@@ -313,14 +329,15 @@ The following is **pre-loaded** via `setup_lab.py`:
 
 ---
 
-### Task 6: Measure IS-IS Convergence with BFD
+### Task 6: Measure IS-IS Convergence with BFD (Initial Test)
 
-- From R2, restart the sustained extended ping to R3's loopback (10.0.0.3).
-- Shut down L2 on R2. Record the convergence time.
-- With BFD active, IS-IS detects the failure via BFD notification (~450 ms) rather than the hello hold timer (~3 s). Expect sub-500 ms convergence.
-- Restore L2 and record your result in the table from Task 3.
+- From R2, start the sustained extended ping to R3's loopback (10.0.0.3) using `ping 10.0.0.3 repeat 100000 timeout 1`.
+- On R3, shut down the interface toward R2 (GigabitEthernet0/0 on R3, link L2) — same procedure as Task 3.
+- Count the number of lost ping replies (dots `.` in the output).
+- Record your result. With BFD active, R2 detects the failure via **BFD session timeout** (450 ms = 3 × 150 ms). The remaining convergence time is dominated by **SPF computation** on R2, which can take 2–3 seconds on IOSv. This is why SPF throttle tuning (Task 8) is needed alongside BFD.
+- Restore L2 (`no shutdown` on R3 GigabitEthernet0/0) before proceeding. You will re-run this test after Task 8 to see the combined BFD + SPF throttle benefit.
 
-**Verification:** The ping should resume within 500 ms. `show isis event-log` on R1 (if supported) or `debug isis adj-packets` will show the BFD-triggered adjacency change. `show bfd neighbors` after restoration must show all sessions returning to Up.
+**Verification:** `show bfd neighbors` on R2 will show the session to R3 going Down during the failure and returning to Up after restoration. Compare your result to the ~6 s baseline from Task 3 — the BFD detection alone already cuts convergence roughly in half.
 
 ---
 
@@ -344,6 +361,20 @@ The following is **pre-loaded** via `setup_lab.py`:
 - Configure matching timers on R5 for both eBGP neighbors (R1 and R3).
 
 **Verification:** `show isis spf-log` must show recent SPF events with timestamps consistent with the throttle delay (first run fires ~50 ms after a topology change). `show ip bgp neighbors 10.0.0.5` on R1 must show `Hold time: 15, Keepalive interval: 5` in the BGP timers section.
+
+---
+
+### Task 9: Measure Convergence with BFD + SPF Throttle (Final Test)
+
+Now that both BFD (Task 5) and SPF throttle (Task 8) are configured, re-run the convergence test to see the combined benefit.
+
+- From R2, start the sustained extended ping to R3's loopback (10.0.0.3) using `ping 10.0.0.3 repeat 100000 timeout 1`.
+- On R3, shut down the interface toward R2 (GigabitEthernet0/0 on R3, link L2).
+- Count the number of lost ping replies (dots `.` in the output).
+- With BFD detecting the failure in ~450 ms and SPF responding in ~50 ms, total convergence should be under 1 second (zero or one dot).
+- Restore L2 (`no shutdown` on R3 GigabitEthernet0/0). Record your result.
+
+**Verification:** `show isis spf-log` on R2 after the test should show an SPF run triggered by the BFD-notified adjacency change, with an initial delay of ~50 ms. The final convergence should be faster than the Task 6 result.
 
 ---
 
@@ -544,7 +575,7 @@ bfd-template multi-hop BFD_MULTIHOP
  interval min-tx 150 min-rx 150 multiplier 3
 !
 ! Step 2: bind to the peer (destination + source loopbacks)
-ip bfd peer 10.0.0.5 multihop src 10.0.0.1 template BFD_MULTIHOP
+bfd map ipv4 10.0.0.5/32 10.0.0.1/32 BFD_MULTIHOP
 !
 ! Step 3: enable in BGP
 router bgp 65100
@@ -555,6 +586,10 @@ router bgp 65100
 |---------|---------|
 | `show bfd neighbors` | Multi-hop sessions appear with interface `*System*` |
 | `show ip bgp neighbors X.X.X.X | include BFD` | Confirm BFD registration for a BGP peer |
+
+> **Platform note:** On IOS-XE, multi-hop BFD uses `ip bfd peer <dest> multihop src <src> template <name>`.
+> On classic IOS (IOSv), the equivalent is `bfd map ipv4 <dest>/32 <src>/32 <template-name>`.
+> Both accomplish the same binding; only the syntax differs.
 
 ### BGP Session Configuration
 
@@ -603,7 +638,7 @@ router bgp 65100
 | BFD session flapping | Interval too aggressive for CPU; reduce to 300 ms or higher |
 | eBGP session stays in Active | Missing static route to peer loopback; ebgp-multihop not configured; source mismatch |
 | BGP receives no prefixes | Missing `network` statement or `activate` in address-family |
-| Multi-hop BFD session not forming | `ip bfd peer` binding missing; template name mismatch; static route absent |
+| Multi-hop BFD session not forming | `bfd map ipv4` binding missing; template name mismatch; static route absent |
 
 ---
 
@@ -869,7 +904,7 @@ show isis neighbors
 bfd-template multi-hop BFD_MULTIHOP
  interval min-tx 150 min-rx 150 multiplier 3
 !
-ip bfd peer 10.0.0.5 multihop src 10.0.0.1 template BFD_MULTIHOP
+bfd map ipv4 10.0.0.5/32 10.0.0.1/32 BFD_MULTIHOP
 !
 router bgp 65100
  neighbor 10.0.0.5 fall-over bfd multi-hop
@@ -885,7 +920,7 @@ router bgp 65100
 bfd-template multi-hop BFD_MULTIHOP
  interval min-tx 150 min-rx 150 multiplier 3
 !
-ip bfd peer 10.0.0.5 multihop src 10.0.0.3 template BFD_MULTIHOP
+bfd map ipv4 10.0.0.5/32 10.0.0.3/32 BFD_MULTIHOP
 !
 router bgp 65100
  neighbor 10.0.0.5 fall-over bfd multi-hop
@@ -901,8 +936,8 @@ router bgp 65100
 bfd-template multi-hop BFD_MULTIHOP
  interval min-tx 150 min-rx 150 multiplier 3
 !
-ip bfd peer 10.0.0.1 multihop src 10.0.0.5 template BFD_MULTIHOP
-ip bfd peer 10.0.0.3 multihop src 10.0.0.5 template BFD_MULTIHOP
+bfd map ipv4 10.0.0.1/32 10.0.0.5/32 BFD_MULTIHOP
+bfd map ipv4 10.0.0.3/32 10.0.0.5/32 BFD_MULTIHOP
 !
 router bgp 65200
  neighbor 10.0.0.1 fall-over bfd multi-hop
@@ -1087,17 +1122,17 @@ Run `show bfd neighbors details` on R1. The Gi0/1 entry should now show `Registe
 
 ### Core Implementation
 
-- [ ] IS-IS L2 adjacencies established: R1 has three neighbors (R2, R3, R4); all loopbacks reachable via IS-IS
-- [ ] iBGP full mesh established: R1, R2, R3, R4 all show three iBGP peers in Established state
-- [ ] eBGP dual-homing: R1 and R3 each show one eBGP peer (R5, AS 65200) in Established state
-- [ ] 192.0.2.0/24 reachable from all iBGP speakers via next-hop-self rewrite
-- [ ] IS-IS hello timers tuned: hold time ~3 s on all IS-IS data interfaces
-- [ ] BFD single-hop: all IS-IS interface pairs show Up BFD sessions with ISIS registered
-- [ ] Convergence measurement: Task 3 (30 s), Task 4 (3 s), Task 6 (<500 ms) recorded in table
-- [ ] BFD multi-hop: R1 and R3 show multi-hop BFD session to R5 (10.0.0.5) as Up
-- [ ] BGP fall-over BFD multi-hop registered on R1, R3, and R5 for eBGP neighbors
-- [ ] IS-IS SPF/PRC throttle configured on R1–R4: initial-wait=50 ms
-- [ ] BGP timers tuned on eBGP sessions: keepalive=5 s, hold=15 s
+- [x] IS-IS L2 adjacencies established: R1 has three neighbors (R2, R3, R4); all loopbacks reachable via IS-IS
+- [x] iBGP full mesh established: R1, R2, R3, R4 all show three iBGP peers in Established state
+- [x] eBGP dual-homing: R1 and R3 each show one eBGP peer (R5, AS 65200) in Established state
+- [x] 192.0.2.0/24 reachable from all iBGP speakers via next-hop-self rewrite
+- [x] IS-IS hello timers tuned: hold time ~3 s on all IS-IS data interfaces
+- [x] BFD single-hop: all IS-IS interface pairs show Up BFD sessions with ISIS registered
+- [x] Convergence measurement table populated: Task 3 (LSP purge + SPF), Task 6 (BFD only), Task 9 (BFD + SPF throttle)
+- [x] BFD multi-hop: R1 and R3 show multi-hop BFD session to R5 (10.0.0.5) as Up
+- [x] BGP fall-over BFD multi-hop registered on R1, R3, and R5 for eBGP neighbors
+- [x] IS-IS SPF/PRC throttle configured on R1–R4: initial-wait=50 ms
+- [x] BGP timers tuned on eBGP sessions: keepalive=5 s, hold=15 s
 
 ### Troubleshooting
 
