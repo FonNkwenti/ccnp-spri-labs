@@ -1,0 +1,48 @@
+# Auto-generated — do not edit manually. Use /tag-lab to stamp external agent runs.
+lab: lab-02-lfa-ip-fast-reroute
+chapter: fast-convergence
+exam: 300-510
+devices:
+  - name: R1
+    platform: iosv
+    role: SP Edge — eBGP to AS 65200, iBGP in AS 65100
+  - name: R2
+    platform: iosv
+    role: SP Core — iBGP in AS 65100
+  - name: R3
+    platform: iosv
+    role: SP Edge — eBGP to AS 65200, iBGP in AS 65100
+  - name: R4
+    platform: iosv
+    role: SP Core — redundant path, iBGP in AS 65100
+  - name: R5
+    platform: iosv
+    role: External CE — AS 65200, dual-homed eBGP
+created:
+  date: "2026-05-09"
+  agent: claude-sonnet-4-6
+  skill: lab-assembler
+  skill_version: "2026-05-05"
+  files:
+    - workbook.md
+    - README.md
+    - setup_lab.py
+    - decisions.md
+    - meta.yaml
+    - topology/README.md
+    - initial-configs/R1.cfg
+    - initial-configs/R2.cfg
+    - initial-configs/R3.cfg
+    - initial-configs/R4.cfg
+    - initial-configs/R5.cfg
+    - solutions/R1.cfg
+    - solutions/R2.cfg
+    - solutions/R3.cfg
+    - solutions/R4.cfg
+    - solutions/R5.cfg
+    - scripts/fault-injection/inject_scenario_01.py
+    - scripts/fault-injection/inject_scenario_02.py
+    - scripts/fault-injection/inject_scenario_03.py
+    - scripts/fault-injection/apply_solution.py
+    - scripts/fault-injection/README.md
+updated: []
