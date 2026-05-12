@@ -12,7 +12,14 @@ from pathlib import Path
 SCRIPT_DIR = Path(__file__).resolve().parent
 # Depth: scripts/fault-injection -> scripts -> lab-04 -> segment-routing -> labs/
 sys.path.insert(0, str(SCRIPT_DIR.parents[3] / "common" / "tools"))
-from eve_ng import EveNgError, connect_node, discover_ports, find_open_lab, require_host  # noqa: E402
+from eve_ng import (  # noqa: E402
+    EveNgError,
+    connect_node,
+    discover_ports,
+    find_open_lab,
+    push_config as _xr_push,
+    require_host,
+)
 
 DEVICE_NAME = "R2"
 FAULT_COMMANDS = [
@@ -28,6 +35,9 @@ PREFLIGHT_CMD = "show srlg interface brief"
 # Check for SRLG_L4 on the Gi0/0/0/0 line: SRLG_L4 is the fault marker only for
 # Gi0/0/0/0 because Gi0/0/0/1 legitimately carries SRLG_L2, not SRLG_L4.
 PREFLIGHT_FAULT_MARKER = "GigabitEthernet0/0/0/0                SRLG_L4"
+
+XR_USERNAME = "fon"
+XR_PASSWORD = "cisco123"
 # If this string is absent the lab is not in the expected solution state — bail out.
 PREFLIGHT_SOLUTION_MARKER = "GigabitEthernet0/0/0/0                SRLG_L1"
 
@@ -84,7 +94,8 @@ def main() -> int:
 
     print(f"[*] Connecting to {DEVICE_NAME} on {host}:{port} ...")
     try:
-        conn = connect_node(host, port)
+        conn = connect_node(host, port, device_type="cisco_xr_telnet",
+                            username=XR_USERNAME, password=XR_PASSWORD)
     except Exception as exc:
         print(f"[!] Connection failed: {exc}", file=sys.stderr)
         return 3
@@ -93,8 +104,7 @@ def main() -> int:
         if not args.skip_preflight and not preflight(conn):
             return 4
         print("[*] Injecting fault configuration ...")
-        conn.send_config_set(FAULT_COMMANDS, cmd_verify=False)
-        conn.save_config()
+        _xr_push(conn, FAULT_COMMANDS, "cisco_xr_telnet")
     finally:
         conn.disconnect()
 

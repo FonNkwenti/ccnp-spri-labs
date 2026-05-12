@@ -12,7 +12,14 @@ from pathlib import Path
 SCRIPT_DIR = Path(__file__).resolve().parent
 # Depth: scripts/fault-injection -> scripts -> lab-NN -> <topic> -> labs/
 sys.path.insert(0, str(SCRIPT_DIR.parents[3] / "common" / "tools"))
-from eve_ng import EveNgError, connect_node, discover_ports, find_open_lab, require_host  # noqa: E402
+from eve_ng import (  # noqa: E402
+    EveNgError,
+    connect_node,
+    discover_ports,
+    find_open_lab,
+    push_config as _xr_push,
+    require_host,
+)
 
 DEVICE_NAME = "R3"
 FAULT_COMMANDS = [
@@ -43,6 +50,9 @@ FAULT_COMMANDS = [
 PREFLIGHT_CMD = "show running-config router ospf 1"
 # Present only after the fault is already injected — area 1 in OSPF config.
 PREFLIGHT_FAULT_MARKER = "area 1"
+
+XR_USERNAME = "fon"
+XR_PASSWORD = "cisco123"
 # Present in the known-good solution config — area 0 with all interfaces.
 PREFLIGHT_SOLUTION_MARKER = "area 0"
 
@@ -98,7 +108,8 @@ def main() -> int:
 
     print(f"[*] Connecting to {DEVICE_NAME} on {host}:{port} ...")
     try:
-        conn = connect_node(host, port)
+        conn = connect_node(host, port, device_type="cisco_xr_telnet",
+                            username=XR_USERNAME, password=XR_PASSWORD)
     except Exception as exc:
         print(f"[!] Connection failed: {exc}", file=sys.stderr)
         return 3
@@ -107,8 +118,7 @@ def main() -> int:
         if not args.skip_preflight and not preflight(conn):
             return 4
         print("[*] Injecting fault configuration ...")
-        conn.send_config_set(FAULT_COMMANDS)
-        conn.save_config()
+        _xr_push(conn, FAULT_COMMANDS, "cisco_xr_telnet")
     finally:
         conn.disconnect()
 

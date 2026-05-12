@@ -12,7 +12,14 @@ from pathlib import Path
 SCRIPT_DIR = Path(__file__).resolve().parent
 # Depth: scripts/fault-injection -> scripts -> lab-01-ti-lfa -> segment-routing -> labs/
 sys.path.insert(0, str(SCRIPT_DIR.parents[3] / "common" / "tools"))
-from eve_ng import EveNgError, connect_node, discover_ports, find_open_lab, require_host  # noqa: E402
+from eve_ng import (  # noqa: E402
+    EveNgError,
+    connect_node,
+    discover_ports,
+    find_open_lab,
+    push_config as _xr_push,
+    require_host,
+)
 
 DEVICE_NAME = "R1"
 FAULT_COMMANDS = [
@@ -26,6 +33,9 @@ FAULT_COMMANDS = [
 PREFLIGHT_CMD = "show running-config interface GigabitEthernet0/0/0/2"
 # If this string is present -> fault already injected (interface is shut).
 PREFLIGHT_FAULT_MARKER = "shutdown"
+
+XR_USERNAME = "fon"
+XR_PASSWORD = "cisco123"
 # If this string is absent -> not the right interface or lab not in solution state.
 # The L5 subnet 10.1.13.x address on this interface confirms we're looking at L5.
 PREFLIGHT_SOLUTION_MARKER = "10.1.13"
@@ -83,7 +93,8 @@ def main() -> int:
 
     print(f"[*] Connecting to {DEVICE_NAME} on {host}:{port} ...")
     try:
-        conn = connect_node(host, port, device_type="cisco_xr_telnet")
+        conn = connect_node(host, port, device_type="cisco_xr_telnet",
+                            username=XR_USERNAME, password=XR_PASSWORD)
     except Exception as exc:
         print(f"[!] Connection failed: {exc}", file=sys.stderr)
         return 3
@@ -92,8 +103,7 @@ def main() -> int:
         if not args.skip_preflight and not preflight(conn):
             return 4
         print("[*] Injecting fault configuration ...")
-        conn.send_config_set(FAULT_COMMANDS, cmd_verify=False)
-        conn.save_config()
+        _xr_push(conn, FAULT_COMMANDS, "cisco_xr_telnet")
     finally:
         conn.disconnect()
 
