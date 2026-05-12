@@ -91,7 +91,6 @@ router isis CORE
   address-family ipv4 unicast
    fast-reroute per-prefix           ! enables FRR engine
    fast-reroute per-prefix ti-lfa   ! elevates to TI-LFA (label-stack repair)
-   bfd fast-detect                   ! triggers FRR on BFD failure, not IS-IS holddown
   !
  !
 !
@@ -401,7 +400,6 @@ router isis CORE
   address-family ipv4 unicast
    fast-reroute per-prefix
    fast-reroute per-prefix ti-lfa
-   bfd fast-detect
 ```
 
 | Command | Purpose |
@@ -409,8 +407,7 @@ router isis CORE
 | `fast-reroute per-prefix` | Enables the IS-IS FRR engine for this interface |
 | `fast-reroute per-prefix ti-lfa` | Elevates to TI-LFA (label-stack repair paths) |
 | `bfd minimum-interval 50` | BFD hello every 50ms (IS-IS interface level) |
-| `bfd multiplier 3` | Declare failure after 3 missed hellos = 150ms |
-| `bfd fast-detect` | Triggers IS-IS FRR on BFD failure (under af) |
+| `bfd multiplier 3` | Declare failure after 3 missed hellos = 150ms; enabling both is sufficient to activate BFD under IS-IS |
 
 > **Exam tip:** Both `fast-reroute per-prefix` AND `fast-reroute per-prefix ti-lfa` must be configured. The second line alone is not sufficient — IOS-XR requires the base FRR knob to be present before the TI-LFA extension is accepted.
 
@@ -436,7 +433,6 @@ router isis CORE
   bfd minimum-interval 50
   bfd multiplier 3
   address-family ipv4 unicast
-   bfd fast-detect
 ```
 
 | Command | What to Look For |
@@ -474,7 +470,6 @@ router isis CORE
   address-family ipv4 unicast
    fast-reroute per-prefix
    fast-reroute per-prefix ti-lfa
-   bfd fast-detect
   !
  !
  interface GigabitEthernet0/0/0/1
@@ -483,7 +478,6 @@ router isis CORE
   address-family ipv4 unicast
    fast-reroute per-prefix
    fast-reroute per-prefix ti-lfa
-   bfd fast-detect
   !
  !
  interface GigabitEthernet0/0/0/2
@@ -492,7 +486,6 @@ router isis CORE
   address-family ipv4 unicast
    fast-reroute per-prefix
    fast-reroute per-prefix ti-lfa
-   bfd fast-detect
   !
  !
 !
@@ -511,7 +504,6 @@ router isis CORE
   address-family ipv4 unicast
    fast-reroute per-prefix
    fast-reroute per-prefix ti-lfa
-   bfd fast-detect
   !
  !
  interface GigabitEthernet0/0/0/1
@@ -520,7 +512,6 @@ router isis CORE
   address-family ipv4 unicast
    fast-reroute per-prefix
    fast-reroute per-prefix ti-lfa
-   bfd fast-detect
   !
  !
 !
@@ -539,7 +530,6 @@ router isis CORE
   address-family ipv4 unicast
    fast-reroute per-prefix
    fast-reroute per-prefix ti-lfa
-   bfd fast-detect
   !
  !
  interface GigabitEthernet0/0/0/1
@@ -548,7 +538,6 @@ router isis CORE
   address-family ipv4 unicast
    fast-reroute per-prefix
    fast-reroute per-prefix ti-lfa
-   bfd fast-detect
   !
  !
  interface GigabitEthernet0/0/0/2
@@ -557,7 +546,6 @@ router isis CORE
   address-family ipv4 unicast
    fast-reroute per-prefix
    fast-reroute per-prefix ti-lfa
-   bfd fast-detect
   !
  !
 !
@@ -576,7 +564,6 @@ router isis CORE
   address-family ipv4 unicast
    fast-reroute per-prefix
    fast-reroute per-prefix ti-lfa
-   bfd fast-detect
   !
  !
  interface GigabitEthernet0/0/0/1
@@ -585,7 +572,6 @@ router isis CORE
   address-family ipv4 unicast
    fast-reroute per-prefix
    fast-reroute per-prefix ti-lfa
-   bfd fast-detect
   !
  !
 !
@@ -725,12 +711,13 @@ R2# show bfd session
 
 ! Step 3: Check IS-IS BFD config
 R2# show running-config router isis CORE
-! Look under interface GigabitEthernet0/0/0/1 address-family ipv4 unicast
-! bfd fast-detect is missing
+! Look under interface GigabitEthernet0/0/0/1 — bfd minimum-interval and
+! bfd multiplier are missing. Without these, no BFD session forms.
 
 ! Explanation: TI-LFA repairs are installed but the activation trigger is the
-! IS-IS hello holddown (default 30s), not BFD. The repair only fires after
-! IS-IS declares the neighbor down — 30 seconds later.
+! IS-IS hello holddown (default 30s), not BFD. BFD is only active when
+! bfd minimum-interval + bfd multiplier are configured at the interface level.
+! The repair only fires after IS-IS declares the neighbor down — 30 seconds later.
 ```
 </details>
 
@@ -738,18 +725,18 @@ R2# show running-config router isis CORE
 <summary>Click to view Fix</summary>
 
 ```
-! The fault: bfd fast-detect removed from R2's Gi0/0/0/1 IS-IS af.
+! The fault: bfd minimum-interval and bfd multiplier removed from R2 Gi0/0/0/1.
+! Without BFD timers, no BFD session forms — failover waits for IS-IS holddown (30s).
 router isis CORE
  interface GigabitEthernet0/0/0/1
-  address-family ipv4 unicast
-   bfd fast-detect
-  !
+  bfd minimum-interval 50
+  bfd multiplier 3
  !
 !
 commit
 ! Verify:
 show bfd session
-! Gi0/0/0/1 must show State Up, interval 50ms
+! Gi0/0/0/1 must show State Up, interval 50ms, multiplier 3
 ```
 </details>
 
@@ -817,14 +804,14 @@ show isis fast-reroute summary
 - [ ] `show isis fast-reroute summary` shows 100% TI-LFA coverage on all interfaces on all routers
 - [ ] `show isis fast-reroute topology ipv4 unicast` on R2 shows a non-empty Repair entry for every prefix
 - [ ] `show isis fast-reroute ipv4 10.0.0.3/32` on R2 shows backup via Gi0/0/0/0 with repair label stack {16001, 16003}
-- [ ] BFD sessions configured (50ms / multiplier 3) + `bfd fast-detect` on all core IS-IS interfaces
+- [ ] BFD sessions configured (`bfd minimum-interval 50` + `bfd multiplier 3`) on all core IS-IS interfaces
 - [ ] `show bfd session` on R2 shows 2 sessions Up (toward R1 and R3) with 150ms detect time
 - [ ] Classic LFA vs. TI-LFA coverage compared: TI-LFA restores coverage to 100% after removal test
 
 ### Troubleshooting
 
 - [ ] Ticket 1: TI-LFA coverage gap (missing `ti-lfa` on Gi0/0/0/0) identified and fixed
-- [ ] Ticket 2: Slow failover (missing `bfd fast-detect`) identified and fixed
+- [ ] Ticket 2: Slow failover (missing BFD timers on interface) identified and fixed
 - [ ] Ticket 3: Coverage drop (L5 diagonal shut) identified and fixed
 - [ ] `apply_solution.py` run after each ticket to restore lab to known-good state
 

@@ -34,8 +34,8 @@ A policy contains one or more **candidate paths**, each with a preference (highe
 segment-routing
  traffic-eng
   segment-list EXPLICIT_R4_R3         ← reusable named SID list
-   index 10 address ipv4 10.0.0.4     ← node SID: route via R4 (label 16004)
-   index 20 address ipv4 10.0.0.3     ← node SID: exit at R3  (label 16003)
+   index 10 mpls label 16004           ← node SID for R4 (SRGB 16000 + prefix-SID index 4)
+   index 20 mpls label 16003           ← node SID for R3 (SRGB 16000 + prefix-SID index 3)
   !
   policy COLOR_10
    color 10 end-point ipv4 10.0.0.3   ← matches color:10, heading to R3
@@ -803,8 +803,8 @@ segment-routing
 segment-routing
  traffic-eng
   segment-list EXPLICIT_R4_R3
-   index 10 address ipv4 10.0.0.4
-   index 20 address ipv4 10.0.0.3
+   index 10 mpls label 16004
+   index 20 mpls label 16003
   !
   policy COLOR_10
    color 10 end-point ipv4 10.0.0.3
