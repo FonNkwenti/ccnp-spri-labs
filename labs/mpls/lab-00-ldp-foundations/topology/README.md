@@ -50,14 +50,10 @@ the `.unl` file is created once on your EVE-NG host:
 
 ## Refreshing the diagram
 
-`topology.drawio` is hand-maintained. After any topology edit:
-
-- Reopen in Draw.io.
-- Re-export to PNG if you need a static reference (`File → Export As → PNG`,
-  white background → checked off, transparent background → checked off
-  to keep the dark navy backdrop).
-- Commit the updated `.drawio` source — never commit the rendered PNG
-  alone without its source.
+`topology.drawio` is hand-maintained. After any topology edit, reopen it in
+the draw.io desktop app or app.diagrams.net, make the change, and commit the
+updated `.drawio` source. Diagrams are kept as `.drawio` only — no rendered
+image is committed.
 
 ## Why this topology
 

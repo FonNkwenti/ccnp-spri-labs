@@ -136,11 +136,8 @@ python3 setup_lab.py --host <eve-ng-ip> --export-configs
 Configurations are saved to `initial-configs/` (pre-lab baseline) or `solutions/`
 (post-lab completed state) depending on the export flag used.
 
-### Diagram Export
+### Diagram
 
-To export the topology diagram as a PNG for documentation:
-
-1. Open `topology/topology.drawio` in Draw.io desktop or `app.diagrams.net`.
-2. Select **File > Export As > PNG**.
-3. Set resolution to 150 DPI minimum for lab documentation.
-4. Save as `topology/topology.png`.
+The topology diagram ships as `topology/topology.drawio` only. Open it in the
+draw.io desktop app or `app.diagrams.net` to view or edit; no rendered image
+is committed.

@@ -111,8 +111,6 @@ To save a snapshot of any device configuration:
 R1# show running-config
 ```
 
-To export the topology diagram as PNG for documentation:
-
-1. Open `topology.drawio` in Draw.io desktop or `app.diagrams.net`.
-2. File > Export As > PNG (set scale to 2x for print quality).
-3. Save as `topology.png` in this `topology/` directory.
+The topology diagram ships as `topology.drawio` only. Open it in the draw.io
+desktop app or `app.diagrams.net` to view or edit; no rendered image is
+committed.
