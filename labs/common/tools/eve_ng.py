@@ -217,6 +217,8 @@ def connect_node(
     port: int,
     timeout: int = 30,
     device_type: str = "cisco_ios_telnet",
+    username: str = "",
+    password: str = "",
 ):
     """Open a Netmiko telnet session to an EVE-NG console port in enable mode.
 
@@ -226,6 +228,10 @@ def connect_node(
     Pass device_type="cisco_xr_telnet" for IOS-XR (XRv9k) nodes. XR has no
     enable mode and uses candidate-config/commit — the IOS-specific enable()
     and logging-console suppression steps are skipped automatically.
+
+    Provide username/password for XR nodes that have AAA configured (e.g.
+    XRv9k with local user database). EVE-NG console ports on IOS/IOS-XE nodes
+    do not require credentials; leave both empty for those platforms.
 
     fast_cli=False and global_delay_factor=2 are required for EVE-NG console
     ports: buffered boot/session output in the telnet stream causes Netmiko to
@@ -239,14 +245,27 @@ def connect_node(
         device_type=device_type,
         host=host,
         port=port,
-        username="",
-        password="",
+        username=username,
+        password=password,
         secret="",
         timeout=timeout,
         fast_cli=False,
         global_delay_factor=2,
     )
-    if not device_type.startswith("cisco_xr"):
+    if device_type.startswith("cisco_xr"):
+        # XR nodes may be left in config mode by a previous session. Netmiko's
+        # pager-suppression commands (terminal width/length) are sent in exec
+        # mode during session setup — if the node is stuck in config mode they
+        # land in the wrong context and produce 'Invalid input' noise. Exit any
+        # lingering config/config-if mode with 'abort' to discard any uncommitted
+        # candidate config before the caller pushes new config.
+        time.sleep(1)
+        conn.clear_buffer()
+        if conn.check_config_mode():
+            conn.exit_config_mode(exit_config="abort")
+            time.sleep(0.5)
+            conn.clear_buffer()
+    else:
         # Drain any stale telnet buffer from previous sessions before enable()
         # searches for '#'. EVE-NG telnet ports are persistent — IOS-XE platforms
         # (CSR1000v) generate more post-save syslog output than IOSv, so without

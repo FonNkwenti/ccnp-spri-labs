@@ -21,46 +21,65 @@ from pathlib import Path
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(SCRIPT_DIR.parents[1] / "common" / "tools"))
-from eve_ng import EveNgError, connect_node, discover_ports, require_host, resolve_and_discover, soft_reset_device  # noqa: E402
+from eve_ng import (  # noqa: E402
+    EveNgError,
+    connect_node,
+    push_config as _xr_push,
+    require_host,
+    resolve_and_discover,
+    soft_reset_device,
+)
 
 INITIAL_CONFIGS_DIR = SCRIPT_DIR / "initial-configs"
 
 DEFAULT_LAB_PATH = "ccnp-spri/segment-routing/lab-04-pce-srlg-tree-sid.unl"
 
-DEVICES = [
-    "R1",
-    "R2",
-    "R3",
-    "R4",
-    "CE1",
-    "CE2",
-    "PCE",
-]
+# R1-R4 and PCE are IOS-XRv 9000 (SR-TE core + PCE). CE1/CE2 are IOS (customer edge).
+DEVICES = {
+    "R1": "cisco_xr_telnet",
+    "R2": "cisco_xr_telnet",
+    "R3": "cisco_xr_telnet",
+    "R4": "cisco_xr_telnet",
+    "CE1": "cisco_ios_telnet",
+    "CE2": "cisco_ios_telnet",
+    "PCE": "cisco_xr_telnet",
+}
+
+# Credentials for XRv9k nodes in this lab (local user database).
+XR_USERNAME = "cisco"
+XR_PASSWORD = "Cisco123!"
 
 
-def push_config(host: str, name: str, port: int, *, reset: bool = False) -> bool:
+def push_config(host: str, name: str, port: int, device_type: str, *, reset: bool = False) -> bool:
     cfg_file = INITIAL_CONFIGS_DIR / f"{name}.cfg"
     if not cfg_file.exists():
         print(f"  [!] Config file not found: {cfg_file}")
         return False
 
-    print(f"[*] Connecting to {name} on {host}:{port} ...")
+    print(f"[*] Connecting to {name} on {host}:{port} ({device_type}) ...")
     try:
         if reset:
             soft_reset_device(host, port)
-        conn = connect_node(host, port)
+
+        username = XR_USERNAME if device_type.startswith("cisco_xr") else ""
+        password = XR_PASSWORD if device_type.startswith("cisco_xr") else ""
+        conn = connect_node(host, port, device_type=device_type,
+                            username=username, password=password)
+
         commands = [
             line.strip()
             for line in cfg_file.read_text().splitlines()
             if line.strip() and not line.startswith("!") and line.strip() != "end"
         ]
-        conn.send_config_set(commands, cmd_verify=False)
-        conn.save_config()
+        # _xr_push appends 'commit' inside config mode for XR nodes so the
+        # candidate config is committed before exit_config_mode() fires.
+        # For IOS it falls through to send_config_set + save_config.
+        _xr_push(conn, commands, device_type)
         conn.disconnect()
         print(f"[+] {name} configured.")
         return True
     except Exception as exc:
-        print(f"  [!] {name} failed: {exc}")
+        print(f"  [!] {name} failed: {exc!r}")
         return False
 
 
@@ -87,13 +106,13 @@ def main() -> int:
         return 3
 
     success, failed = 0, 0
-    for name in DEVICES:
+    for name, device_type in DEVICES.items():
         port = ports.get(name)
         if port is None:
-            print(f"[!] {name} not found in lab - skipping.")
+            print(f"[!] {name} not found in lab — skipping.")
             failed += 1
             continue
-        if push_config(host, name, port, reset=args.reset):
+        if push_config(host, name, port, device_type, reset=args.reset):
             success += 1
         else:
             failed += 1

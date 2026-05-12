@@ -25,7 +25,14 @@ from pathlib import Path
 SCRIPT_DIR = Path(__file__).resolve().parent
 # Depth: lab-02-sr-migration-ldp-coexistence/ -> segment-routing/ -> labs/
 sys.path.insert(0, str(SCRIPT_DIR.parents[1] / "common" / "tools"))
-from eve_ng import EveNgError, connect_node, require_host, resolve_and_discover, soft_reset_device  # noqa: E402
+from eve_ng import (  # noqa: E402
+    EveNgError,
+    connect_node,
+    push_config as _xr_push,
+    require_host,
+    resolve_and_discover,
+    soft_reset_device,
+)
 
 INITIAL_CONFIGS_DIR = SCRIPT_DIR / "initial-configs"
 
@@ -39,6 +46,10 @@ DEVICES = {
     "R4": "cisco_xr_telnet",
 }
 
+# Credentials for XRv9k nodes in this lab (local user database).
+XR_USERNAME = "cisco"
+XR_PASSWORD = "Cisco123!"
+
 
 def push_config(host: str, name: str, port: int, device_type: str, *, reset: bool = False) -> bool:
     cfg_file = INITIAL_CONFIGS_DIR / f"{name}.cfg"
@@ -50,19 +61,26 @@ def push_config(host: str, name: str, port: int, device_type: str, *, reset: boo
     try:
         if reset:
             soft_reset_device(host, port)
-        conn = connect_node(host, port, device_type=device_type)
+
+        username = XR_USERNAME if device_type.startswith("cisco_xr") else ""
+        password = XR_PASSWORD if device_type.startswith("cisco_xr") else ""
+        conn = connect_node(host, port, device_type=device_type,
+                            username=username, password=password)
+
         commands = [
             line.strip()
             for line in cfg_file.read_text().splitlines()
             if line.strip() and not line.startswith("!") and line.strip() != "end"
         ]
-        conn.send_config_set(commands, cmd_verify=False)
-        conn.save_config()
+        # _xr_push appends 'commit' inside config mode for XR nodes so the
+        # candidate config is committed before exit_config_mode() fires.
+        # For IOS it falls through to send_config_set + save_config.
+        _xr_push(conn, commands, device_type)
         conn.disconnect()
         print(f"[+] {name} configured.")
         return True
     except Exception as exc:
-        print(f"  [!] {name} failed: {exc}")
+        print(f"  [!] {name} failed: {exc!r}")
         return False
 
 
