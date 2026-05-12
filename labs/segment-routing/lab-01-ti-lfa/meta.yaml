@@ -40,6 +40,13 @@ created:
     - scripts/fault-injection/apply_solution.py
     - scripts/fault-injection/README.md
 updated:
+  - date: "2026-05-12"
+    agent: claude-opus-4-7
+    skill: diagram
+    skill_version: "2026-05-12"
+    change: "topology.drawio: core IOS-XRv 9000 routers now use the Cisco ASR 9000 icon (mxgraph.cisco19.rect;prIcon=asr_9000) for consistency with segment-routing lab-00; IOSv CE routers unchanged."
+    files:
+      - topology/topology.drawio
   - date: "2026-04-30"
     agent: claude-opus-4-7
     skill: build-lab

@@ -112,7 +112,7 @@ Same interface naming as IOL L3 (`Ethernet0/0` through `Ethernet1/3`), but ports
 - **RAM:** 256 MB
 - **EVE-NG node type:** `iol` (requires `iourc` license file)
 
-### IOS-XRv 9000 (xrv9k-fullk9-x.vrr.vga-7.1.1.qcow2)
+### IOS-XRv 9000 (xrv9k-fullk9-x.vrr.vga-24.3.1.qcow2)
 
 | Interface | Type | Notes |
 |-----------|------|-------|
@@ -122,9 +122,12 @@ Same interface naming as IOL L3 (`Ethernet0/0` through `Ethernet1/3`), but ports
 | GigabitEthernet0/0/0/3 | GigE | |
 
 - **RAM:** 4096–16384 MB (boot requires 4 GB minimum)
-- **IOS-XR Version:** 7.1.1
+- **IOS-XR Version:** 24.3.1 (upgraded 2026-05-12; previously 7.1.1)
 - **EVE-NG node type:** `xrv9k`
 - **Warning:** Long boot time (~10 min). Use only when IOS-XR features are required.
+- **SR-TE syntax (verified 2026-05-12 on 24.3.1):**
+  - Segment-list entries use `index N mpls label XXXXX` — **NOT** `index N address ipv4 X.X.X.X`
+  - `bfd fast-detect` does **not** exist inside IS-IS interface address-family; BFD is activated by `bfd minimum-interval` + `bfd multiplier` at the interface level only
 
 ### NX-OSv 9000 (nxosv9k-9500-9.3.5)
 
@@ -374,7 +377,7 @@ discover_ports(host, "switching/lab-00-vlans-and-trunking.unl")
 | IOSv | vios-adventerprisek9-m.SPA.159-3.M6 | 15.9(3)M6 | `vios` | Installed |
 | IOSvL2 | viosl2-adventerprisek9-m.ssa.high_iron_20200929 | 15.x (2020) | `viosl2` | Installed |
 | CSR1000v | csr1000vng-universalk9.17.03.05-serial | 17.03.05 | `csr1000vng` | Installed |
-| IOS-XRv 9000 | xrv9k-fullk9-x.vrr.vga-7.1.1.qcow2 | 7.1.1 | `xrv9k` | Installed |
+| IOS-XRv 9000 | xrv9k-fullk9-x.vrr.vga-24.3.1.qcow2 | 24.3.1 | `xrv9k` | Installed (upgraded 2026-05-12) |
 | IOS-XRv classic | xrv-k9-demo-6.3.1 | 6.3.1 | `xrv` | Installed (demo/limited) |
 | NX-OSv 9000 | nxosv9k-9500-9.3.5 | 9.3.5 | `nxosv9k` | Installed |
 | ASAv | asav-961-001 | 9.6.1 | `asav` | Installed |

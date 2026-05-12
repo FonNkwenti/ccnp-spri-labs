@@ -3,15 +3,16 @@
 ## Diagram
 
 Open `topology.drawio` in Draw.io (desktop or web) to view the full diagram.
+All four core routers use the **Cisco ASR 9000** icon (`mxgraph.cisco19.rect;prIcon=asr_9000`).
 
 ## Device Summary
 
-| Router | Loopback0 | IS-IS NET | Prefix SID | Label |
-|--------|-----------|-----------|------------|-------|
-| R1 | 10.0.0.1/32 | 49.0001.0000.0000.0001.00 | index 1 | 16001 |
-| R2 | 10.0.0.2/32 | 49.0001.0000.0000.0002.00 | index 2 | 16002 |
-| R3 | 10.0.0.3/32 | 49.0001.0000.0000.0003.00 | index 3 | 16003 |
-| R4 | 10.0.0.4/32 | 49.0001.0000.0000.0004.00 | index 4 | 16004 |
+| Router | Platform | Loopback0 | IS-IS NET | Prefix SID | Label |
+|--------|----------|-----------|-----------|------------|-------|
+| R1 | ASR 9000 (xrv9k) | 10.0.0.1/32 | 49.0001.0000.0000.0001.00 | index 1 | 16001 |
+| R2 | ASR 9000 (xrv9k) | 10.0.0.2/32 | 49.0001.0000.0000.0002.00 | index 2 | 16002 |
+| R3 | ASR 9000 (xrv9k) | 10.0.0.3/32 | 49.0001.0000.0000.0003.00 | index 3 | 16003 |
+| R4 | ASR 9000 (xrv9k) | 10.0.0.4/32 | 49.0001.0000.0000.0004.00 | index 4 | 16004 |
 
 ## Link Summary
 
