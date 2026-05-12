@@ -45,8 +45,8 @@ DEVICES = {
 }
 
 # Credentials for XRv9k nodes in this lab (local user database).
-XR_USERNAME = "cisco"
-XR_PASSWORD = "Cisco123!"
+XR_USERNAME = "fon"
+XR_PASSWORD = "cisco123"
 
 
 def push_config(host: str, name: str, port: int, device_type: str, *, reset: bool = False) -> bool:
