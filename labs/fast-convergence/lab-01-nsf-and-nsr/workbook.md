@@ -32,6 +32,7 @@ The result: the rest of the network never sees a topology change, so no SPF runs
 
 ```
 ! Enable IS-IS Graceful Restart (RFC 5306 IETF variant) on R1-R4
+! Supported on: IOS 15.4+, IOS-XE, IOS-XR, ASR 9000, NCS, CRS
 router isis
  nsf ietf
 ```
@@ -43,6 +44,8 @@ show isis neighbors detail
 ```
 
 Both sides of each adjacency must have `nsf ietf` configured for full GR protection. A one-sided configuration means the non-GR neighbor will still withdraw routes when its peer restarts.
+
+> **Platform note — IOSv 15.9(3)M6:** The `nsf` command does not exist under `router isis` in this IOSv build. IS-IS GR requires hardware-plane separation (CEF on a separate line card from the RP), which does not exist in a fully virtualised router. The `nsf ietf` syntax above is the correct configuration reference for exam purposes and for supported platforms. Tasks in this lab that involve IS-IS GR are **conceptual reference tasks** — read, understand, and document the mechanism, but expect the command to be rejected if you attempt it on this topology.
 
 ### BGP Graceful Restart
 
@@ -72,15 +75,17 @@ NSR is a fundamentally different HA approach: instead of coordinating with neigh
 
 ```
 ! Enable IS-IS NSR on R1 (requires dual-RP hardware for full effect)
+! Supported on: IOS-XR, ASR 9000, NCS, CRS (not IOSv)
 router isis
  nsr
 !
 ! Enable BGP NSR on R1
+! Supported on: IOS-XR, ASR 9000, NCS, CRS (not IOSv)
 router bgp 65100
  bgp nsr
 ```
 
-**NSR behavioral gap on IOSv:** IOSv has a single virtual RP. The `nsr` and `bgp nsr` commands are accepted for configuration, but there is no standby RP to hold the protocol state. On a production dual-RP platform (ASR 9000, CRS, NCS), NSR allows a switchover that is completely invisible to BGP and IS-IS neighbors — neither peer sees the session flap. The exam tests your ability to configure NSR and understand this distinction.
+**NSR behavioral gap on IOSv:** IOSv has a single virtual RP. Neither `nsr` (IS-IS) nor `bgp nsr` (BGP) is present in the IOSv 15.9(3)M6 command set — these commands are **rejected** (not merely accepted without effect). On a production dual-RP platform (ASR 9000, CRS, NCS), NSR allows a switchover that is completely invisible to BGP and IS-IS neighbors — neither peer sees the session flap. The exam tests your ability to configure NSR and understand this distinction.
 
 | Feature | Cooperative | Requires neighbor config | Requires hardware HA |
 |---------|-------------|--------------------------|----------------------|
@@ -90,16 +95,16 @@ router bgp 65100
 
 **Skills this lab develops:**
 
-| Skill | Description |
-|-------|-------------|
-| IS-IS Graceful Restart | Configure `nsf ietf`; verify restart capability advertisement |
-| BGP Graceful Restart | Configure `bgp graceful-restart`; verify GR capability exchange |
-| GR helper behavior | Observe stale-route retention on R1/R3 during R5 BGP restart |
-| NSF vs no-GR comparison | Measure BGP route persistence with and without GR enabled |
-| IS-IS NSR configuration | Configure `nsr`; document single-RP behavioral gap |
-| BGP NSR configuration | Configure `bgp nsr`; interpret IOSv limitation |
-| NSF vs NSR analysis | Compare cooperative vs local HA approaches in writing |
-| Asymmetric GR troubleshooting | Diagnose one-sided GR config causing disruption on reload |
+| Skill | Mode | Description |
+|-------|------|-------------|
+| IS-IS Graceful Restart | Conceptual reference | Understand `nsf ietf`; read correct syntax for supported platforms; document IOSv limitation |
+| BGP Graceful Restart | **Live** | Configure `bgp graceful-restart`; verify GR capability exchange |
+| GR helper behavior | **Live** | Observe stale-route retention on R1/R3 during R5 BGP restart |
+| NSF vs no-GR comparison | **Live** | Measure BGP route persistence with and without GR enabled |
+| IS-IS NSR configuration | Conceptual reference | Understand `nsr`; document platform requirement; command not available on IOSv |
+| BGP NSR configuration | Conceptual reference | Understand `bgp nsr`; document platform requirement; command not available on IOSv |
+| NSF vs NSR analysis | Analytical | Compare cooperative vs local HA approaches in writing |
+| Asymmetric GR troubleshooting | Conceptual reference | Understand one-sided GR config failure mode; paper exercise on IOSv |
 
 ---
 
@@ -233,12 +238,25 @@ The following is **pre-loaded** via `setup_lab.py`:
 
 ## 5. Lab Challenge: Core Implementation
 
-### Task 1: Enable IS-IS Graceful Restart on R1–R4
+### Task 1: IS-IS Graceful Restart — Conceptual Reference (R1–R4)
 
-- On each of R1, R2, R3, and R4, enable IS-IS Graceful Restart using the IETF standard variant under the IS-IS process.
-- Verify that the restart capability is now being advertised to all IS-IS neighbors.
+> **Platform note:** `nsf ietf` is not available on IOSv 15.9(3)M6. This task is a conceptual reference exercise — no live configuration is possible on this topology. The correct command syntax is shown below for exam reference and for use on supported platforms.
 
-**Verification:** `show isis neighbors detail` on R1 must show `Restart capable: yes` for all three neighbors (R2, R3, R4). The `Suppressing adjacency` field must show `no` (normal state, not in a restart).
+- Review the IS-IS Graceful Restart configuration syntax below. On a supported platform (IOS 15.4+, IOS-XE, IOS-XR, ASR 9000), you would apply this to each of R1, R2, R3, and R4.
+- Study the reference verification output in Section 6. Understand what `Restart capable: yes` and `Suppressing adjacency: no` indicate, and under what conditions `Suppressing adjacency` would flip to `yes`.
+
+**Reference configuration (supported platforms only):**
+```
+router isis
+ nsf ietf
+```
+
+**Conceptual check:** Answer the following questions without entering any commands:
+1. Why must `nsf ietf` be configured on **both** sides of each adjacency for GR to work?
+2. What happens on the neighbor (helper) side when it receives a Hello PDU with the GR restart bit set?
+3. What is the stale timer, and what occurs when it expires before the restarting router recovers?
+
+**Verification (reference output — not obtainable on IOSv):** On a supported platform, `show isis neighbors detail` would show `Restart capable: yes` for all three neighbors (R2, R3, R4). See Section 6 for the annotated reference output.
 
 ---
 
@@ -257,56 +275,110 @@ The following is **pre-loaded** via `setup_lab.py`:
 
 This task has two parts: an IS-IS NSF observation and a BGP GR live test.
 
-**Part A — IS-IS NSF capability advertisement:**
-- Run `show isis neighbors detail` on R1 and confirm that all three neighbors (R2, R3, R4) advertise restart capability.
-- Run `show isis database` on R1 — confirm all four IS-IS LSPs are present with non-zero sequence numbers (R1–R4 only; R5 runs no IS-IS process).
-- Simulate a graceful IS-IS restart on R2 by issuing the IS-IS process reset command on R2. Immediately switch to R1 and run `show isis neighbors` repeatedly. Observe that R2 briefly appears in a restarting/recovering state rather than disappearing immediately.
+**Part A — IS-IS NSF capability advertisement (conceptual reference):**
+
+> **Platform note:** IS-IS GR (`nsf ietf`) is not configurable on IOSv 15.9(3)M6. Part A is a guided analysis exercise using reference output. No live IS-IS GR behavior is observable on this topology.
+
+- Run `show isis neighbors detail` on R1. Observe that `Restart capable:` is **absent or shows `no`** for all neighbors — confirming GR is not configured. Compare this against the reference output in Section 6 Task 1 to understand what a GR-capable neighbor entry looks like.
+- Run `show isis database` on R1 — confirm all four IS-IS LSPs are present with non-zero sequence numbers (R1–R4 only; R5 runs no IS-IS process). This baseline check is valid regardless of GR support.
+- Review the conceptual flow: on a GR-capable platform, if you reset the IS-IS process on R2, R1 would enter GR helper mode and R2 would remain in the neighbor table in a recovering state for the stale timer duration. On this IOSv topology, R2 would instead disappear immediately from `show isis neighbors` because no GR helper mode is active.
 
 **Part B — BGP GR live test:**
+
+> **Pre-condition — disable BFD fall-over before testing:** The pre-loaded config has
+> `fall-over bfd multi-hop` on R1 and R3's neighbor 10.0.0.5. When `clear ip bgp *` runs
+> on R5, it sends a BFD ADMINDOWN signal. This causes R1 to immediately tear down the BGP
+> session via BFD fall-over **without entering GR helper mode**, bypassing GR entirely. You
+> must temporarily remove fall-over BFD on both R1 and R3 before this test, then restore it.
+>
+> ```
+> ! On R1 and R3 — before the test
+> router bgp 65100
+>  neighbor 10.0.0.5 no fall-over bfd
+> ```
+
 - From R2, start a sustained extended ping to 192.0.2.1 (R5's Loopback1) sourced from R2's Loopback0. R2 reaches this prefix via iBGP from R1 or R3.
-- On R5, issue a hard BGP clear for all neighbors. This resets the eBGP sessions R5↔R1 and R5↔R3.
-- Observe that R2's ping experiences minimal or no packet loss. With BGP GR enabled on R1, R1 retains the 192.0.2.0/24 route as stale during the GR window (~120 s default), so R2's iBGP path via R1 stays valid.
+- On R5, issue a hard BGP clear for all neighbors (`clear ip bgp *`). This resets the eBGP sessions R5↔R1 and R5↔R3.
+- Observe that R2's ping experiences minimal or no packet loss. With BFD fall-over removed and BGP GR enabled on R1, R1 enters GR helper mode and retains the 192.0.2.0/24 route as stale during the GR window (~120 s default), so R2's iBGP path via R1 stays valid.
 - Run `show ip bgp 192.0.2.0/24` on R2 during the GR window and confirm the route is still present with a stale marker.
 
-**Verification:** `show ip bgp neighbors 10.0.0.5` on R1 during the GR window must show `BGP state = Active (GR)` or `Idle (GR)` — indicating R1 is in GR helper mode waiting for R5 to reconnect. After R5 reconnects, confirm state returns to `Established`.
+After the test, restore fall-over BFD on R1 and R3:
+```
+! On R1 and R3 — after the test
+router bgp 65100
+ neighbor 10.0.0.5 fall-over bfd multi-hop
+```
+
+**Verification:** `show ip bgp neighbors 10.0.0.5` on R1 during the GR window must show `BGP state = Active` with `Graceful-Restart is enabled` — indicating R1 is holding stale routes while waiting for R5 to reconnect. After R5 reconnects, confirm state returns to `Established` and the stale marker clears from R2's BGP table.
 
 ---
 
 ### Task 4: Contrast — Disable BGP GR and Repeat
 
-- On R1 and R3, disable BGP Graceful Restart.
+> **Keep BFD fall-over disabled** for this task too (same pre-condition as Task 3 Part B). If fall-over BFD is active, route withdrawal happens via BFD before BGP even has time to withdraw — the contrast is not meaningful because both the GR and no-GR cases would show identical immediate loss.
+
+- Ensure `fall-over bfd` is still removed from R1 and R3's neighbor 10.0.0.5 (from Task 3 pre-condition).
+- On R1 and R3, disable BGP Graceful Restart: `no bgp graceful-restart`.
 - Repeat Part B of Task 3: ping 192.0.2.1 from R2, then hard-clear BGP on R5.
 - Observe that R2's ping drops immediately when R5's BGP sessions reset — because R1 now withdraws 192.0.2.0/24 as soon as R5's session drops, removing it from R2's iBGP table.
-- After observing the difference, re-enable BGP Graceful Restart on R1 and R3. Also re-enable on R5 to restore the full GR-capable state.
+- After observing the difference, re-enable BGP Graceful Restart on R1 and R3, and restore fall-over BFD on both:
 
-**Verification:** `show ip bgp 192.0.2.0/24` on R2 immediately after clearing BGP on R5 (without GR) must show the route absent — unlike the GR case where it remained as stale. Confirm BGP GR is re-enabled on R1, R3, and R5 before proceeding.
+```
+! On R1 and R3
+router bgp 65100
+ bgp graceful-restart
+ neighbor 10.0.0.5 fall-over bfd multi-hop
+```
 
----
+Also re-enable `bgp graceful-restart` on R5 if it was removed during the contrast test.
 
-### Task 5: Configure IS-IS NSR on R1
-
-- On R1, enable IS-IS Nonstop Routing under the IS-IS process.
-- Verify the configuration is accepted by the router.
-
-> The NSR configuration command lives directly under the IS-IS router process. On a platform with a standby RP, NSR would also require `nsr` to be enabled globally, but on IOSv the `router isis` sub-command is all that is accepted.
-
-**Verification:** `show running-config | section router isis` on R1 must show the `nsr` command present. `show isis` or `show isis nsr` (if supported) should confirm NSR configuration. Note that no functional state change will be observable on IOSv — document this as the IOSv single-RP behavioral gap.
+**Verification:** `show ip bgp 192.0.2.0/24` on R2 immediately after clearing BGP on R5 (without GR) must show the route absent — unlike the GR case where it remained as stale. After restoring GR and fall-over BFD, confirm all sessions are `Established` before proceeding.
 
 ---
 
-### Task 6: Configure BGP NSR on R1
+### Task 5: IS-IS NSR — Conceptual Reference (R1)
 
-- On R1, enable BGP Nonstop Routing under the BGP process.
-- Verify the configuration is accepted.
+> **Platform note:** The `nsr` command does not exist under `router isis` on IOSv 15.9(3)M6 — it is rejected, not merely accepted without effect. This task is a conceptual reference exercise only.
 
-**Verification:** `show running-config | section router bgp` on R1 must show `bgp nsr` present. Document the expected behavior on a dual-RP platform and the IOSv limitation in the table below.
+- Review the IS-IS NSR configuration syntax below. On a supported dual-RP platform (ASR 9000, NCS, CRS), this command enables the standby RP to mirror the IS-IS protocol state continuously, so an RP switchover is invisible to IS-IS neighbors.
+- Document the key distinction: NSR is a **local** HA mechanism — it requires no neighbor configuration and is invisible to peers. The trade-off is that it requires standby RP hardware.
 
-| Feature | Configuration command | Functional on IOSv? | Requires |
-|---------|-----------------------|--------------------|---------| 
-| IS-IS GR (NSF) | `nsf ietf` | Yes | Neighbor GR-helper enabled |
-| BGP GR | `bgp graceful-restart` | Yes | Peer GR capability |
-| IS-IS NSR | `nsr` | Config only | Standby RP |
-| BGP NSR | `bgp nsr` | Config only | Standby RP |
+**Reference configuration (supported dual-RP platforms only):**
+```
+router isis
+ nsr
+```
+
+**Conceptual check:** Answer the following questions:
+1. Why does NSR not require any configuration on neighboring routers (unlike NSF)?
+2. What happens to IS-IS adjacencies during an RP switchover on an NSR-enabled router?
+3. On an IOSv platform (single RP), what would you observe if `nsr` were somehow accepted — and why?
+
+**Verification (reference only):** On a supported platform, `show running-config | section router isis` would show `nsr` present. `show isis nsr` would display NSR state and the standby RP synchronisation status.
+
+---
+
+### Task 6: BGP NSR — Conceptual Reference (R1)
+
+> **Platform note:** The `bgp nsr` command does not exist under `router bgp` on IOSv 15.9(3)M6 — it is rejected. This task is a conceptual reference exercise only.
+
+- Review the BGP NSR configuration syntax below. On a supported dual-RP platform, this command synchronises BGP session state (TCP connections, peer tables, received prefixes) to the standby RP so that an RP switchover is invisible to BGP peers — no session reset, no route withdrawal.
+- Compare BGP NSR against BGP GR: GR is cooperative (both peers must support it, routes go stale during reconvergence), while NSR is local (peers see nothing, no stale window, but requires standby RP hardware).
+
+**Reference configuration (supported dual-RP platforms only):**
+```
+router bgp 65100
+ bgp nsr
+```
+
+**Verification (reference only):** On a supported platform, `show running-config | section router bgp` would show `bgp nsr` present.
+
+| Feature | Configuration command | Available on IOSv 15.9? | Requires |
+|---------|-----------------------|------------------------|---------|
+| IS-IS GR (NSF) | `nsf ietf` | No — command rejected | Hardware FIB separation; neighbor GR-helper enabled |
+| BGP GR | `bgp graceful-restart` | **Yes** — fully functional | Peer GR capability (software-only mechanism) |
+| IS-IS NSR | `nsr` | No — command rejected | Standby RP hardware |
+| BGP NSR | `bgp nsr` | No — command rejected | Standby RP hardware |
 
 ---
 
@@ -338,9 +410,12 @@ In the space below (or in your lab notes), write a short comparison of NSF and N
 
 ## 6. Verification & Analysis
 
-### Task 1 — IS-IS GR Capability Advertisement
+### Task 1 — IS-IS GR Capability Advertisement (Reference Output)
+
+> **Platform note:** This output is **not obtainable on IOSv 15.9(3)M6**. It is a reference showing what `show isis neighbors detail` looks like on a supported platform after `nsf ietf` is configured. On this lab topology, `Restart capable:` will not appear in the output.
 
 ```
+! Reference output — supported platform only (IOS 15.4+, IOS-XE, IOS-XR)
 R1# show isis neighbors detail
 System Id      Interface   SNPA               State  Holdtime  Type Protocol
 R2             Gi0/0       xxxx.xxxx.xxxx     Up     2         L2   M-ISIS  ! ← R2 Up
@@ -407,9 +482,12 @@ R2# show ip bgp 192.0.2.0/24
 % Network not in table                                    ! ← route immediately withdrawn
 ```
 
-### Task 5 and 6 — NSR Configuration
+### Tasks 5 and 6 — NSR Configuration (Reference Output)
+
+> **Platform note:** `nsf ietf`, `nsr`, and `bgp nsr` are not available on IOSv 15.9(3)M6. Only `bgp graceful-restart` is configurable on this topology. The reference output below shows what a supported dual-RP platform would look like.
 
 ```
+! Reference output — supported dual-RP platform only
 R1# show running-config | section router isis
 router isis
  net 49.0001.0000.0000.0001.00
@@ -418,17 +496,18 @@ router isis
  passive-interface Loopback0
  spf-interval 5 50 200
  prc-interval 5 50 200
- nsf ietf                                                 ! ← IS-IS GR (lab-01 Task 1)
- nsr                                                      ! ← IS-IS NSR (lab-01 Task 5)
+ nsf ietf                                                 ! ← IS-IS GR (Task 1, not available on IOSv)
+ nsr                                                      ! ← IS-IS NSR (Task 5, not available on IOSv)
 
+! What you WILL see on IOSv after Task 2:
 R1# show running-config | section router bgp
 router bgp 65100
  bgp router-id 10.0.0.1
  bgp log-neighbor-changes
- bgp graceful-restart                                     ! ← BGP GR (lab-01 Task 2)
- bgp nsr                                                  ! ← BGP NSR (lab-01 Task 6)
+ bgp graceful-restart                                     ! ← BGP GR (Task 2 — live, available on IOSv)
  neighbor 10.0.0.2 remote-as 65100
  ...
+! Note: bgp nsr (Task 6) will NOT appear — command rejected on IOSv 15.9(3)M6
 ```
 
 ---
@@ -437,15 +516,18 @@ router bgp 65100
 
 ### IS-IS Graceful Restart (NSF)
 
+> **Platform note — IOSv 15.9(3)M6:** `nsf ietf` is not available. Syntax below is for supported platforms only.
+
 ```
+! Supported platforms: IOS 15.4+, IOS-XE, IOS-XR, ASR 9000, NCS, CRS
 router isis
  nsf ietf       ! IETF standard variant (RFC 5306)
 ```
 
 | Command | Purpose |
 |---------|---------|
-| `show isis neighbors detail` | Check `Restart capable: yes` per neighbor |
-| `show isis` | Confirm NSF enabled in process summary |
+| `show isis neighbors detail` | Check `Restart capable: yes` per neighbor (reference output only on IOSv) |
+| `show isis` | Confirm NSF enabled in process summary (supported platforms only) |
 | `debug isis adj-packets` | Watch Hello PDUs with restart bit during GR event |
 
 > **Exam tip:** IS-IS `nsf ietf` must be configured on BOTH sides of each adjacency. A router that is not GR-capable will tear down the adjacency normally on its peer's restart — it does not know to stay as a helper.
@@ -468,28 +550,34 @@ router bgp <ASN>
 
 ### IS-IS NSR
 
+> **Platform note — IOSv 15.9(3)M6:** `nsr` is not available under `router isis`. Command is rejected. Syntax below is for supported platforms only.
+
 ```
+! Supported platforms: IOS-XR, ASR 9000, NCS, CRS (dual-RP required)
 router isis
  nsr
 ```
 
 | Command | Purpose |
 |---------|---------|
-| `show running-config | section router isis` | Confirm `nsr` is present |
-| `show isis nsr` | NSR state (not all IOS versions support this show) |
+| `show running-config | section router isis` | Confirm `nsr` is present (supported platforms only) |
+| `show isis nsr` | NSR state (supported platforms only) |
 
 > **Exam tip:** NSR is local — it requires no configuration on any neighbor. The trade-off: NSR requires standby RP hardware; NSF works with any adjacent GR-capable router.
 
 ### BGP NSR
 
+> **Platform note — IOSv 15.9(3)M6:** `bgp nsr` is not available under `router bgp`. Command is rejected. Syntax below is for supported platforms only.
+
 ```
+! Supported platforms: IOS-XR, ASR 9000, NCS, CRS (dual-RP required)
 router bgp <ASN>
  bgp nsr
 ```
 
 | Command | Purpose |
 |---------|---------|
-| `show running-config | section router bgp` | Confirm `bgp nsr` is present |
+| `show running-config | section router bgp` | Confirm `bgp nsr` is present (supported platforms only) |
 | `show ip bgp summary` | Verify sessions remain up (functional only with standby RP) |
 
 ### Verification Commands
@@ -510,8 +598,9 @@ router bgp <ASN>
 | IS-IS LSP removed immediately on neighbor restart | `nsf ietf` missing on one or both sides of adjacency |
 | BGP route withdrawn immediately on peer session reset | `bgp graceful-restart` missing on one or both sides |
 | `bgp graceful-restart` shows `advertised` but not `received` | Peer has not been reset since GR was enabled — hard-clear required |
-| `nsr` accepted but no functional difference | Expected on IOSv — single RP, no standby to hold state |
-| `bgp nsr` accepted but no functional difference | Same IOSv single-RP limitation |
+| `nsf ietf` / `nsr` / `bgp nsr` rejected with "Unrecognized command" | IOSv 15.9(3)M6 does not include these commands — use a supported platform for live verification |
+| `nsr` accepted but no functional difference | Expected on single-RP platforms that do accept the command — no standby RP to hold state |
+| `bgp nsr` accepted but no functional difference | Same single-RP limitation on platforms that accept the command |
 
 ---
 
@@ -519,13 +608,14 @@ router bgp <ASN>
 
 > Try to complete the lab challenge without looking at these steps first!
 
-### Task 1: IS-IS Graceful Restart on R1–R4
+### Task 1: IS-IS Graceful Restart — Reference Configuration (Not Available on IOSv 15.9)
 
 <details>
-<summary>Click to view R1 Configuration</summary>
+<summary>Click to view Reference Configuration (supported platforms only)</summary>
 
 ```bash
-! R1
+! R1, R2, R3, R4 — apply on each router
+! Command not available on IOSv 15.9(3)M6
 router isis
  nsf ietf
 ```
@@ -533,45 +623,13 @@ router isis
 </details>
 
 <details>
-<summary>Click to view R2 Configuration</summary>
+<summary>Click to view Conceptual Check Answers</summary>
 
-```bash
-! R2
-router isis
- nsf ietf
-```
+1. **Why both sides?** GR is cooperative. The restarting router sends a Hello with the GR restart bit set; the helper router must be configured as GR-capable to recognise that bit and enter helper mode. A non-GR helper treats the restart bit as unknown and tears down the adjacency normally.
 
-</details>
+2. **GR helper mode:** The helper retains the restarting router's LSP in the LSDB and suppresses SPF recalculation. It continues advertising the restarting router's prefixes to the rest of the network. It sets a stale timer and waits for the restarting router to re-establish the adjacency.
 
-<details>
-<summary>Click to view R3 Configuration</summary>
-
-```bash
-! R3
-router isis
- nsf ietf
-```
-
-</details>
-
-<details>
-<summary>Click to view R4 Configuration</summary>
-
-```bash
-! R4
-router isis
- nsf ietf
-```
-
-</details>
-
-<details>
-<summary>Click to view Verification Commands</summary>
-
-```bash
-show isis neighbors detail
-show isis
-```
+3. **Stale timer expiry:** If the restarting router does not recover within the stale timer (typically 60–120 s), the helper removes the stale LSP from the LSDB, triggers SPF, and withdraws the routes — exactly as it would have done on a non-GR restart. The stale timer is the GR window; exceeding it means GR provides no benefit.
 
 </details>
 
@@ -646,13 +704,13 @@ show ip bgp neighbors 10.0.0.2 | include Graceful|GR
 
 ---
 
-### Tasks 5 and 6: IS-IS NSR and BGP NSR on R1
+### Tasks 5 and 6: IS-IS NSR and BGP NSR — Reference Configuration (Not Available on IOSv 15.9)
 
 <details>
-<summary>Click to view R1 Configuration</summary>
+<summary>Click to view Reference Configuration (supported dual-RP platforms only)</summary>
 
 ```bash
-! R1
+! R1 — commands NOT available on IOSv 15.9(3)M6
 router isis
  nsr
 !
@@ -663,12 +721,13 @@ router bgp 65100
 </details>
 
 <details>
-<summary>Click to view Verification Commands</summary>
+<summary>Click to view Conceptual Check Answers (Task 5)</summary>
 
-```bash
-show running-config | section router isis
-show running-config | section router bgp
-```
+1. **Why no neighbor config for NSR?** NSR mirrors the full protocol state (adjacency tables, TCP sessions, LSDBs) to the standby RP in real time. When a switchover occurs, the standby takes over the existing session — neighbors never see a restart or a Hello with the GR bit set. From a neighbor's perspective, nothing happened.
+
+2. **IS-IS adjacencies during RP switchover:** With NSR enabled, adjacencies remain up. The standby RP was already maintaining identical adjacency state, so the switchover is a local event with no external signal.
+
+3. **Single-RP IOSv behavior if `nsr` were accepted:** The command would be a no-op — there is no standby RP to mirror state to. A process crash or reload would drop all adjacencies exactly as it would without NSR. The reason IOSv rejects the command outright is that the hardware abstraction required to support it simply does not exist.
 
 </details>
 
@@ -681,45 +740,56 @@ diagnose and fix using only show commands.
 
 ### Workflow
 
+> **Platform note:** Tickets 1 and 3 involve IS-IS GR commands that are not available on IOSv 15.9(3)M6. Their inject scripts cannot be applied. Those tickets are paper exercises — work the diagnosis logic without entering commands. Ticket 2 (BGP GR) is fully live and can be injected and restored normally.
+
 ```bash
 python3 setup_lab.py --host <eve-ng-ip>                                       # reset to known-good
-python3 scripts/fault-injection/inject_scenario_01.py --host <eve-ng-ip>     # Ticket 1
+# Ticket 1 inject — NOT usable on IOSv 15.9(3)M6 (IS-IS GR not available)
+# python3 scripts/fault-injection/inject_scenario_01.py --host <eve-ng-ip>
+python3 scripts/fault-injection/inject_scenario_02.py --host <eve-ng-ip>     # Ticket 2 — live
 python3 scripts/fault-injection/apply_solution.py --host <eve-ng-ip>         # restore
+# Ticket 3 inject — NOT usable on IOSv 15.9(3)M6 (IS-IS GR not available)
+# python3 scripts/fault-injection/inject_scenario_03.py --host <eve-ng-ip>
 ```
 
 ---
 
-### Ticket 1 — R2 Routes Disappear Immediately When R2 IS-IS Restarts
+### Ticket 1 — R2 Routes Disappear Immediately When R2 IS-IS Restarts (Paper Exercise)
+
+> **Platform note:** IS-IS GR (`nsf ietf`) is not configurable on IOSv 15.9(3)M6. This ticket is a **paper troubleshooting exercise** — work through the diagnosis logic and root cause without entering any commands. The inject script is not usable on this topology.
 
 A colleague reports that during a planned IS-IS process restart on R2, the operations team observed that R2's loopback (10.0.0.2) vanished from R1's IS-IS routing table instantly — despite claiming that Graceful Restart was "enabled on R2." The expected behavior was for the route to remain during R2's stale timer.
 
-**Inject:** `python3 scripts/fault-injection/inject_scenario_01.py --host <eve-ng-ip>`
+**Paper exercise:** Without applying any configuration, work through the following diagnosis flow and write down your answers:
 
-**Success criteria:** `show isis neighbors detail` on R1 shows `Restart capable: yes` for R2. After an IS-IS process reset on R2, R1 enters GR helper mode and R2's LSP remains in R1's LSDB for the stale timer duration.
+1. If you ran `show running-config | section router isis` on both R1 and R2, what asymmetry would you look for?
+2. `show isis neighbors detail` on R1 shows `Restart capable: yes` for R2. Does this guarantee R1 will act as a GR helper? Why or why not?
+3. What is the root cause of R2's LSP disappearing immediately despite R2 advertising GR capability?
+4. What single-line fix would restore symmetric GR protection?
 
 <details>
 <summary>Click to view Diagnosis Steps</summary>
 
-1. Run `show running-config | section router isis` on R1 — observe that `nsf ietf` is absent from R1's IS-IS process. R1 is not configured as a GR participant or helper.
-2. Run the same command on R2 — R2 has `nsf ietf` present and is advertising GR capability in its IS-IS Hellos.
-3. Run `show isis neighbors detail` on R1 — R2 shows `Restart capable: yes` (R2 advertises the capability). R1 receives the advertisement but cannot act as a GR helper because its own `nsf ietf` is missing.
-4. Confirm the failure mode: trigger an IS-IS process restart on R2. Watch `show isis neighbors` on R1 — R2 disappears immediately rather than staying in a GR helper state, because R1 treats R2's restart as a normal failure.
-5. Root cause: `nsf ietf` was removed from R1's IS-IS process. GR requires both sides configured — R2 restarts gracefully, but R1 never received the GR helper configuration, so it withdraws R2's routes immediately.
+1. `show running-config | section router isis` on R1 — `nsf ietf` is absent. R1 is not a GR participant or helper.
+2. Same command on R2 — `nsf ietf` is present; R2 advertises GR capability in its IS-IS Hellos.
+3. `show isis neighbors detail` on R1 — R2 shows `Restart capable: yes` (R2 advertises the capability). R1 receives the advertisement but cannot act as a GR helper because its own `nsf ietf` is missing. The `Restart capable` field reflects what the **neighbor** advertises, not whether the local router is a capable helper.
+4. When R2 restarts its IS-IS process, it sends a Hello with the GR restart bit set. R1, lacking `nsf ietf`, does not recognise the GR restart bit as an actionable signal and treats the adjacency loss as a normal failure — withdrawing R2's routes immediately.
+5. Root cause: asymmetric GR configuration. `nsf ietf` removed from R1. GR requires both sides configured.
 
 </details>
 
 <details>
-<summary>Click to view Fix</summary>
+<summary>Click to view Fix (reference — not applicable on IOSv)</summary>
 
-On R1, restore IS-IS Graceful Restart:
+On a supported platform, restore IS-IS Graceful Restart on R1:
 
 ```bash
-! On R1
+! On R1 — supported platforms only
 router isis
  nsf ietf
 ```
 
-After applying, run `show isis neighbors detail` on R1 and confirm `Restart capable: yes` appears for R2. Trigger another IS-IS process restart on R2 and observe that R2 remains in R1's neighbor table in a recovering state for the duration of the stale timer.
+After applying, `show isis neighbors detail` on R1 would show `Restart capable: yes` for R2. Triggering an IS-IS process restart on R2 would leave R2 in a recovering state in R1's neighbor table for the stale timer duration rather than disappearing immediately.
 
 </details>
 
@@ -760,36 +830,40 @@ After applying, hard-reset the BGP sessions on R5 (`clear ip bgp *`) to re-excha
 
 ---
 
-### Ticket 3 — IS-IS Convergence on R4's Links Is Unaffected by GR Configuration
+### Ticket 3 — IS-IS Convergence on R4's Links Is Unaffected by GR Configuration (Paper Exercise)
+
+> **Platform note:** IS-IS GR (`nsf ietf`) is not configurable on IOSv 15.9(3)M6. This ticket is a **paper troubleshooting exercise**. The inject script is not usable on this topology.
 
 A network audit shows that when R4 restarts its IS-IS process, its neighbors (R1 and R3) immediately remove R4's LSP from the LSDB — despite IS-IS NSF being deployed across the rest of the core. The audit notes that R4 is "missing from the GR deployment list."
 
-**Inject:** `python3 scripts/fault-injection/inject_scenario_03.py --host <eve-ng-ip>`
+**Paper exercise:** Work through the diagnosis and write down your answers:
 
-**Success criteria:** `show isis neighbors detail` on R1 shows `Restart capable: yes` for R4. After an IS-IS process reset on R4, R1 and R3 enter GR helper mode and R4's LSP remains in the LSDB for the stale timer duration.
+1. On a supported platform, `show isis neighbors detail` on R1 shows `Restart capable: yes` for R2 and R3 but `no` for R4. What does this tell you?
+2. IS-IS GR capability is advertised per-router in Hello PDUs. Which router's configuration are you checking first and why?
+3. What is the root cause, and what is the minimum fix?
 
 <details>
 <summary>Click to view Diagnosis Steps</summary>
 
-1. Run `show isis neighbors detail` on R1 — compare the `Restart capable` field for R2, R3, and R4. R2 and R3 show `yes`; R4 shows `no`.
-2. Run `show running-config | section router isis` on R4 — confirm `nsf ietf` is absent.
-3. Run the same on R1 — R1 has `nsf ietf`. R1 is a valid GR helper for any neighbor that advertises GR capability. But R4 is not advertising it.
-4. Root cause: `nsf ietf` was removed from R4. IS-IS GR is advertised per-router in Hello PDUs — any router missing `nsf ietf` will not signal GR capability to its neighbors, so those neighbors will not act as GR helpers when R4 restarts.
+1. `show isis neighbors detail` on R1 — R2 and R3 show `Restart capable: yes`; R4 shows `no`. R4 is not advertising GR capability in its Hello PDUs.
+2. `show running-config | section router isis` on R4 — `nsf ietf` is absent. R4 was missed when GR was rolled out.
+3. `show running-config | section router isis` on R1 — R1 has `nsf ietf` and is a valid GR helper for any neighbor that advertises GR. But R4 doesn't advertise it, so R1 cannot enter helper mode when R4 restarts.
+4. Root cause: `nsf ietf` missing on R4. GR advertisement is per-router — every router in the IS-IS domain must be configured individually. Omitting one router leaves a gap in GR coverage for that router's adjacencies.
 
 </details>
 
 <details>
-<summary>Click to view Fix</summary>
+<summary>Click to view Fix (reference — not applicable on IOSv)</summary>
 
-On R4, restore IS-IS Graceful Restart:
+On a supported platform, add IS-IS Graceful Restart to R4:
 
 ```bash
-! On R4
+! On R4 — supported platforms only
 router isis
  nsf ietf
 ```
 
-After applying, run `show isis neighbors detail` on R1 and confirm `Restart capable: yes` now appears for R4. Trigger an IS-IS process restart on R4 and confirm R4's LSP remains in R1's LSDB during the stale timer.
+After applying, `show isis neighbors detail` on R1 would show `Restart capable: yes` for R4. An IS-IS process restart on R4 would leave R4's LSP in R1's LSDB during the stale timer rather than removing it immediately.
 
 </details>
 
@@ -799,19 +873,19 @@ After applying, run `show isis neighbors detail` on R1 and confirm `Restart capa
 
 ### Core Implementation
 
-- [ ] IS-IS GR (NSF) enabled on R1–R4: `show isis neighbors detail` shows `Restart capable: yes` for all adjacencies
-- [ ] BGP GR enabled on R1–R5: `show ip bgp neighbors` shows `Graceful Restart Capability: advertised and received` for all sessions
-- [ ] IS-IS NSR configured on R1: `nsr` present under `router isis`
-- [ ] BGP NSR configured on R1: `bgp nsr` present under `router bgp 65100`
-- [ ] BGP GR live test (Task 3): R2's ping to 192.0.2.1 survives R5 BGP clear with GR active
-- [ ] BGP GR contrast (Task 4): Route disappears immediately after R5 BGP clear without GR; GR re-enabled after test
-- [ ] NSF vs NSR comparison (Task 7): Written summary covering cooperative vs local, hardware requirements, stale timer behavior
+- [ ] **[Conceptual]** IS-IS GR (NSF) Task 1: Conceptual check questions answered; reference syntax reviewed; IOSv limitation documented
+- [ ] **[Live]** BGP GR enabled on R1–R5: `show ip bgp neighbors` shows `Graceful Restart Capability: advertised and received` for all sessions
+- [ ] **[Conceptual]** IS-IS NSR Task 5: Conceptual check questions answered; understand that `nsr` command is rejected on IOSv 15.9(3)M6
+- [ ] **[Conceptual]** BGP NSR Task 6: Reference syntax reviewed; understand that `bgp nsr` command is rejected on IOSv 15.9(3)M6; comparison table completed
+- [ ] **[Live]** BGP GR live test (Task 3 Part B): R2's ping to 192.0.2.1 survives R5 BGP clear with GR active
+- [ ] **[Live]** BGP GR contrast (Task 4): Route disappears immediately after R5 BGP clear without GR; GR re-enabled after test
+- [ ] **[Analytical]** NSF vs NSR comparison (Task 7): Written summary covering cooperative vs local, hardware requirements, stale timer behavior
 
 ### Troubleshooting
 
-- [ ] Ticket 1: R1 missing `nsf ietf` identified and restored; R2 GR helper behavior verified after fix
-- [ ] Ticket 2: R5 missing `bgp graceful-restart` identified and restored; GR capability re-exchanged
-- [ ] Ticket 3: R4 missing `nsf ietf` identified and restored; GR helper behavior on R4 restart verified
+- [ ] **[Paper]** Ticket 1: Root cause identified (asymmetric IS-IS GR config, R1 missing `nsf ietf`); diagnosis logic and fix written out
+- [ ] **[Live]** Ticket 2: R5 missing `bgp graceful-restart` identified and restored; GR capability re-exchanged
+- [ ] **[Paper]** Ticket 3: Root cause identified (R4 missing `nsf ietf`); diagnosis logic and fix written out
 
 ---
 

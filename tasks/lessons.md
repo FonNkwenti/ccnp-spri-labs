@@ -19,6 +19,54 @@ New entries at the top. Review at the start of each session.
 
 -->
 
+## 2026-05-12 — IOSv 15.9(3)M6: IS-IS GR, IS-IS NSR, and BGP NSR commands absent; BFD fall-over bypasses GR test
+
+**Correction:** fast-convergence/lab-01 was built assuming `nsf ietf`, `nsr` (under
+`router isis`), and `bgp nsr` (under `router bgp`) would be accepted on IOSv 15.9(3)M6
+with a "config-only, no functional effect" disclaimer. Live testing showed all three
+commands are **rejected outright** ("Unrecognized command") — they are not compiled into
+the IOSv image. `bgp graceful-restart` is the only GR/NSR command that passes on IOSv.
+
+A second finding: testing BGP GR (Task 3 Part B) with `clear ip bgp *` on R5 when R1/R3
+have `fall-over bfd multi-hop` configured against R5 does NOT exercise GR. `clear ip bgp *`
+sends a BFD ADMINDOWN signal to its peer, which triggers `fall-over bfd` on R1 — causing an
+immediate non-GR tear-down. R1 never enters GR helper mode. Ping drops are from plain BGP
+reconvergence, not GR-protected forwarding.
+
+**Rules:**
+
+1. **IS-IS GR/NSR on IOSv:** Never emit `nsf ietf` or `nsr` under `router isis` in configs
+   targeting IOSv. These commands are rejected, not silently ignored. Workbooks must mark
+   the affected tasks as conceptual-reference exercises with platform notes. The correct
+   syntax is for supported platforms (IOS 15.4+, IOS-XE, IOS-XR, ASR 9000+) only.
+
+2. **BGP NSR on IOSv:** Never emit `bgp nsr` in configs targeting IOSv. Rejected.
+
+3. **BGP GR test methodology — BFD fall-over interaction:** When `fall-over bfd` is
+   configured on an eBGP session and you want to test BGP GR, you must temporarily remove
+   `fall-over bfd` from that neighbor before issuing `clear ip bgp *`. Alternatively, use a
+   hard reload of the restarting router (which does not send BFD ADMINDOWN). Document this
+   in the lab workbook and restore `fall-over bfd` after the test.
+
+4. **Capstone awareness:** Any fast-convergence capstone must not pre-load `nsf ietf`, `nsr`,
+   or `bgp nsr`. If these features appear in exam objectives, they should be tested as
+   paper/analytical tasks only on IOSv. BGP GR tests should include the `no fall-over bfd`
+   workaround step.
+
+**Why:** IOSv omits HA commands that require hardware FIB separation (CEF on a separate line
+card from the RP). The `fall-over bfd` issue affects any platform using BFD fall-over — it is
+not an IOSv-only bug but a test-methodology pitfall. Getting either wrong silently produces a
+test that appears to measure GR but actually measures plain reconvergence.
+
+**Touched:**
+- `labs/fast-convergence/lab-01-nsf-and-nsr/workbook.md` — Tasks 1, 3A, 5, 6, Tickets 1/3
+  converted to conceptual-reference; Task 3B updated with `no fall-over bfd` workaround note;
+  completion checklist labelled Live/Conceptual/Paper/Analytical.
+- `.agent/skills/reference-data/ios-compatibility.yaml` — four new rows added.
+- `.agent/skills/LESSONS_LEARNED.md` — cross-certification entry added.
+
+---
+
 ## 2026-05-08 — Cross-cutting features need flags + opt-in, not in-place mutation
 
 **Correction:** The "XR coverage retrofit" applied IOS XR support to existing built
