@@ -204,10 +204,9 @@ The following is **pre-loaded** via `setup_lab.py`:
 - iBGP full mesh in AS 65100 (R1–R4), loopback-sourced with `next-hop-self` on R1 and R3
 - eBGP sessions R1↔R5 and R3↔R5, loopback-sourced with multihop, BFD multi-hop, and tuned timers
 - BGP multi-hop BFD templates and peer bindings on R1, R3, and R5
-- IS-IS Graceful Restart on R1–R4 (`nsf ietf` under `router isis`)
 - BGP Graceful Restart on R1–R5 (`bgp graceful-restart` under `router bgp`)
-- IS-IS NSR on R1 (`nsr` under `router isis`)
-- BGP NSR on R1 (`bgp nsr` under `router bgp 65100`)
+
+> **Platform note:** IS-IS NSF (`nsf ietf`), IS-IS NSR (`nsr`), and BGP NSR (`bgp nsr`) are not available on IOSv — these commands are rejected. They appear conceptually in lab-01 but are not pre-loaded.
 
 **IS NOT pre-loaded** (student configures this):
 - Per-prefix LFA on R1–R4 under `router isis`
