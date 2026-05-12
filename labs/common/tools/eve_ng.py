@@ -338,7 +338,10 @@ def push_config(conn, commands: list[str], device_type: str = "cisco_ios_telnet"
     leaving nothing uncommitted when exit_config_mode() fires.
     """
     if device_type.startswith("cisco_xr"):
-        conn.send_config_set(list(commands) + ["commit"])
+        cmds = list(commands)
+        if not cmds or cmds[-1].strip().lower() != "commit":
+            cmds.append("commit")
+        conn.send_config_set(cmds)
     else:
         conn.send_config_set(commands)
         conn.save_config()

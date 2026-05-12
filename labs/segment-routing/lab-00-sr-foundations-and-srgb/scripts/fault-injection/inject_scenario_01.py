@@ -22,13 +22,20 @@ from eve_ng import (  # noqa: E402
 )
 
 DEVICE_NAME = "R3"
+# XR commit validation requires prefix-sid to be removed before segment-routing
+# mpls can be disabled — a prefix-sid with no SR mechanism fails the semantic
+# check. Remove both atomically so the commit succeeds.
 FAULT_COMMANDS = [
     "router isis CORE",
-    " address-family ipv4 unicast",
-    "  no segment-routing mpls",
-    " exit",
+    "interface Loopback0",
+    "address-family ipv4 unicast",
+    "no prefix-sid index 3",
     "exit",
-    "commit",
+    "exit",
+    "address-family ipv4 unicast",
+    "no segment-routing mpls",
+    "exit",
+    "exit",
 ]
 
 # Pre-flight: check running-config for IS-IS SR configuration on R3.
