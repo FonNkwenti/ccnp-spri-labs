@@ -1,11 +1,6 @@
 import sys
-import os
 import argparse
-import subprocess
 from datetime import datetime
-
-# --- Constants for Export ---
-DRAWIO_EXECUTABLE = "/Applications/draw.io.app/Contents/MacOS/draw.io"
 
 # --- Simple YAML Parser (Subset for baseline.yaml) ---
 def parse_simple_yaml(file_path):
@@ -108,8 +103,9 @@ STYLE_LINK_SOLID = "endArrow=none;html=1;strokeWidth=2;strokeColor=#FFFFFF;fillC
 STYLE_LINK_DASHED = "endArrow=none;html=1;strokeWidth=2;strokeColor=#FFFFFF;fillColor=#f5f5f5;dashed=1;"
 STYLE_CLOUD = "shape=mxgraph.cisco.misc.cloud;fillColor=#036897;strokeColor=#ffffff;strokeWidth=2;"
 STYLE_DEVICE_LABEL = "text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=11;fontStyle=1"
-STYLE_OCTET_LABEL = "edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=10;"
+STYLE_OCTET_LABEL = "edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=10;fontColor=#FFFFFF;"
 STYLE_LEGEND = "rounded=1;whiteSpace=wrap;html=1;fillColor=#000000;strokeColor=#FFFFFF;fontColor=#FFFFFF;fontSize=10;align=left;verticalAlign=top;spacingLeft=8;spacingTop=8;"
+STYLE_TITLE = "text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;strokeColor=default;fillColor=none;rounded=1;"
 
 TUNNEL_COLORS = {
     "gre":    "#FFFFFF",
@@ -152,14 +148,14 @@ def generate_tunnel_xml(tunnel, tunnel_idx, coords):
     wp1_x  = sx + 39
     wp2_x  = dx + 39
 
-    style  = get_tunnel_style(ttype)
-    tid    = f"tunnel_{src_dev}_{dst_dev}_{tunnel_idx}"
-    label  = f"{src_int} - {dst_int}&#10;{subnet}&#10;[{ttype.upper()}]"
-
-    src_octet_x = sx + 44
-    src_octet_y = sy - 15
-    dst_octet_x = dx + 44
-    dst_octet_y = dy - 15
+    style       = get_tunnel_style(ttype)
+    color       = TUNNEL_COLORS.get(ttype, TUNNEL_COLOR_DEFAULT)
+    tid         = f"tunnel_{src_dev}_{dst_dev}_{tunnel_idx}"
+    label       = f"{src_int} - {dst_int}&#10;{subnet}&#10;[{ttype.upper()}]"
+    octet_style = (
+        f"edgeLabel;html=1;align=center;verticalAlign=middle;"
+        f"resizable=0;points=[];fontSize=10;fontColor={color};"
+    )
 
     return f"""        <mxCell id="{tid}" value="" style="{style}" edge="1" parent="1" source="{src_dev}" target="{dst_dev}">
           <mxGeometry relative="1" as="geometry">
@@ -169,14 +165,14 @@ def generate_tunnel_xml(tunnel, tunnel_idx, coords):
             </Array>
           </mxGeometry>
         </mxCell>
-        <mxCell id="{tid}_lbl" value="{label}" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=10;" vertex="1" connectable="0" parent="{tid}">
+        <mxCell id="{tid}_lbl" value="{label}" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=10;fontColor={color};" vertex="1" connectable="0" parent="{tid}">
           <mxGeometry relative="1" as="geometry"><mxPoint as="offset"/></mxGeometry>
         </mxCell>
-        <mxCell id="{tid}_src_octet" value=".1" style="{STYLE_OCTET_LABEL}" vertex="1" connectable="0" parent="1">
-          <mxGeometry x="{src_octet_x}" y="{src_octet_y}" as="geometry" />
+        <mxCell id="{tid}_src_octet" value=".1" style="{octet_style}" vertex="1" connectable="0" parent="{tid}">
+          <mxGeometry x="-0.7" relative="1" as="geometry"><mxPoint as="offset"/></mxGeometry>
         </mxCell>
-        <mxCell id="{tid}_dst_octet" value=".2" style="{STYLE_OCTET_LABEL}" vertex="1" connectable="0" parent="1">
-          <mxGeometry x="{dst_octet_x}" y="{dst_octet_y}" as="geometry" />
+        <mxCell id="{tid}_dst_octet" value=".2" style="{octet_style}" vertex="1" connectable="0" parent="{tid}">
+          <mxGeometry x="0.7" relative="1" as="geometry"><mxPoint as="offset"/></mxGeometry>
         </mxCell>
 """
 
@@ -252,10 +248,10 @@ def generate_xml(devices, links, lab_title, lab_info=None, coords=None,
     if tunnel_overlays is None: tunnel_overlays = []
     timestamp = datetime.now().isoformat()
     xml_content = DRAWIO_HEADER.format(timestamp=timestamp)
-    octet_id_counter = 100
 
-    xml_content += f"""        <mxCell id="title" value="{lab_title}" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=16;fontStyle=1" vertex="1" parent="1">
-          <mxGeometry x="200" y="40" width="400" height="40" as="geometry" />
+    title_html = f'&lt;font style=&quot;font-size:16px;&quot; color=&quot;#FFFFFF&quot;&gt;&lt;b&gt;{lab_title}&lt;/b&gt;&lt;/font&gt;'
+    xml_content += f"""        <mxCell id="title" value="{title_html}" style="{STYLE_TITLE}" vertex="1" parent="1">
+          <mxGeometry x="150" y="20" width="600" height="35" as="geometry" />
         </mxCell>
 """
 
@@ -276,14 +272,8 @@ def generate_xml(devices, links, lab_title, lab_info=None, coords=None,
             style = STYLE_LINK_DASHED if "Tunnel" in src_int or "Tunnel" in dst_int else STYLE_LINK_SOLID
             xml_content += f'        <mxCell id="{link_id}" value="" style="{style}" edge="1" parent="1" source="{src}" target="{dst}"><mxGeometry relative="1" as="geometry" /></mxCell>\n'
             xml_content += f'        <mxCell id="{link_id}_lbl" value="{src_int} - {dst_int}&#10;{subnet}" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=10;" vertex="1" connectable="0" parent="{link_id}"><mxGeometry x="0" y="0" relative="1" as="geometry"><mxPoint as="offset" /></mxGeometry></mxCell>\n'
-            src_x, src_y = coords.get(src, (100, 100))
-            dst_x, dst_y = coords.get(dst, (100, 100))
-            src_octet_y = src_y + 60 if dst_y > src_y else src_y - 10
-            dst_octet_y = dst_y - 10 if dst_y > src_y else dst_y + 60
-            xml_content += f'        <mxCell id="octet_{octet_id_counter}" value="{get_last_octet(subnet, 1)}" style="{STYLE_OCTET_LABEL}" vertex="1" connectable="0" parent="1"><mxGeometry x="{src_x+50}" y="{src_octet_y}" as="geometry" /></mxCell>\n'
-            octet_id_counter += 1
-            xml_content += f'        <mxCell id="octet_{octet_id_counter}" value="{get_last_octet(subnet, 2)}" style="{STYLE_OCTET_LABEL}" vertex="1" connectable="0" parent="1"><mxGeometry x="{dst_x+50}" y="{dst_octet_y}" as="geometry" /></mxCell>\n'
-            octet_id_counter += 1
+            xml_content += f'        <mxCell id="{link_id}_src_oct" value="{get_last_octet(subnet, 1)}" style="{STYLE_OCTET_LABEL}" vertex="1" connectable="0" parent="{link_id}"><mxGeometry x="-0.7" relative="1" as="geometry"><mxPoint as="offset"/></mxGeometry></mxCell>\n'
+            xml_content += f'        <mxCell id="{link_id}_dst_oct" value="{get_last_octet(subnet, 2)}" style="{STYLE_OCTET_LABEL}" vertex="1" connectable="0" parent="{link_id}"><mxGeometry x="0.7" relative="1" as="geometry"><mxPoint as="offset"/></mxGeometry></mxCell>\n'
 
     active_tunnel_types = set()
     for idx, tunnel in enumerate(tunnel_overlays):
@@ -291,32 +281,24 @@ def generate_xml(devices, links, lab_title, lab_info=None, coords=None,
             xml_content += generate_tunnel_xml(tunnel, idx, coords)
             active_tunnel_types.add(tunnel.get('type', 'gre').lower())
 
-    legend_content = "Legend"
-    if lab_info: legend_content += f"&#10;{lab_info}"
-    legend_content += "&#10;&#x2014;&#x2014; Physical Link"
+    legend_lines = ["<b>LEGEND</b>"]
+    if lab_info: legend_lines.append(lab_info)
+    legend_lines.append("─── Physical Link (white)")
     for ttype in sorted(active_tunnel_types):
-        legend_content += f"&#10;....... {TUNNEL_LEGEND_LABELS.get(ttype, ttype.upper())}"
+        color = TUNNEL_COLORS.get(ttype, TUNNEL_COLOR_DEFAULT)
+        name = TUNNEL_LEGEND_LABELS.get(ttype, ttype.upper())
+        legend_lines.append(f'<font color="{color}">. . .</font> {name}')
+    legend_content = "&#10;".join(legend_lines).replace('<', '&lt;').replace('>', '&gt;')
     max_y = max(coords.get(d['name'], (0, 0))[1] for d in devices)
     xml_content += f'        <mxCell id="legend" value="{legend_content}" style="{STYLE_LEGEND}" vertex="1" parent="1"><mxGeometry x="600" y="{max_y+140}" width="180" height="{80+15*len(active_tunnel_types)}" as="geometry" /></mxCell>\n'
     xml_content += DRAWIO_FOOTER
     return xml_content
-
-def export_to_png(drawio_file):
-    output_png = os.path.splitext(drawio_file)[0] + ".png"
-    print(f"Exporting {drawio_file} to {output_png}...")
-    try:
-        subprocess.run([DRAWIO_EXECUTABLE, "-x", "-f", "png", "-t", "-s", "2", drawio_file, "-o", output_png], check=True)
-        return True
-    except Exception as e:
-        print(f"Export failed: {e}")
-        return False
 
 def main():
     parser = argparse.ArgumentParser(description="Generate Draw.io XML from baseline.yaml")
     parser.add_argument("--baseline", required=True, help="Path to baseline.yaml")
     parser.add_argument("--lab", required=True, type=int, help="Lab number")
     parser.add_argument("--output", required=True, help="Output .drawio path")
-    parser.add_argument("--export", action="store_true", help="Automatically export to PNG")
     args = parser.parse_args()
 
     data = parse_simple_yaml(args.baseline)
@@ -330,7 +312,6 @@ def main():
     
     with open(args.output, 'w') as f: f.write(xml_output)
     print(f"Generated {args.output}")
-    if args.export: export_to_png(args.output)
 
 if __name__ == "__main__":
     main()

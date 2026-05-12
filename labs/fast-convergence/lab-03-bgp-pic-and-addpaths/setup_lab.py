@@ -5,9 +5,9 @@ Lab Setup — BGP PIC Edge/Core and Additional Paths (Fast Convergence Lab 03)
 Pushes initial configs to all lab devices via EVE-NG console ports.
 Ports are discovered at runtime via the EVE-NG REST API — no hardcoded ports needed.
 
-Initial configs are the lab-02 solutions (BFD + timers + NSF + BGP GR + NSR +
-LFA + R-LFA + MPLS LDP). This lab adds BGP PIC and Add-Paths on top — the
-student configures those steps.
+Initial configs are the lab-02 solutions (BFD + timers + IS-IS NSF + BGP GR +
+LFA + R-LFA + MPLS LDP). All five devices run CSR1000v (IOS-XE). This lab adds
+BGP PIC and Add-Paths on top — the student configures those steps.
 
 Usage:
     python3 setup_lab.py --host <eve-ng-ip>

@@ -7,7 +7,7 @@
                 <mxCell id="2" value="&lt;b style=&quot;color: rgb(255, 255, 255); font-size: 13px;&quot;&gt;Internet&lt;/b&gt;" style="points=[[0,0.64,0],[0.2,0.15,0],[0.4,0.01,0],[0.79,0.25,0],[1,0.65,0],[0.8,0.86,0],[0.41,1,0],[0.16,0.86,0]];verticalLabelPosition=bottom;sketch=0;html=1;verticalAlign=top;aspect=fixed;align=center;pointerEvents=1;shape=mxgraph.cisco19.cloud;fillColor=#6B6B6B;strokeColor=none;" parent="1" vertex="1">
                     <mxGeometry x="680" y="100" width="206.67" height="124" as="geometry"/>
                 </mxCell>
-                <mxCell id="title" value="&lt;font style=&quot;font-size:17px;&quot; color=&quot;#FFFFFF&quot;&gt;&lt;b&gt;Cisco Diagram Style Guide — Visual Reference&lt;/b&gt;&lt;/font&gt;" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;strokeColor=none;fillColor=none;" parent="1" vertex="1">
+                <mxCell id="title" value="&lt;font style=&quot;font-size:17px;&quot; color=&quot;#FFFFFF&quot;&gt;&lt;b&gt;Cisco Diagram Style Guide — Visual Reference&lt;/b&gt;&lt;/font&gt;" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;strokeColor=default;fillColor=none;rounded=1;" parent="1" vertex="1">
                     <mxGeometry x="200" y="12" width="800" height="35" as="geometry"/>
                 </mxCell>
                 <mxCell id="site_hq" value="&lt;b&gt;HQ — Headquarters&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;strokeColor=#1565C0;strokeWidth=2;fillColor=default;opacity=20;fontSize=13;fontStyle=1;fontColor=#FFFFFF;verticalAlign=top;spacingTop=6;arcSize=2;" parent="1" vertex="1">
@@ -58,6 +58,9 @@
                 <mxCell id="R3" value="&lt;b style=&quot;color:#FFFFFF;&quot;&gt;R3&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#CCCCCC&quot; style=&quot;font-size:10px;&quot;&gt;Area 2 ABR&lt;br&gt;Lo0: 10.0.0.3/32&lt;/font&gt;" style="sketch=0;points=[[0.5,0,0],[1,0.5,0],[0.5,1,0],[0,0.5,0],[0.145,0.145,0],[0.8555,0.145,0],[0.855,0.8555,0],[0.145,0.855,0]];verticalLabelPosition=bottom;html=1;verticalAlign=top;aspect=fixed;align=center;pointerEvents=1;shape=mxgraph.cisco19.rect;prIcon=router;fillColor=#FAFAFA;strokeColor=#005073;" parent="1" vertex="1">
                     <mxGeometry x="690" y="700" width="60" height="60" as="geometry"/>
                 </mxCell>
+                <mxCell id="R3_abr_badge" value="&lt;b style=&quot;color:#1E88E5;font-size:11px;&quot;&gt;ABR&lt;/b&gt;" style="text;html=1;align=center;verticalAlign=middle;strokeColor=#1E88E5;fillColor=#0D2A40;rounded=1;fontSize=11;fontStyle=1;" parent="1" vertex="1">
+                    <mxGeometry x="740" y="695" width="42" height="20" as="geometry"/>
+                </mxCell>
                 <mxCell id="link_wan" value="" style="endArrow=none;html=1;strokeWidth=2;strokeColor=#FFFFFF;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" parent="1" source="R1" target="R2" edge="1">
                     <mxGeometry relative="1" as="geometry">
                         <Array as="points">
@@ -77,6 +80,12 @@
                     <mxGeometry relative="0.5" as="geometry">
                         <mxPoint x="75" y="-50" as="offset"/>
                     </mxGeometry>
+                </mxCell>
+                <mxCell id="link_R1_SW1_src_oct" value=".1" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=10;fontColor=#FFFFFF;" parent="link_R1_SW1" vertex="1" connectable="0">
+                    <mxGeometry x="-0.7" relative="1" as="geometry"><mxPoint as="offset"/></mxGeometry>
+                </mxCell>
+                <mxCell id="link_R1_SW1_dst_oct" value=".2" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=10;fontColor=#FFFFFF;" parent="link_R1_SW1" vertex="1" connectable="0">
+                    <mxGeometry x="0.7" relative="1" as="geometry"><mxPoint as="offset"/></mxGeometry>
                 </mxCell>
                 <mxCell id="link_mgmt" value="" style="endArrow=none;html=1;strokeWidth=1;strokeColor=#888888;dashed=1;dashPattern=8 4;" parent="1" source="R1" target="MGMT" edge="1">
                     <mxGeometry relative="1" as="geometry"/>
@@ -129,6 +138,12 @@
                         <mxPoint x="42" as="offset"/>
                     </mxGeometry>
                 </mxCell>
+                <mxCell id="link_R2_SW4_src_oct" value=".1" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=10;fontColor=#FFFFFF;" parent="link_R2_SW4" vertex="1" connectable="0">
+                    <mxGeometry x="-0.7" relative="1" as="geometry"><mxPoint as="offset"/></mxGeometry>
+                </mxCell>
+                <mxCell id="link_R2_SW4_dst_oct" value=".2" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=10;fontColor=#FFFFFF;" parent="link_R2_SW4" vertex="1" connectable="0">
+                    <mxGeometry x="0.7" relative="1" as="geometry"><mxPoint as="offset"/></mxGeometry>
+                </mxCell>
                 <mxCell id="link_access3" value="" style="endArrow=none;html=1;strokeWidth=1;strokeColor=#FFFFFF;" parent="1" source="SW4" target="PC3" edge="1">
                     <mxGeometry relative="1" as="geometry"/>
                 </mxCell>
@@ -171,8 +186,8 @@
                         <mxPoint x="-142" y="40" as="offset"/>
                     </mxGeometry>
                 </mxCell>
-                <mxCell id="legend" value="&lt;b&gt;LEGEND&lt;/b&gt;&lt;br&gt;&lt;br&gt;&lt;b&gt;Physical Links&lt;/b&gt;&lt;br&gt;━━━  Routed / P2P (white, w=2)&lt;br&gt;─────  EtherChannel Po (white, w=5)&lt;br&gt;&lt;font color=&quot;#006EAF&quot;&gt;─────  Trunk 802.1Q (blue, w=3)&lt;/font&gt;&lt;br&gt;──     Access port (white, w=1)&lt;br&gt;─────  WAN Serial (white, w=2)&lt;br&gt;&lt;font color=&quot;#888888&quot;&gt;- - -  Management / OOB (gray)&lt;/font&gt;&lt;br&gt;&lt;font color=&quot;#CE93D8&quot;&gt;. . .  OSPF Virtual Link (lavender)&lt;/font&gt;&lt;br&gt;&lt;br&gt;&lt;b&gt;Tunnel Overlays (curved arcs)&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#FF6D00&quot;&gt;. . .  GRE over IPsec (orange)&lt;/font&gt;&lt;br&gt;. . .  GRE bare / unencrypted (white)&lt;br&gt;&lt;br&gt;&lt;b&gt;OSPF Areas&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#1565C0&quot;&gt;[blue box]&lt;/font&gt;   Area 0 Backbone&lt;br&gt;&lt;font color=&quot;#2E7D32&quot;&gt;[green box]&lt;/font&gt;  Area 1 Stub&lt;br&gt;&lt;font color=&quot;#E65100&quot;&gt;[orange box]&lt;/font&gt; Area 2 Stub (virtual link)&lt;br&gt;&lt;br&gt;&lt;b&gt;Sites&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#1565C0&quot;&gt;[solid blue]&lt;/font&gt;     HQ&lt;br&gt;&lt;font color=&quot;#2E7D32&quot;&gt;[solid green]&lt;/font&gt;    Branch&lt;br&gt;&lt;font color=&quot;#546E7A&quot;&gt;[dashed gray]&lt;/font&gt;   Internet / Unmanaged&lt;br&gt;&lt;br&gt;OSPF Process ID: 1 &amp;nbsp; EIGRP AS: -&lt;br&gt;VLANs: 10 SALES | 20 ENG | 99 MGMT" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#000000;strokeColor=#FFFFFF;fontColor=#FFFFFF;fontSize=10;align=left;verticalAlign=top;spacingLeft=8;spacingTop=8;arcSize=3;" parent="1" vertex="1">
-                    <mxGeometry x="1270" y="620" width="320" height="370" as="geometry"/>
+                <mxCell id="legend" value="&lt;b&gt;LEGEND&lt;/b&gt;&lt;br&gt;&lt;br&gt;&lt;b&gt;Physical Links&lt;/b&gt;&lt;br&gt;━━━  Routed / P2P (white, w=2)&lt;br&gt;─────  EtherChannel Po (white, w=5)&lt;br&gt;&lt;font color=&quot;#006EAF&quot;&gt;─────  Trunk 802.1Q (blue, w=3)&lt;/font&gt;&lt;br&gt;──     Access port (white, w=1)&lt;br&gt;─────  WAN Serial (white, w=2)&lt;br&gt;&lt;font color=&quot;#888888&quot;&gt;- - -  Management / OOB (gray)&lt;/font&gt;&lt;br&gt;&lt;font color=&quot;#CE93D8&quot;&gt;. . .  OSPF Virtual Link (lavender)&lt;/font&gt;&lt;br&gt;&lt;br&gt;&lt;b&gt;Tunnel Overlays (curved arcs)&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#FF6D00&quot;&gt;. . .  GRE over IPsec (orange)&lt;/font&gt;&lt;br&gt;. . .  GRE bare / unencrypted (white)&lt;br&gt;&lt;br&gt;&lt;b&gt;OSPF Areas&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#1565C0&quot;&gt;[blue box]&lt;/font&gt;   Area 0 Backbone&lt;br&gt;&lt;font color=&quot;#2E7D32&quot;&gt;[green box]&lt;/font&gt;  Area 1 Stub&lt;br&gt;&lt;font color=&quot;#E65100&quot;&gt;[orange box]&lt;/font&gt; Area 2 Stub (virtual link)&lt;br&gt;&lt;br&gt;&lt;b&gt;Role Badges&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#1E88E5&quot;&gt;[ABR]&lt;/font&gt; OSPF Area Border Router&lt;br&gt;&lt;font color=&quot;#FFD700&quot;&gt;[RR]&lt;/font&gt; BGP/EVPN Route Reflector&lt;br&gt;&lt;br&gt;&lt;b&gt;Sites&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#1565C0&quot;&gt;[solid blue]&lt;/font&gt;     HQ&lt;br&gt;&lt;font color=&quot;#2E7D32&quot;&gt;[solid green]&lt;/font&gt;    Branch&lt;br&gt;&lt;font color=&quot;#546E7A&quot;&gt;[dashed gray]&lt;/font&gt;   Internet / Unmanaged&lt;br&gt;&lt;br&gt;OSPF Process ID: 1 &amp;nbsp; EIGRP AS: -&lt;br&gt;VLANs: 10 SALES | 20 ENG | 99 MGMT" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#000000;strokeColor=#FFFFFF;fontColor=#FFFFFF;fontSize=10;align=left;verticalAlign=top;spacingLeft=8;spacingTop=8;arcSize=3;" parent="1" vertex="1">
+                    <mxGeometry x="1270" y="560" width="320" height="430" as="geometry"/>
                 </mxCell>
                 <mxCell id="8" value="" style="ellipse;whiteSpace=wrap;html=1;fontColor=#FFFFFF;fillColor=none;rotation=30;" parent="1" vertex="1">
                     <mxGeometry x="210" y="410" width="20" height="10" as="geometry"/>

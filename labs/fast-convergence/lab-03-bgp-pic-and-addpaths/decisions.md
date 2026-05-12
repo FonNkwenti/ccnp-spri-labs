@@ -4,7 +4,17 @@
 - Allowed models: claude-haiku-4-5-20251001, claude-sonnet-4-6, claude-opus-4-7
 - Outcome: PASS
 
-## Workbook contract gate — 2026-05-09
+## Rebuild gate — 2026-05-12
+- Rebuilt on CSR1000v (was IOSv)
+- Interface naming: Gi1/2/3/4 throughout (replaces Gi0/0/1/2/3)
+- IS-IS NSF: live, inherited from lab-01 CSR1000v solutions (`nsf ietf` on R1–R4)
+- NSR: conceptual only — CSR1000v single-RP platform rejects `nsr` and `bgp nsr`
+- BGP PIC and Add-Paths: live on CSR1000v — removed all IOSv-limitation notes
+- MPLS LDP: carries forward on core IS-IS interfaces from lab-02
+- BFD and BGP GR: inherited from lab-01/02
+- Agent: pi
+
+## Workbook contract gate — 2026-05-09 (re-validated 2026-05-12)
 - All 11 sections present
 - 8 tasks covering baseline observation, global add-paths, per-neighbor add-paths,
   PIC backup verification, edge failure test, core failure test, path identifier
@@ -13,16 +23,22 @@
   Ticket 2 = R2 select backup missing, Ticket 3 = R4↔R1 add-paths config omitted
 - Topology ASCII and link reference table match solutions
 - Device inventory, cabling, and console access table present
+- All interface names use CSR1000v GigabitEthernetX convention
 - Base config pre-loaded/not pre-loaded split matches initial-configs vs solutions delta
 - Outcome: PASS
 
-## Design decisions — 2026-05-09
+## Design decisions — 2026-05-09 (updated 2026-05-12)
+
+### Platform: CSR1000v (IOS-XE 17.03.05)
+All five devices run CSR1000v. Interface naming is GigabitEthernet1/2/3/4
+matching the EVE-NG CSR1000v template. The IOSv Gi0/X naming used in the
+original build is replaced throughout.
 
 ### Progressive chain: lab-03 initial = lab-02 solution
-The initial configs for lab-03 are the lab-02 solutions — BFD, tuned timers,
-NSF/NSR, BGP GR, LFA, R-LFA, and MPLS LDP are all pre-loaded. The student
-configures only the BGP PIC and Add-Paths pieces. This isolates the learning
-to the exam objective and avoids reconfiguring unrelated features.
+The initial configs for lab-03 are the lab-02 CSR1000v solutions — BFD, tuned
+timers, IS-IS NSF, BGP GR, LFA, R-LFA, and MPLS LDP are all pre-loaded. The
+student configures only the BGP PIC and Add-Paths pieces. This isolates the
+learning to the exam objective and avoids reconfiguring unrelated features.
 
 ### R5 unchanged from lab-02
 R5 does not need add-paths configuration. The eBGP sessions from R5 to R1 and
@@ -30,6 +46,12 @@ R3 carry only one path each (R5's only prefix 192.0.2.0/24, advertised via
 `network`). Add-paths is an iBGP concern in this design — the SP core routers
 exchange multiple paths among themselves. R5's configuration is identical to
 the lab-02 solution.
+
+### IS-IS NSF: inherited from lab-01 (live, not conceptual)
+CSR1000v supports `nsf ietf` under `router isis`. All four core routers carry
+this configuration forward from lab-01/02. The initial-configs are lab-02
+CSR1000v solutions exactly — no config delta needed between lab-02 end state
+and lab-03 start state.
 
 ### Why bgp recursion host
 `bgp recursion host` forces BGP to resolve recursive next-hops via the IGP's
@@ -67,7 +89,7 @@ Each ticket targets a different add-paths/PIC failure mode:
 
 ### Failure testing methodology
 Two distinct failure tests isolate edge vs core PIC behavior:
-- **Edge test** (Task 5): Shut R1's eBGP interface Gi0/3. Tests whether
+- **Edge test** (Task 5): Shut R1's eBGP interface Gi4. Tests whether
   PIC Edge on R1/R3 pre-installed the alternate path and whether core
   router R2's PIC Core backup activates. The eBGP session drops cleanly
   (BFD detects in ~150 ms), and forwarding switches in the FIB.

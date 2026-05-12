@@ -4,19 +4,19 @@ chapter: fast-convergence
 exam: 300-510
 devices:
   - name: R1
-    platform: iosv
+    platform: csr1000v
     role: SP Edge — eBGP to AS 65200, iBGP in AS 65100
   - name: R2
-    platform: iosv
+    platform: csr1000v
     role: SP Core — iBGP in AS 65100
   - name: R3
-    platform: iosv
+    platform: csr1000v
     role: SP Edge — eBGP to AS 65200, iBGP in AS 65100
   - name: R4
-    platform: iosv
+    platform: csr1000v
     role: SP Core — redundant path, iBGP in AS 65100
   - name: R5
-    platform: iosv
+    platform: csr1000v
     role: External CE — AS 65200, dual-homed eBGP
 created:
   date: "2026-05-09"
@@ -45,4 +45,7 @@ created:
     - scripts/fault-injection/inject_scenario_03.py
     - scripts/fault-injection/apply_solution.py
     - scripts/fault-injection/README.md
-updated: []
+updated:
+  - date: "2026-05-12"
+    agent: pi
+    reason: "Rebuilt on CSR1000v (was IOSv). Interface naming changed to Gi1/2/3/4. IS-IS NSF inherited from lab-01. LFA and R-LFA live on CSR1000v — removed all IOSv-limitation notes."

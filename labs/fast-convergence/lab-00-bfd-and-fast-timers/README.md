@@ -14,7 +14,7 @@ Foundation lab for the Fast Convergence topic. Builds the IS-IS L2 underlay and 
 
 - This is the first lab in the topic (no prior lab to chain from)
 - Python 3.8+ with Netmiko installed (`pip install netmiko`)
-- EVE-NG server running with IOSv image available
+- EVE-NG server running with CSR1000v image available
 - Lab `.unl` imported into EVE-NG and all nodes started
 
 ## Quick Start

@@ -32,7 +32,7 @@ Tuning these down is the fastest no-extra-software improvement available:
 
 ```
 ! Tune hellos per-interface (not globally — IS-IS timers are interface-scoped)
-interface GigabitEthernet0/0
+interface GigabitEthernet1
  isis hello-interval 1         ! send a hello every 1 second
  isis hello-multiplier 3       ! hold time = 1 × 3 = 3 seconds
 ```
@@ -58,7 +58,7 @@ With `bfd interval 150 min_rx 150 multiplier 3`, both peers negotiate down to 15
 
 ```
 ! Single-hop BFD on IS-IS interface
-interface GigabitEthernet0/0
+interface GigabitEthernet1
  bfd interval 150 min_rx 150 multiplier 3  ! 150 ms intervals, 450 ms detection
  isis bfd                                   ! register IS-IS as a BFD client
 ```
@@ -140,27 +140,27 @@ Your mandate: reduce IS-IS convergence from the default 30 seconds to under 500 
 
          ┌──────────────────────┐              ┌──────────────────────┐
          │         R1           │── L1 ─────── │         R2           │
-         │  SP Edge AS 65100    │  Gi0/0 Gi0/0 │  SP Core AS 65100    │
+         │  SP Edge AS 65100    │   Gi1  Gi1   │  SP Core AS 65100    │
          │  Lo0: 10.0.0.1/32    │  10.1.12.0   │  Lo0: 10.0.0.2/32    │
          └──┬──────┬──────┬─────┘              └────────────┬─────────┘
-        L4  │  L5  │  L6  │ Gi0/3                       L2  │ Gi0/1
-      Gi0/1 │ Gi0/2│      │ 10.1.15.0                       │ 10.1.23.0
+        L4  │  L5  │  L6  │ Gi4                          L2  │ Gi2
+       Gi2  │ Gi3  │      │ 10.1.15.0                       │ 10.1.23.0
             │      │      │                                  │
    ┌────────┴──┐   │      │                      ┌───────────┴────────────┐
    │    R4     │   └──────┼──────────────────────►         R3             │
-   │  SP Core  │          │            Gi0/2 L5  │  SP Edge AS 65100      │
-   │ 10.0.0.4  │◄── L3 ──►│     Gi0/1 10.1.34.0  │  Lo0: 10.0.0.3/32     │
-   │  /32      │ 10.1.34.0│              Gi0/0   │                        │
+   │  SP Core  │          │             Gi3 L5   │  SP Edge AS 65100      │
+   │ 10.0.0.4  │◄── L3 ──►│       Gi2 10.1.34.0  │  Lo0: 10.0.0.3/32     │
+   │  /32      │ 10.1.34.0│              Gi1     │                        │
    └───────────┘          │              L3      └──┬───────────────────┬─┘
-      Gi0/0 R4            │                     L7 │ Gi0/3         L5  │
-                          │               10.1.35.0 │                   │ Gi0/2
+       Gi1 R4            │                     L7 │ Gi4           L5  │
+                          │               10.1.35.0 │                   │ Gi3
                           │                         │                   │
                           │                 ┌───────┴───────────────────┘
                           │                 │
                           │        ┌────────┴──────────────────┐
                           └────────►         R5                │
-                            L6 Gi0/0│   CE AS 65200            │
-                         10.1.15.0  │  Lo0: 10.0.0.5/32       │
+                            L6 Gi1│   CE AS 65200              │
+                         10.1.15.0│  Lo0: 10.0.0.5/32         │
                                     │  Lo1: 192.0.2.1/24       │
                                     └───────────────────────────┘
 ```
@@ -169,13 +169,13 @@ Your mandate: reduce IS-IS convergence from the default 30 seconds to under 500 
 
 | Link | Source | Target | Subnet | Purpose |
 |------|--------|--------|--------|---------|
-| L1 | R1 Gi0/0 | R2 Gi0/0 | 10.1.12.0/24 | SP core — IS-IS L2, iBGP transport |
-| L2 | R2 Gi0/1 | R3 Gi0/0 | 10.1.23.0/24 | SP core — IS-IS L2, iBGP transport |
-| L3 | R3 Gi0/1 | R4 Gi0/0 | 10.1.34.0/24 | SP core — IS-IS L2, iBGP transport |
-| L4 | R1 Gi0/1 | R4 Gi0/1 | 10.1.14.0/24 | Ring closer — IS-IS L2, provides LFA alternate |
-| L5 | R1 Gi0/2 | R3 Gi0/2 | 10.1.13.0/24 | Diagonal — IS-IS L2, short path R1↔R3 |
-| L6 | R1 Gi0/3 | R5 Gi0/0 | 10.1.15.0/24 | eBGP R1 (AS 65100) ↔ R5 (AS 65200) |
-| L7 | R3 Gi0/3 | R5 Gi0/1 | 10.1.35.0/24 | eBGP R3 (AS 65100) ↔ R5 (AS 65200) |
+| L1 | R1 Gi1 | R2 Gi1 | 10.1.12.0/24 | SP core — IS-IS L2, iBGP transport |
+| L2 | R2 Gi2 | R3 Gi1 | 10.1.23.0/24 | SP core — IS-IS L2, iBGP transport |
+| L3 | R3 Gi2 | R4 Gi1 | 10.1.34.0/24 | SP core — IS-IS L2, iBGP transport |
+| L4 | R1 Gi2 | R4 Gi2 | 10.1.14.0/24 | Ring closer — IS-IS L2, provides LFA alternate |
+| L5 | R1 Gi3 | R3 Gi3 | 10.1.13.0/24 | Diagonal — IS-IS L2, short path R1↔R3 |
+| L6 | R1 Gi4 | R5 Gi1 | 10.1.15.0/24 | eBGP R1 (AS 65100) ↔ R5 (AS 65200) |
+| L7 | R3 Gi4 | R5 Gi2 | 10.1.35.0/24 | eBGP R3 (AS 65100) ↔ R5 (AS 65200) |
 
 **Key relationships:**
 
@@ -191,11 +191,11 @@ Your mandate: reduce IS-IS convergence from the default 30 seconds to under 500 
 
 | Device | Role | Platform | Image | RAM |
 |--------|------|----------|-------|-----|
-| R1 | SP Edge — eBGP to AS 65200, iBGP in AS 65100 | IOSv | vios-adventerprisek9-m.SPA.156-2.T | 512 MB |
-| R2 | SP Core — iBGP in AS 65100 | IOSv | vios-adventerprisek9-m.SPA.156-2.T | 512 MB |
-| R3 | SP Edge — eBGP to AS 65200, iBGP in AS 65100 | IOSv | vios-adventerprisek9-m.SPA.156-2.T | 512 MB |
-| R4 | SP Core — redundant path, iBGP in AS 65100 | IOSv | vios-adventerprisek9-m.SPA.156-2.T | 512 MB |
-| R5 | External CE — dual-homed eBGP in AS 65200 | IOSv | vios-adventerprisek9-m.SPA.156-2.T | 512 MB |
+| R1 | SP Edge — eBGP to AS 65200, iBGP in AS 65100 | CSR1000v | csr1000vng-universalk9.17.03.05 | 3 GB |
+| R2 | SP Core — iBGP in AS 65100 | CSR1000v | csr1000vng-universalk9.17.03.05 | 3 GB |
+| R3 | SP Edge — eBGP to AS 65200, iBGP in AS 65100 | CSR1000v | csr1000vng-universalk9.17.03.05 | 3 GB |
+| R4 | SP Core — redundant path, iBGP in AS 65100 | CSR1000v | csr1000vng-universalk9.17.03.05 | 3 GB |
+| R5 | External CE — dual-homed eBGP in AS 65200 | CSR1000v | csr1000vng-universalk9.17.03.05 | 3 GB |
 
 ### Loopback Addresses
 
@@ -212,13 +212,13 @@ Your mandate: reduce IS-IS convergence from the default 30 seconds to under 500 
 
 | Link ID | From | To | Subnet | Interface (From) | Interface (To) |
 |---------|------|----|--------|-----------------|----------------|
-| L1 | R1 | R2 | 10.1.12.0/24 | GigabitEthernet0/0 | GigabitEthernet0/0 |
-| L2 | R2 | R3 | 10.1.23.0/24 | GigabitEthernet0/1 | GigabitEthernet0/0 |
-| L3 | R3 | R4 | 10.1.34.0/24 | GigabitEthernet0/1 | GigabitEthernet0/0 |
-| L4 | R1 | R4 | 10.1.14.0/24 | GigabitEthernet0/1 | GigabitEthernet0/1 |
-| L5 | R1 | R3 | 10.1.13.0/24 | GigabitEthernet0/2 | GigabitEthernet0/2 |
-| L6 | R1 | R5 | 10.1.15.0/24 | GigabitEthernet0/3 | GigabitEthernet0/0 |
-| L7 | R3 | R5 | 10.1.35.0/24 | GigabitEthernet0/3 | GigabitEthernet0/1 |
+| L1 | R1 | R2 | 10.1.12.0/24 | GigabitEthernet1 | GigabitEthernet1 |
+| L2 | R2 | R3 | 10.1.23.0/24 | GigabitEthernet2 | GigabitEthernet1 |
+| L3 | R3 | R4 | 10.1.34.0/24 | GigabitEthernet2 | GigabitEthernet1 |
+| L4 | R1 | R4 | 10.1.14.0/24 | GigabitEthernet2 | GigabitEthernet2 |
+| L5 | R1 | R3 | 10.1.13.0/24 | GigabitEthernet3 | GigabitEthernet3 |
+| L6 | R1 | R5 | 10.1.15.0/24 | GigabitEthernet4 | GigabitEthernet1 |
+| L7 | R3 | R5 | 10.1.35.0/24 | GigabitEthernet4 | GigabitEthernet2 |
 
 ### Advertised Prefixes
 
@@ -294,10 +294,10 @@ The following is **pre-loaded** via `setup_lab.py`:
 ### Task 3: Measure Default IS-IS Convergence
 
 - From R2, start a sustained extended ping to R3's loopback (10.0.0.3) using `ping 10.0.0.3 repeat 100000 timeout 1`. Note the time. (IOSv does not support the `interval` keyword — pings are sent at the default 1-second rate.)
-- On R3, shut down the interface toward R2 (GigabitEthernet0/0 on R3, link L2). Shutting the interface on R3 rather than R2 triggers an **LSP purge** from R3 — R3 immediately floods a purged LSP to its remaining neighbors, which reaches R2 via R1. R2 receives the topology change and runs SPF to find an alternate path to 10.0.0.3.
+- On R3, shut down the interface toward R2 (GigabitEthernet1 on R3, link L2). Shutting the interface on R3 rather than R2 triggers an **LSP purge** from R3 — R3 immediately floods a purged LSP to its remaining neighbors, which reaches R2 via R1. R2 receives the topology change and runs SPF to find an alternate path to 10.0.0.3.
 - Count the number of lost ping replies (dots `.` in the output). With 1-second pings, the number of dots equals the convergence time in seconds.
 - The convergence is driven by **LSP flooding + SPF computation time**, not by the hello hold timer. The hold timer (30 seconds per-hop) would only apply in a silent failure where no LSP can be exchanged (e.g., a cable cut).
-- Restore L2 (`no shutdown` on R3 GigabitEthernet0/0) before proceeding.
+- Restore L2 (`no shutdown` on R3 GigabitEthernet1) before proceeding.
 
 **Verification:** `show isis neighbors` on R2 before the test must show L2 adjacencies with a Hold timer of approximately 29–30 seconds (default IS-IS hello interval 10 s × multiplier 3). After the test, `show ip route isis` on R2 should show 10.0.0.3/32 reachable via R1 (10.1.12.1). Record your observed convergence times in the table below.
 
@@ -325,17 +325,17 @@ The following is **pre-loaded** via `setup_lab.py`:
 - Register IS-IS as a BFD client on each of these interfaces.
 - Verify that BFD sessions form between all directly-connected IS-IS neighbor pairs.
 
-**Verification:** `show bfd neighbors` on R1 must show sessions with R2 (Gi0/0), R4 (Gi0/1), and R3 (Gi0/2) all in the Up state. The `St` column must read `Up` for all sessions. Confirm IS-IS adjacencies remain up — BFD addition is non-disruptive when configured symmetrically.
+**Verification:** `show bfd neighbors` on R1 must show sessions with R2 (Gi1), R4 (Gi2), and R3 (Gi3) all in the Up state. The `St` column must read `Up` for all sessions. Confirm IS-IS adjacencies remain up — BFD addition is non-disruptive when configured symmetrically.
 
 ---
 
 ### Task 6: Measure IS-IS Convergence with BFD (Initial Test)
 
 - From R2, start the sustained extended ping to R3's loopback (10.0.0.3) using `ping 10.0.0.3 repeat 100000 timeout 1`.
-- On R3, shut down the interface toward R2 (GigabitEthernet0/0 on R3, link L2) — same procedure as Task 3.
+- On R3, shut down the interface toward R2 (GigabitEthernet1 on R3, link L2) — same procedure as Task 3.
 - Count the number of lost ping replies (dots `.` in the output).
-- Record your result. With BFD active, R2 detects the failure via **BFD session timeout** (450 ms = 3 × 150 ms). The remaining convergence time is dominated by **SPF computation** on R2, which can take 2–3 seconds on IOSv. This is why SPF throttle tuning (Task 8) is needed alongside BFD.
-- Restore L2 (`no shutdown` on R3 GigabitEthernet0/0) before proceeding. You will re-run this test after Task 8 to see the combined BFD + SPF throttle benefit.
+- Record your result. With BFD active, R2 detects the failure via **BFD session timeout** (450 ms = 3 × 150 ms). The remaining convergence time is dominated by **SPF computation** on R2, which can take 2–3 seconds on CSR1000v. This is why SPF throttle tuning (Task 8) is needed alongside BFD.
+- Restore L2 (`no shutdown` on R3 GigabitEthernet1) before proceeding. You will re-run this test after Task 8 to see the combined BFD + SPF throttle benefit.
 
 **Verification:** `show bfd neighbors` on R2 will show the session to R3 going Down during the failure and returning to Up after restoration. Compare your result to the ~6 s baseline from Task 3 — the BFD detection alone already cuts convergence roughly in half.
 
@@ -369,10 +369,10 @@ The following is **pre-loaded** via `setup_lab.py`:
 Now that both BFD (Task 5) and SPF throttle (Task 8) are configured, re-run the convergence test to see the combined benefit.
 
 - From R2, start the sustained extended ping to R3's loopback (10.0.0.3) using `ping 10.0.0.3 repeat 100000 timeout 1`.
-- On R3, shut down the interface toward R2 (GigabitEthernet0/0 on R3, link L2).
+- On R3, shut down the interface toward R2 (GigabitEthernet1 on R3, link L2).
 - Count the number of lost ping replies (dots `.` in the output).
 - With BFD detecting the failure in ~450 ms and SPF responding in ~50 ms, total convergence should be under 1 second (zero or one dot).
-- Restore L2 (`no shutdown` on R3 GigabitEthernet0/0). Record your result.
+- Restore L2 (`no shutdown` on R3 GigabitEthernet1). Record your result.
 
 **Verification:** `show isis spf-log` on R2 after the test should show an SPF run triggered by the BFD-notified adjacency change, with an initial delay of ~50 ms. The final convergence should be faster than the Task 6 result.
 
@@ -386,7 +386,7 @@ Now that both BFD (Task 5) and SPF throttle (Task 8) are configured, re-run the 
 - Examine the BFD session negotiated parameters on R1 and compare the BFD interval and multiplier configuration on R1 and R2. Note that one side uses a faster interval than the other, and a mismatched multiplier on one router causes the detection window to be too tight.
 - Identify which router has the incorrect BFD timer configuration and correct it so both sides use a 150 ms transmit interval, 150 ms minimum receive interval, and a multiplier of 3 — matching the symmetric configuration applied in Task 5.
 
-**Verification:** `show bfd neighbors` on R1 must show the R2 session (Gi0/0) as `Up` with negotiated timers consistent with the 150/150/3 configuration. `show bfd neighbors details` must confirm matching intervals and multiplier on both sides. `show isis neighbors` must show R2 in the Up/Up state.
+**Verification:** `show bfd neighbors` on R1 must show the R2 session (Gi1) as `Up` with negotiated timers consistent with the 150/150/3 configuration. `show bfd neighbors details` must confirm matching intervals and multiplier on both sides. `show isis neighbors` must show R2 in the Up/Up state.
 
 ---
 
@@ -398,14 +398,14 @@ Now that both BFD (Task 5) and SPF throttle (Task 8) are configured, re-run the 
 R1# show clns neighbors
 
 System Id      Interface   SNPA               State  Holdtime  Type Protocol
-R2             Gi0/0       xxxx.xxxx.xxxx     Up     2         L2   M-ISIS  ! ← R2 adjacency on L1
-R4             Gi0/1       xxxx.xxxx.xxxx     Up     2         L2   M-ISIS  ! ← R4 adjacency on L4
-R3             Gi0/2       xxxx.xxxx.xxxx     Up     2         L2   M-ISIS  ! ← R3 adjacency on L5
+R2             Gi1         xxxx.xxxx.xxxx     Up     2         L2   M-ISIS  ! ← R2 adjacency on L1
+R4             Gi2         xxxx.xxxx.xxxx     Up     2         L2   M-ISIS  ! ← R4 adjacency on L4
+R3             Gi3         xxxx.xxxx.xxxx     Up     2         L2   M-ISIS  ! ← R3 adjacency on L5
 
 R1# show ip route isis | include 10.0.0
-i L2  10.0.0.2/32 [115/20] via 10.1.12.2, 00:01:30, GigabitEthernet0/0   ! ← R2 loopback
-i L2  10.0.0.3/32 [115/20] via 10.1.13.3, 00:01:30, GigabitEthernet0/2   ! ← R3 loopback via L5
-i L2  10.0.0.4/32 [115/20] via 10.1.14.4, 00:01:30, GigabitEthernet0/1   ! ← R4 loopback via L4
+i L2  10.0.0.2/32 [115/20] via 10.1.12.2, 00:01:30, GigabitEthernet1   ! ← R2 loopback
+i L2  10.0.0.3/32 [115/20] via 10.1.13.3, 00:01:30, GigabitEthernet3   ! ← R3 loopback via L5
+i L2  10.0.0.4/32 [115/20] via 10.1.14.4, 00:01:30, GigabitEthernet2   ! ← R4 loopback via L4
 ```
 
 ### Task 2 — BGP Sessions
@@ -443,19 +443,19 @@ Paths: (1 available, best #1, table default)
 ```
 R2# show isis neighbors
 System Id      Interface   SNPA               State  Holdtime  Type Protocol
-R1             Gi0/0       xxxx.xxxx.xxxx     Up     29        L2   M-ISIS  ! ← Hold=29s (default)
-R3             Gi0/1       xxxx.xxxx.xxxx     Up     29        L2   M-ISIS
+R1             Gi1         xxxx.xxxx.xxxx     Up     29        L2   M-ISIS  ! ← Hold=29s (default)
+R3             Gi2         xxxx.xxxx.xxxx     Up     29        L2   M-ISIS
 ```
 
-After shutting Gi0/1 on R2, observe ~30 seconds of ping loss before the alternate path via R2→R1→R3 (L1+L5) or R2→R1→R4→R3 (L1+L4+L3) is installed.
+After shutting Gi2 on R2, observe ~30 seconds of ping loss before the alternate path via R2→R1→R3 (L1+L5) or R2→R1→R4→R3 (L1+L4+L3) is installed.
 
 ### Task 4 — Tuned Timers
 
 ```
 R2# show isis neighbors
 System Id      Interface   SNPA               State  Holdtime  Type Protocol
-R1             Gi0/0       xxxx.xxxx.xxxx     Up     2         L2   M-ISIS  ! ← Hold=2s (1s × 3)
-R3             Gi0/1       xxxx.xxxx.xxxx     Up     2         L2   M-ISIS  ! ← Hold=2s
+R1             Gi1         xxxx.xxxx.xxxx     Up     2         L2   M-ISIS  ! ← Hold=2s (1s × 3)
+R3             Gi2         xxxx.xxxx.xxxx     Up     2         L2   M-ISIS  ! ← Hold=2s
 ```
 
 ### Task 5 — BFD Single-Hop Sessions
@@ -463,9 +463,9 @@ R3             Gi0/1       xxxx.xxxx.xxxx     Up     2         L2   M-ISIS  ! �
 ```
 R1# show bfd neighbors
 NeighAddr     LD/RD    RH/RS  State  Int
-10.1.12.2     4097/4097  Up    Up    Gi0/0   ! ← BFD to R2 via L1
-10.1.14.4     4098/4098  Up    Up    Gi0/1   ! ← BFD to R4 via L4
-10.1.13.3     4099/4099  Up    Up    Gi0/2   ! ← BFD to R3 via L5
+10.1.12.2     4097/4097  Up    Up    Gi1     ! ← BFD to R2 via L1
+10.1.14.4     4098/4098  Up    Up    Gi2     ! ← BFD to R4 via L4
+10.1.13.3     4099/4099  Up    Up    Gi3     ! ← BFD to R3 via L5
 
 R1# show bfd neighbors details | include Registered
 Registered Protocols: ISIS                       ! ← IS-IS is registered as BFD client
@@ -476,9 +476,9 @@ Registered Protocols: ISIS                       ! ← IS-IS is registered as BF
 ```
 R1# show bfd neighbors
 NeighAddr     LD/RD    RH/RS  State  Int
-10.1.12.2     4097/4097  Up    Up    Gi0/0
-10.1.14.4     4098/4098  Up    Up    Gi0/1
-10.1.13.3     4099/4099  Up    Up    Gi0/2
+10.1.12.2     4097/4097  Up    Up    Gi1
+10.1.14.4     4098/4098  Up    Up    Gi2
+10.1.13.3     4099/4099  Up    Up    Gi3
 10.0.0.5      4100/4100  Up    Up    *System*   ! ← Multi-hop BFD to R5 loopback
 
 R1# show ip bgp neighbors 10.0.0.5 | include BFD|state
@@ -510,7 +510,7 @@ router isis
  metric-style wide              ! required for TE metrics > 63
  passive-interface Loopback0    ! advertise but don't send hellos
 !
-interface GigabitEthernet0/0
+interface GigabitEthernet1
  ip router isis                 ! enable IS-IS on interface
 ```
 
@@ -526,7 +526,7 @@ interface GigabitEthernet0/0
 ### IS-IS Hello Timer Tuning
 
 ```
-interface GigabitEthernet0/0
+interface GigabitEthernet1
  isis hello-interval 1          ! send hello every 1 second
  isis hello-multiplier 3        ! hold = 1 × 3 = 3 seconds
 ```
@@ -554,7 +554,7 @@ router isis
 ### BFD Single-Hop (IS-IS)
 
 ```
-interface GigabitEthernet0/0
+interface GigabitEthernet1
  bfd interval 150 min_rx 150 multiplier 3   ! 150 ms intervals, 450 ms detection
  isis bfd                                    ! register IS-IS as BFD client
 ```
@@ -587,9 +587,9 @@ router bgp 65100
 | `show bfd neighbors` | Multi-hop sessions appear with interface `*System*` |
 | `show ip bgp neighbors X.X.X.X | include BFD` | Confirm BFD registration for a BGP peer |
 
-> **Platform note:** On IOS-XE, multi-hop BFD uses `ip bfd peer <dest> multihop src <src> template <name>`.
-> On classic IOS (IOSv), the equivalent is `bfd map ipv4 <dest>/32 <src>/32 <template-name>`.
-> Both accomplish the same binding; only the syntax differs.
+> **Platform note:** CSR1000v (and IOS-XE generally) uses `bfd map ipv4 <dest>/32 <src>/32 <template-name>`
+> to bind a multi-hop BFD template to a (destination, source) pair — the same syntax as classic IOS.
+> No platform-specific `ip bfd peer` command is needed on CSR1000v running this image version.
 
 ### BGP Session Configuration
 
@@ -656,13 +656,13 @@ router bgp 65100
 interface Loopback0
  ip router isis
 !
-interface GigabitEthernet0/0
+interface GigabitEthernet1
  ip router isis
 !
-interface GigabitEthernet0/1
+interface GigabitEthernet2
  ip router isis
 !
-interface GigabitEthernet0/2
+interface GigabitEthernet3
  ip router isis
 !
 router isis
@@ -682,10 +682,10 @@ router isis
 interface Loopback0
  ip router isis
 !
-interface GigabitEthernet0/0
+interface GigabitEthernet1
  ip router isis
 !
-interface GigabitEthernet0/1
+interface GigabitEthernet2
  ip router isis
 !
 router isis
@@ -705,13 +705,13 @@ router isis
 interface Loopback0
  ip router isis
 !
-interface GigabitEthernet0/0
+interface GigabitEthernet1
  ip router isis
 !
-interface GigabitEthernet0/1
+interface GigabitEthernet2
  ip router isis
 !
-interface GigabitEthernet0/2
+interface GigabitEthernet3
  ip router isis
 !
 router isis
@@ -731,10 +731,10 @@ router isis
 interface Loopback0
  ip router isis
 !
-interface GigabitEthernet0/0
+interface GigabitEthernet1
  ip router isis
 !
-interface GigabitEthernet0/1
+interface GigabitEthernet2
  ip router isis
 !
 router isis
@@ -847,7 +847,7 @@ show ip route 10.0.0.5
 
 ```bash
 ! On each IS-IS data interface of R1, R2, R3, R4:
-interface GigabitEthernet0/0
+interface GigabitEthernet1
  isis hello-interval 1
  isis hello-multiplier 3
 ! Repeat for each additional IS-IS interface on each router
@@ -874,7 +874,7 @@ show isis neighbors detail
 
 ```bash
 ! On each IS-IS data interface (not Loopback0):
-interface GigabitEthernet0/0
+interface GigabitEthernet1
  bfd interval 150 min_rx 150 multiplier 3
  isis bfd
 ```
@@ -1014,14 +1014,14 @@ A colleague reports that after a scheduled maintenance window on R2, `show bfd n
 
 **Inject:** `python3 scripts/fault-injection/inject_scenario_01.py --host <eve-ng-ip>`
 
-**Success criteria:** `show bfd neighbors` on R1 shows the R2 session (Gi0/0) as `Up`. IS-IS convergence on an L1 failure is sub-500 ms.
+**Success criteria:** `show bfd neighbors` on R1 shows the R2 session (Gi1) as `Up`. IS-IS convergence on an L1 failure is sub-500 ms.
 
 <details>
 <summary>Click to view Diagnosis Steps</summary>
 
-1. Run `show bfd neighbors` on R1 — confirm the Gi0/0 session to R2 shows `Down`.
+1. Run `show bfd neighbors` on R1 — confirm the Gi1 session to R2 shows `Down`.
 2. Run `show bfd neighbors details` on R1 — note the `Our Diag` and `Remote Diag` fields. Look for "Control Detection Time Expired" which indicates the session is not receiving packets within the detection window.
-3. Run `show run interface GigabitEthernet0/0` on both R1 and R2 — compare the `bfd interval` values.
+3. Run `show run interface GigabitEthernet1` on both R1 and R2 — compare the `bfd interval` values.
 4. Observe that R2's `bfd interval` is set to `50 min_rx 50` while R1's is `500 min_rx 500`. The session negotiates to TX=500 ms (R1's min_rx). With R2's multiplier misconfigured to 1, the detection window on R2 is 500 × 1 = 500 ms — too tight for a heavily loaded EVE-NG host. R2 sees the session as Down and sends a BFD Control packet with the Down state, causing R1 to also declare Down.
 5. Confirm with `show bfd neighbors details` — look for `Multiplier` values: R2's multiplier shows 1 instead of 3.
 
@@ -1033,16 +1033,16 @@ A colleague reports that after a scheduled maintenance window on R2, `show bfd n
 Both R1 and R2 must be corrected to symmetric values. On R1, the slow-side misconfiguration is the root cause of the 500 ms negotiated interval; on R2, the multiplier of 1 causes the detection window to collapse to a single packet.
 
 ```bash
-! On R1 — GigabitEthernet0/0 (L1 toward R2)
-interface GigabitEthernet0/0
+! On R1 — GigabitEthernet1 (L1 toward R2)
+interface GigabitEthernet1
  bfd interval 150 min_rx 150 multiplier 3
 
-! On R2 — GigabitEthernet0/0 (L1 toward R1)
-interface GigabitEthernet0/0
+! On R2 — GigabitEthernet1 (L1 toward R1)
+interface GigabitEthernet1
  bfd interval 150 min_rx 150 multiplier 3
 ```
 
-After applying both, run `show bfd neighbors` on R1 and confirm the Gi0/0 session transitions from Down to Up within one detection interval (~1-2 seconds).
+After applying both, run `show bfd neighbors` on R1 and confirm the Gi1 session transitions from Down to Up within one detection interval (~1-2 seconds).
 
 </details>
 
@@ -1089,14 +1089,14 @@ A network audit shows that IS-IS convergence on the R1↔R4 path (L4) is taking 
 
 **Inject:** `python3 scripts/fault-injection/inject_scenario_03.py --host <eve-ng-ip>`
 
-**Success criteria:** `show bfd neighbors` on R1 shows the Gi0/1 session to R4 as `Up` and `show bfd neighbors details` on R1 shows `Registered Protocols: ISIS` for the Gi0/1 session. A link-shut test on L4 converges in under 500 ms.
+**Success criteria:** `show bfd neighbors` on R1 shows the Gi2 session to R4 as `Up` and `show bfd neighbors details` on R1 shows `Registered Protocols: ISIS` for the Gi2 session. A link-shut test on L4 converges in under 500 ms.
 
 <details>
 <summary>Click to view Diagnosis Steps</summary>
 
-1. Run `show bfd neighbors` on R1 — note that the Gi0/1 session (to R4 via L4) shows `Up` but `RH/RS` may show a non-registration state. Or the session shows Up with no protocol registered.
-2. Run `show bfd neighbors details` on R1 — examine the Gi0/1 entry. Look at the `Registered Protocols` field — it shows empty or `None` instead of `ISIS`.
-3. Run `show run interface GigabitEthernet0/1` on R1 — observe that `bfd interval 150 min_rx 150 multiplier 3` is present, but `isis bfd` is missing. The BFD session itself formed (because BFD runs independently), but IS-IS never registered as a client.
+1. Run `show bfd neighbors` on R1 — note that the Gi2 session (to R4 via L4) shows `Up` but `RH/RS` may show a non-registration state. Or the session shows Up with no protocol registered.
+2. Run `show bfd neighbors details` on R1 — examine the Gi2 entry. Look at the `Registered Protocols` field — it shows empty or `None` instead of `ISIS`.
+3. Run `show run interface GigabitEthernet2` on R1 — observe that `bfd interval 150 min_rx 150 multiplier 3` is present, but `isis bfd` is missing. The BFD session itself formed (because BFD runs independently), but IS-IS never registered as a client.
 4. Confirm by running `show isis neighbors detail` — the R4 adjacency does not show `BFD` in the flags column.
 
 </details>
@@ -1107,12 +1107,12 @@ A network audit shows that IS-IS convergence on the R1↔R4 path (L4) is taking 
 On R1, add the missing IS-IS BFD registration on the L4 interface:
 
 ```bash
-! On R1 — GigabitEthernet0/1 (L4 toward R4)
-interface GigabitEthernet0/1
+! On R1 — GigabitEthernet2 (L4 toward R4)
+interface GigabitEthernet2
  isis bfd
 ```
 
-Run `show bfd neighbors details` on R1. The Gi0/1 entry should now show `Registered Protocols: ISIS`. Repeat the L4 link-shut test and confirm convergence is sub-500 ms.
+Run `show bfd neighbors details` on R1. The Gi2 entry should now show `Registered Protocols: ISIS`. Repeat the L4 link-shut test and confirm convergence is sub-500 ms.
 
 </details>
 
@@ -1138,7 +1138,7 @@ Run `show bfd neighbors details` on R1. The Gi0/1 entry should now show `Registe
 
 - [ ] Ticket 1: BFD session between R1 and R2 restored to Up; root cause (asymmetric interval + bad multiplier) identified and corrected
 - [ ] Ticket 2: eBGP session R1↔R5 restored to Established; root cause (missing static routes on R5) identified and corrected
-- [ ] Ticket 3: IS-IS registered as BFD client on R1 Gi0/1; L4 convergence reduced to sub-500 ms
+- [ ] Ticket 3: IS-IS registered as BFD client on R1 Gi2; L4 convergence reduced to sub-500 ms
 
 ---
 

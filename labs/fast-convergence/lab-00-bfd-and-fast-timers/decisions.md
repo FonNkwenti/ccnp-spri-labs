@@ -18,6 +18,14 @@
   3. workbook.md Task 2 body — rewritten to clarify that `next-hop-self` applies on iBGP neighbors, not the eBGP peer
   4. workbook.md Section 8 Task 2 R1 solution + Section 7 cheatsheet — updated `address-family ipv4` blocks to show `next-hop-self` on iBGP neighbors (10.0.0.2/3/4), not on 10.0.0.5
 
+## Platform refactor — 2026-05-12
+- Change: All devices switched from iosv to csr1000v (IOS-XE)
+- Interface naming: Gi0/X → GigabitEthernet1/2/3/4 per CSR1000v convention
+- Files updated: solutions/*.cfg, initial-configs/*.cfg, workbook.md (all sections),
+  fault-injection scripts, topology/README.md, meta.yaml, README.md
+- Topology, IP addressing, lab sequence unchanged
+- Model gate: PASS (Foundation, claude-sonnet-4-6)
+
 ## Post-build review — 2026-05-09
 - Outcome: FIXES APPLIED
 - Items fixed: 4

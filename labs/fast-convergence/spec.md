@@ -19,12 +19,19 @@
 
 ## Topology Summary
 
-Five-router IOSv domain: a four-router meshed core (R1-R2-R3-R4) giving
-every node at least two loop-free paths to every other node (required for
-LFA), plus an external eBGP peer R5 in AS 65200 dual-homed to the core
+Five-router CSR1000v (IOS-XE) domain: a four-router meshed core (R1-R2-R3-R4)
+giving every node at least two loop-free paths to every other node (required
+for LFA), plus an external eBGP peer R5 in AS 65200 dual-homed to the core
 from lab-00 (both L6 R1↔R5 and L7 R3↔R5 up from day 1). IS-IS L2 is the
 sole IGP — fast convergence in this SP-centric topic is built on IS-IS,
 matching the production reality of most service-provider cores.
+
+> **Platform note:** All five routers run CSR1000v (IOS-XE). Interface naming
+> follows the CSR1000v convention — `GigabitEthernet1`, `GigabitEthernet2`,
+> `GigabitEthernet3`, `GigabitEthernet4` — instead of the slot/subslot
+> notation (`Gi0/X`) used in earlier topics built on IOSv. The physical
+> topology, IP addressing, and link IDs are identical; only the interface
+> labels change.
 
 ```
                  AS 65100 (SP core, IS-IS L2 + iBGP full mesh)
@@ -114,11 +121,11 @@ every bullet again end-to-end.
   requires PQ-node topologies which benefit from the diagonal. Adding
   L5 R1↔R3 gives every node three neighbors and unlocks both basic LFA
   and R-LFA scenarios without adding a sixth router.
-- **NSR behavioral gap documented, not hidden.** IOSv has one route
-  processor, so NSR's "survive an RP switchover without dropping
-  adjacencies" cannot be physically demonstrated. The lab still
-  configures NSR on R1 and explains what would happen on a dual-RP
-  platform. The exam question pool asks about NSR configuration and
+- **NSR behavioral gap documented, not hidden.** CSR1000v (IOS-XE) has one
+  route processor in a standard EVE-NG deployment, so NSR's "survive an RP
+  switchover without dropping adjacencies" cannot be physically demonstrated.
+  The lab still configures NSR on R1 and explains what would happen on a
+  dual-RP platform. The exam question pool asks about NSR configuration and
   concepts, not live RP-failover measurements.
 - **BFD pattern: single-hop on directly connected IGP, multi-hop on
   loopback-sourced BGP.** This mirrors production. BFD single-hop on

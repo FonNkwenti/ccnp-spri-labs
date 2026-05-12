@@ -87,8 +87,8 @@ Last updated: 2026-04-30 (segment-routing lab-03-sr-te-policies-and-steering bui
 |-----|-------|--------|
 | lab-00-bfd-and-fast-timers | BFD and Fast Timer Tuning | Built ✓ |
 | lab-01-nsf-and-nsr | Nonstop Forwarding (NSF) and Nonstop Routing (NSR) | Built ✓ |
-| lab-02-ip-frr-lfa | IP FRR and Loop-Free Alternates | Not Started |
-| lab-03-bgp-pic | BGP Prefix-Independent Convergence (PIC) | Not Started |
+| lab-02-lfa-ip-fast-reroute | IS-IS LFA and IP Fast Reroute | Built ✓ |
+| lab-03-bgp-pic | BGP Prefix-Independent Convergence (PIC) | Built ✓ |
 | lab-04-capstone-config | Fast Convergence Full Mastery — Capstone I | Not Started |
 | lab-05-capstone-troubleshooting | Fast Convergence Comprehensive Troubleshooting — Capstone II | Not Started |
 

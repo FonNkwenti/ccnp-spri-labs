@@ -26,7 +26,7 @@ Target device: R1 — replaces `fast-reroute per-prefix level-2 all` with a bogu
 python3 inject_scenario_02.py --host <eve-ng-ip>
 ```
 
-Target device: R2 — removes `mpls ip` from Gi0/1 (L2 to R3), breaking R-LFA
+Target device: R2 — removes `mpls ip` from Gi2 (L2 to R3), breaking R-LFA
 tunnels that traverse the R2→R3 path.
 
 ### Ticket 3

@@ -2,7 +2,7 @@
 
 ## Topology Summary
 
-Five-router IS-IS L2 meshed core (R1–R4) with one external CE (R5 in AS 65200) dual-homed via two eBGP links. Seven physical links total: five core links forming a ring with diagonal (L1–L5), plus two eBGP uplinks (L6 R1↔R5, L7 R3↔R5). All routers run IOSv.
+Five-router IS-IS L2 meshed core (R1–R4) with one external CE (R5 in AS 65200) dual-homed via two eBGP links. Seven physical links total: five core links forming a ring with diagonal (L1–L5), plus two eBGP uplinks (L6 R1↔R5, L7 R3↔R5). All routers run CSR1000v (IOS-XE).
 
 ## EVE-NG Import Instructions
 
@@ -16,16 +16,16 @@ Five-router IS-IS L2 meshed core (R1–R4) with one external CE (R5 in AS 65200)
 
 | Device | EVE-NG Template | RAM | Image |
 |--------|----------------|-----|-------|
-| R1 | Cisco IOSv | 512 MB | vios-adventerprisek9-m.SPA.156-2.T |
-| R2 | Cisco IOSv | 512 MB | vios-adventerprisek9-m.SPA.156-2.T |
-| R3 | Cisco IOSv | 512 MB | vios-adventerprisek9-m.SPA.156-2.T |
-| R4 | Cisco IOSv | 512 MB | vios-adventerprisek9-m.SPA.156-2.T |
-| R5 | Cisco IOSv | 512 MB | vios-adventerprisek9-m.SPA.156-2.T |
+| R1 | Cisco CSR1000v | 3 GB | csr1000vng-universalk9.17.03.05 |
+| R2 | Cisco CSR1000v | 3 GB | csr1000vng-universalk9.17.03.05 |
+| R3 | Cisco CSR1000v | 3 GB | csr1000vng-universalk9.17.03.05 |
+| R4 | Cisco CSR1000v | 3 GB | csr1000vng-universalk9.17.03.05 |
+| R5 | Cisco CSR1000v | 3 GB | csr1000vng-universalk9.17.03.05 |
 
 ## Starting the Lab
 
 1. Right-click the lab canvas and select **Start all nodes**.
-2. Wait approximately 60–90 seconds for all IOSv nodes to boot.
+2. Wait approximately 3–4 minutes for all CSR1000v nodes to boot.
 3. Check node status — all five nodes should show a green indicator.
 4. Console ports are assigned dynamically. Check each node's console port in the EVE-NG web UI (click the node, then **Console**) or retrieve via REST API.
 5. Run `setup_lab.py` to push initial configurations:

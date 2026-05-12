@@ -16,16 +16,16 @@ from eve_ng import EveNgError, connect_node, discover_ports, find_open_lab, requ
 
 DEVICE_NAME = "R1"
 FAULT_COMMANDS = [
-    "interface GigabitEthernet0/1",
+    "interface GigabitEthernet2",
     "no isis bfd",
 ]
 
-# Pre-flight: check GigabitEthernet0/1 config to verify the lab is in the
+# Pre-flight: check GigabitEthernet2 config to verify the lab is in the
 # expected solution state before injecting.
 # Note: fault is a removal — no positive fault string is present after injection.
 # PREFLIGHT_SOLUTION_MARKER is the load-bearing check; PREFLIGHT_FAULT_MARKER uses
 # a sentinel that cannot appear in either state to avoid false positives.
-PREFLIGHT_CMD = "show running-config interface GigabitEthernet0/1"
+PREFLIGHT_CMD = "show running-config interface GigabitEthernet2"
 # Sentinel string that will not appear in any valid config state (belt-and-suspenders guard).
 PREFLIGHT_FAULT_MARKER = "%%SCENARIO_03_ALREADY_INJECTED%%"
 # If this string is absent → not in solution state, bail out.

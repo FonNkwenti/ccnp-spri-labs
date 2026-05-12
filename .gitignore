@@ -22,3 +22,6 @@ __pycache__/
 .claude/last_run.json
 .claude/pending_telemetry.json
 .claude/build_start.json
+
+# drawio Chrome extension data
+.drawio-chrome/

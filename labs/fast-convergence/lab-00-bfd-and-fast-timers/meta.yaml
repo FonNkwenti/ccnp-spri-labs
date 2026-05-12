@@ -4,25 +4,25 @@ chapter: fast-convergence
 exam: 300-510
 devices:
   - name: R1
-    platform: iosv
+    platform: csr1000v
     role: SP Edge — eBGP to AS 65200, iBGP in AS 65100
   - name: R2
-    platform: iosv
+    platform: csr1000v
     role: SP Core — iBGP in AS 65100
   - name: R3
-    platform: iosv
+    platform: csr1000v
     role: SP Edge — eBGP to AS 65200, iBGP in AS 65100
   - name: R4
-    platform: iosv
+    platform: csr1000v
     role: SP Core — redundant path, iBGP in AS 65100
   - name: R5
-    platform: iosv
+    platform: csr1000v
     role: External CE — AS 65200, dual-homed eBGP
 created:
-  date: "2026-05-05"
+  date: "2026-05-12"
   agent: claude-sonnet-4-6
   skill: lab-assembler
-  skill_version: "2026-05-05"
+  skill_version: "2026-05-12"
   files:
     - workbook.md
     - README.md
@@ -46,4 +46,6 @@ created:
     - scripts/fault-injection/inject_scenario_03.py
     - scripts/fault-injection/apply_solution.py
     - scripts/fault-injection/README.md
-updated: []
+updated:
+  - date: "2026-05-12"
+    change: "Platform refactor: all devices switched from iosv to csr1000v (IOS-XE). Interface naming updated from Gi0/X to GigabitEthernet1/2/3/4 per CSR1000v convention. All configs, workbook, fault-injection scripts, and topology documentation updated accordingly."

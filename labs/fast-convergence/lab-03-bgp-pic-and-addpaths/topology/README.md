@@ -9,6 +9,9 @@ core routers and BGP Add-Paths on all iBGP sessions. R1 and R3 serve as BGP PIC
 Edge routers (eBGP to R5); R2 and R4 serve as BGP PIC Core routers. R5 is the
 external CE advertising prefix 192.0.2.0/24.
 
+All routers run CSR1000v (IOS-XE). Interface naming uses GigabitEthernet1/2/3/4
+per the CSR1000v EVE-NG template.
+
 ## EVE-NG Import Instructions
 
 1. In the EVE-NG web UI, navigate to the lab folder (e.g., `ccnp-spri/fast-convergence/`).
@@ -21,16 +24,16 @@ external CE advertising prefix 192.0.2.0/24.
 
 | Device | EVE-NG Template | RAM | Image |
 |--------|----------------|-----|-------|
-| R1 | Cisco IOSv | 512 MB | vios-adventerprisek9-m.SPA.156-2.T |
-| R2 | Cisco IOSv | 512 MB | vios-adventerprisek9-m.SPA.156-2.T |
-| R3 | Cisco IOSv | 512 MB | vios-adventerprisek9-m.SPA.156-2.T |
-| R4 | Cisco IOSv | 512 MB | vios-adventerprisek9-m.SPA.156-2.T |
-| R5 | Cisco IOSv | 512 MB | vios-adventerprisek9-m.SPA.156-2.T |
+| R1 | Cisco CSR1000v | 3 GB | csr1000vng-universalk9.17.03.05 |
+| R2 | Cisco CSR1000v | 3 GB | csr1000vng-universalk9.17.03.05 |
+| R3 | Cisco CSR1000v | 3 GB | csr1000vng-universalk9.17.03.05 |
+| R4 | Cisco CSR1000v | 3 GB | csr1000vng-universalk9.17.03.05 |
+| R5 | Cisco CSR1000v | 3 GB | csr1000vng-universalk9.17.03.05 |
 
 ## Starting the Lab
 
 1. Right-click the lab canvas and select **Start all nodes**.
-2. Wait approximately 60–90 seconds for all IOSv nodes to boot.
+2. Wait approximately 5–10 minutes for all CSR1000v nodes to boot.
 3. Check node status — all five nodes should show a green indicator.
 4. Console ports are assigned dynamically. Check each node's console port in the EVE-NG web UI (click the node, then **Console**) or retrieve via REST API.
 5. Run `setup_lab.py` to push initial configurations:

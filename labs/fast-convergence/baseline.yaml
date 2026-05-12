@@ -9,7 +9,12 @@ meta:
     agent: claude-opus-4-7
     skill: spec-creator
     skill_version: "2026-04-24"
-  updated: []
+  updated:
+    - date: "2026-05-12"
+      agent: claude-sonnet-4-20260512
+      skill: spec-creator
+      skill_version: "2026-04-24"
+      change: "Platform refactor: all devices switched from iosv to csr1000v (IOS-XE). Interface naming updated from Gi0/X to GigabitEthernet1/2/3/4 per CSR1000v convention. Topology, IP addressing, and lab sequence unchanged.
 
 # ──────────────────────────────────────────────────────────────────────────────
 # Core topology — present in every lab of this topic. IPs never change.
@@ -19,7 +24,7 @@ meta:
 core_topology:
   devices:
     - name: R1
-      platform: iosv
+      platform: csr1000v
       role: "SP edge / eBGP to AS 65200; iBGP in AS 65100; IS-IS L2"
       loopback0: "10.0.0.1/32"
       bgp_as: 65100
@@ -27,7 +32,7 @@ core_topology:
       console_port: null
 
     - name: R2
-      platform: iosv
+      platform: csr1000v
       role: "SP core; iBGP in AS 65100; IS-IS L2"
       loopback0: "10.0.0.2/32"
       bgp_as: 65100
@@ -35,7 +40,7 @@ core_topology:
       console_port: null
 
     - name: R3
-      platform: iosv
+      platform: csr1000v
       role: "SP edge / second eBGP to AS 65200; iBGP in AS 65100; IS-IS L2"
       loopback0: "10.0.0.3/32"
       bgp_as: 65100
@@ -43,7 +48,7 @@ core_topology:
       console_port: null
 
     - name: R4
-      platform: iosv
+      platform: csr1000v
       role: "SP core; provides redundant path for LFA; iBGP in AS 65100; IS-IS L2"
       loopback0: "10.0.0.4/32"
       bgp_as: 65100
@@ -51,7 +56,7 @@ core_topology:
       console_port: null
 
     - name: R5
-      platform: iosv
+      platform: csr1000v
       role: "External customer edge in AS 65200; dual-homed eBGP to R1 (L6) and R3 (L7)"
       loopback0: "10.0.0.5/32"
       loopback1: "192.0.2.1/24"              # External prefix announced into AS 65100
@@ -60,38 +65,38 @@ core_topology:
 
   links:
     - id: L1
-      source: "R1:GigabitEthernet0/0"
-      target: "R2:GigabitEthernet0/0"
+      source: "R1:GigabitEthernet1"
+      target: "R2:GigabitEthernet1"
       subnet: "10.1.12.0/24"
       purpose: "SP core link (IS-IS L2, iBGP transport); BFD single-hop from lab-00"
     - id: L2
-      source: "R2:GigabitEthernet0/1"
-      target: "R3:GigabitEthernet0/0"
+      source: "R2:GigabitEthernet2"
+      target: "R3:GigabitEthernet1"
       subnet: "10.1.23.0/24"
       purpose: "SP core link (IS-IS L2, iBGP transport); BFD single-hop from lab-00"
     - id: L3
-      source: "R3:GigabitEthernet0/1"
-      target: "R4:GigabitEthernet0/0"
+      source: "R3:GigabitEthernet2"
+      target: "R4:GigabitEthernet1"
       subnet: "10.1.34.0/24"
       purpose: "SP core link (IS-IS L2, iBGP transport); BFD single-hop from lab-00"
     - id: L4
-      source: "R1:GigabitEthernet0/1"
-      target: "R4:GigabitEthernet0/1"
+      source: "R1:GigabitEthernet2"
+      target: "R4:GigabitEthernet2"
       subnet: "10.1.14.0/24"
       purpose: "SP core ring closer (IS-IS L2, iBGP transport); provides LFA alternate for R1↔R4 destinations"
     - id: L5
-      source: "R1:GigabitEthernet0/2"
-      target: "R3:GigabitEthernet0/2"
+      source: "R1:GigabitEthernet3"
+      target: "R3:GigabitEthernet3"
       subnet: "10.1.13.0/24"
       purpose: "SP core diagonal (IS-IS L2, iBGP transport); primary short path R1↔R3 and R-LFA PQ-node anchor"
     - id: L6
-      source: "R1:GigabitEthernet0/3"
-      target: "R5:GigabitEthernet0/0"
+      source: "R1:GigabitEthernet4"
+      target: "R5:GigabitEthernet1"
       subnet: "10.1.15.0/24"
       purpose: "eBGP session R1 (AS 65100) ↔ R5 (AS 65200); BFD multi-hop from lab-00"
     - id: L7
-      source: "R3:GigabitEthernet0/3"
-      target: "R5:GigabitEthernet0/1"
+      source: "R3:GigabitEthernet4"
+      target: "R5:GigabitEthernet2"
       subnet: "10.1.35.0/24"
       purpose: "Second eBGP session R3 (AS 65100) ↔ R5 (AS 65200); BFD multi-hop from lab-00; primes BGP PIC Edge multi-path"
 
@@ -139,7 +144,7 @@ labs:
       - "Test NSF end-to-end: from R5, start a sustained ping to R2 loopback (10.0.0.2). Reload R2 and observe that the forwarding plane on R1/R3 keeps the R2 adjacency in a `GR` state for its stale timer. Packets continue flowing through R2's hardware path while its control plane restarts"
       - "Contrast: disable BGP GR and repeat. Observe that BGP withdrawals now happen immediately on neighbor reload, causing a full reconvergence ripple"
       - "Configure NSR intent on R1: `nsr` under `router isis` and `bgp nsr` under `router bgp 65100`. Verify configuration is accepted"
-      - "Document the NSR behavioral gap: IOSv has one route processor. On a dual-RP platform, NSR would allow R1's standby RP to maintain all protocol state so that adjacencies never drop during a switchover. On IOSv, this cannot be physically demonstrated — the configuration is present, but the failure test requires hardware not available in this lab"
+      - "Document the NSR behavioral gap: CSR1000v (IOS-XE) has one route processor in a standard EVE-NG deployment. On a dual-RP platform, NSR would allow R1's standby RP to maintain all protocol state so that adjacencies never drop during a switchover. On CSR1000v, this cannot be physically demonstrated — the configuration is present, but the failure test requires hardware not available in this lab"
       - "Compare NSF vs NSR in a written summary: NSF is cooperative (requires GR-helper peer), NSR is local (neighbor-agnostic); NSF depends on neighbor forgiveness, NSR depends on own HA hardware"
       - "Troubleshoot a planted NSF configuration where R2 has GR enabled but R1 does not — reload R2 and observe that R1 does not help R2 recover (R1 withdraws routes normally because it is not a GR helper)"
 
@@ -192,7 +197,7 @@ labs:
     objectives:
       - "Starting from interfaces-only baseline (all IP addresses assigned, no protocols running, L7 active), build the complete fast-convergence stack"
       - "IS-IS L2 on all core interfaces with BFD single-hop (150 ms × 3); iBGP full mesh with BFD multi-hop; eBGP R1↔R5 and R3↔R5 with BFD multi-hop"
-      - "Graceful Restart enabled for both IS-IS and BGP on all speakers; NSR configured on R1 and R3 (with the known IOSv behavioral limitation documented)"
+      - "Graceful Restart enabled for both IS-IS and BGP on all speakers; NSR configured on R1 and R3 (with the known CSR1000v/IOS-XE single-RP behavioral limitation documented)"
       - "Per-prefix LFA enabled on R1-R4 plus Remote LFA via MPLS LDP tunnels; verify every internal /32 has either LFA or R-LFA backup"
       - "BGP PIC Edge and Core enabled domain-wide; additional-paths send/receive configured for 192.0.2.0/24"
       - "Convergence measurement table: with a sustained ping R2→192.0.2.1 running, time convergence for (1) L1 shut, (2) L6 shut, (3) R2 reload with NSF. Record measured values in the workbook"

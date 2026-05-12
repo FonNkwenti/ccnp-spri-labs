@@ -57,6 +57,7 @@ After adding these, verify with `show mpls traffic-eng topology` on any core rou
 ### RSVP Bandwidth and Admission Control
 
 `ip rsvp bandwidth <total-kbps> <max-flow-kbps>` on an interface does two things:
+
 1. Enables RSVP on the interface (required — RSVP is disabled by default)
 2. Sets the reservable bandwidth pool for admission control
 
@@ -77,6 +78,7 @@ ip explicit-path name PE1-via-P2 enable
 `loose` means "reach this address via any available path from the current position." `strict` (default, no keyword) means "the next address must be a directly connected neighbor" — which requires the actual interface IP, not the loopback.
 
 Explicit paths are powerful for traffic engineering:
+
 - Pin specific traffic classes to specific physical links for capacity sharing
 - Keep high-priority flows off congested paths
 - Test alternate paths without disrupting primary traffic
@@ -227,6 +229,7 @@ Full link table:
 The following is **pre-loaded** via `setup_lab.py`:
 
 **IS pre-loaded:**
+
 - Hostnames
 - Interface IP addressing (all routed links and loopbacks)
 - `no ip domain-lookup`
@@ -236,6 +239,7 @@ The following is **pre-loaded** via `setup_lab.py`:
 - eBGP PE1↔CE1 and PE2↔CE2 with customer prefix advertisements (lab-02 solution state)
 
 **IS NOT pre-loaded** (student configures this):
+
 - MPLS TE global enablement (`mpls traffic-eng tunnels`)
 - MPLS TE on core-facing interfaces (`mpls traffic-eng tunnels` per interface)
 - IS-IS TE flooding extensions (`mpls traffic-eng level-2`, `mpls traffic-eng router-id`)
@@ -568,6 +572,7 @@ interface GigabitEthernet0/1
 interface GigabitEthernet0/2
  mpls traffic-eng tunnels
 ```
+
 </details>
 
 <details>
@@ -586,6 +591,7 @@ interface GigabitEthernet0/1
 interface GigabitEthernet0/2
  mpls traffic-eng tunnels
 ```
+
 </details>
 
 <details>
@@ -604,6 +610,7 @@ interface GigabitEthernet0/1
 interface GigabitEthernet0/2
  mpls traffic-eng tunnels
 ```
+
 </details>
 
 <details>
@@ -619,6 +626,7 @@ interface GigabitEthernet0/1
 interface GigabitEthernet0/2
  mpls traffic-eng tunnels
 ```
+
 </details>
 
 <details>
@@ -628,6 +636,7 @@ interface GigabitEthernet0/2
 show mpls interfaces detail
 show mpls traffic-eng tunnels
 ```
+
 </details>
 
 ---
@@ -643,6 +652,7 @@ router isis CORE
  mpls traffic-eng level-2
  mpls traffic-eng router-id Loopback0
 ```
+
 </details>
 
 <details>
@@ -652,6 +662,7 @@ router isis CORE
 show mpls traffic-eng topology
 show isis database verbose | include TE
 ```
+
 </details>
 
 ---
@@ -690,6 +701,7 @@ interface GigabitEthernet0/1
 interface GigabitEthernet0/2
  ip rsvp bandwidth 100000 100000
 ```
+
 </details>
 
 <details>
@@ -698,6 +710,7 @@ interface GigabitEthernet0/2
 ```bash
 show ip rsvp interface
 ```
+
 </details>
 
 ---
@@ -733,6 +746,7 @@ interface Tunnel20
  tunnel mpls traffic-eng priority 1 1
  tunnel mpls traffic-eng path-option 10 explicit name PE1-via-P2
 ```
+
 </details>
 
 <details>
@@ -745,6 +759,7 @@ show mpls traffic-eng tunnels Tunnel20
 show ip route 10.0.0.4
 traceroute 10.0.0.4
 ```
+
 </details>
 
 ---
@@ -778,12 +793,14 @@ Tunnel20 (explicit path via P2) went down after a maintenance window on PE1. Tun
 2. Check IS-IS and RSVP — both are intact. The fault is not in the transport or RSVP bandwidth layer. Focus on the explicit path reference itself.
 3. Inspect the explicit path definition: `show ip explicit-paths` on PE1 — `PATH PE1-via-P2` is absent from the output. Without this definition, CSPF has no waypoint list to compute from; path-option 10 immediately fails.
 4. Confirm: `show mpls traffic-eng tunnels Tunnel20` — the `Active Path Option Parameters` section shows no state (tunnel cannot establish any LSP). Tunnel10 is unaffected because it uses a dynamic path-option with no explicit path reference.
+
 </details>
 
 <details>
 <summary>Click to view Fix</summary>
 
 On PE1 — recreate the explicit path definition:
+
 ```bash
 ip explicit-path name PE1-via-P2 enable
  next-address loose 10.0.0.3
@@ -810,12 +827,14 @@ Tunnel20 (explicit path via P2) went down after a config audit pass on PE1. Tunn
 2. Verify the explicit path definition is intact: `show ip explicit-paths` on PE1 — `PATH PE1-via-P2` is present with both `next-address loose` hops. The path definition itself is not the fault.
 3. Inspect the tunnel interface: `show running-config interface Tunnel20` — the `tunnel mpls traffic-eng path-option 10 explicit name PE1-via-P2` line is absent. The path definition exists but the tunnel has no path-option referencing it.
 4. Root cause: CSPF cannot signal an LSP for Tunnel20 because no path-option is configured. Without a path-option, the headend has no instruction to initiate RSVP-TE signalling.
+
 </details>
 
 <details>
 <summary>Click to view Fix</summary>
 
 On PE1, re-add the path-option to Tunnel20:
+
 ```bash
 interface Tunnel20
  tunnel mpls traffic-eng path-option 10 explicit name PE1-via-P2
@@ -841,12 +860,14 @@ Tunnel10 (dynamic path) went down after an engineer pushed a "path optimization"
 2. Check the TE topology: `show mpls traffic-eng topology` on PE1 — all four nodes are present and all links show 100,000 kbps available. CSPF has a full view of the network.
 3. Inspect the tunnel signalling parameters: `show mpls traffic-eng tunnels Tunnel10` — the `Active Path Option Parameters` section shows `Affinity: 0x1/0xFFFF`. This means CSPF requires all selected links to have attribute bit 0 set.
 4. Check link affinities: `show mpls traffic-eng link-management interfaces` on PE1 — all core links show `Attribute Flags: 0x00000000`. No link has the required affinity bit, so CSPF eliminates every link and fails to build a path. Tunnel20 is unaffected because it uses an explicit path-option that bypasses affinity-based CSPF filtering.
+
 </details>
 
 <details>
 <summary>Click to view Fix</summary>
 
 On PE1, remove the affinity constraint from Tunnel10:
+
 ```bash
 interface Tunnel10
  no tunnel mpls traffic-eng affinity
@@ -861,21 +882,21 @@ CSPF immediately retries with no affinity constraint (default `0x0/0x0`). All li
 
 ### Core Implementation
 
-- [ ] `mpls traffic-eng tunnels` configured globally on PE1, P1, P2, PE2
-- [ ] `mpls traffic-eng tunnels` configured on every core-facing interface (L2–L6, both endpoints)
-- [ ] `mpls traffic-eng level-2` and `mpls traffic-eng router-id Loopback0` configured on PE1, P1, P2, PE2
-- [ ] `show mpls traffic-eng topology` shows all 4 core nodes with bandwidth attributes
-- [ ] `ip rsvp bandwidth 100000 100000` on all 5 core links (L2–L6), both endpoints
-- [ ] `show ip rsvp interface` shows 100,000 kbps on all core-facing interfaces
-- [ ] Tunnel10 UP with dynamic path-option 10 and `autoroute announce` — `show ip route 10.0.0.4` exits via Tunnel10
-- [ ] Tunnel20 UP with explicit path `PE1-via-P2` — ERO confirms P2 transit
-- [ ] `traceroute 10.0.0.4` from PE1 shows `[MPLS: Label]` on hop 1, confirming RSVP-TE tunnel forwarding
-- [ ] CE1-to-CE2 ping (192.0.2.1 → 198.51.100.1) succeeds
+- [x] `mpls traffic-eng tunnels` configured globally on PE1, P1, P2, PE2
+- [x] `mpls traffic-eng tunnels` configured on every core-facing interface (L2–L6, both endpoints)
+- [x] `mpls traffic-eng level-2` and `mpls traffic-eng router-id Loopback0` configured on PE1, P1, P2, PE2
+- [x] `show mpls traffic-eng topology` shows all 4 core nodes with bandwidth attributes
+- [x] `ip rsvp bandwidth 100000 100000` on all 5 core links (L2–L6), both endpoints
+- [x] `show ip rsvp interface` shows 100,000 kbps on all core-facing interfaces
+- [x] Tunnel10 UP with dynamic path-option 10 and `autoroute announce` — `show ip route 10.0.0.4` exits via Tunnel10
+- [x] Tunnel20 UP with explicit path `PE1-via-P2` — ERO confirms P2 transit
+- [x] `traceroute 10.0.0.4` from PE1 shows `[MPLS: Label]` on hop 1, confirming RSVP-TE tunnel forwarding
+- [x] CE1-to-CE2 ping (192.0.2.1 → 198.51.100.1) succeeds
 
 ### Troubleshooting
 
-- [ ] Ticket 1 resolved: Tunnel20 restored after explicit path definition `PE1-via-P2` re-added on PE1
-- [ ] Ticket 2 resolved: Tunnel20 restored after `path-option 10 explicit name PE1-via-P2` re-added on Tunnel20 interface
+- [x] Ticket 1 resolved: Tunnel20 restored after explicit path definition `PE1-via-P2` re-added on PE1
+- [x] Ticket 2 resolved: Tunnel20 restored after `path-option 10 explicit name PE1-via-P2` re-added on Tunnel20 interface
 - [ ] Ticket 3 resolved: Tunnel10 restored after `no tunnel mpls traffic-eng affinity` removed the link color constraint on PE1
 
 ---

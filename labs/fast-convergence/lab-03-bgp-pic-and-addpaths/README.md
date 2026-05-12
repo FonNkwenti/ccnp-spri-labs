@@ -5,6 +5,9 @@ Convergence (PIC) for edge and core routers with BGP Add-Paths for multi-path
 advertisement. Covers add-paths configuration, PIC backup selection, edge/core
 failure testing, and path identifier inspection.
 
+All five routers run CSR1000v (IOS-XE 17.03.05) with GigabitEthernet1/2/3/4
+interface naming.
+
 ## Blueprint Coverage
 
 | Bullet | Description |
@@ -16,7 +19,7 @@ failure testing, and path identifier inspection.
 
 - lab-02 (IS-IS LFA and IP FRR) completed — initial-configs for this lab are lab-02 solutions
 - Python 3.8+ with Netmiko installed (`pip install netmiko`)
-- EVE-NG server running with IOSv image available
+- EVE-NG server running with CSR1000v image available
 - Lab `.unl` imported into EVE-NG and all nodes started
 
 ## Quick Start
@@ -25,7 +28,7 @@ failure testing, and path identifier inspection.
 # 1. Import topology into EVE-NG
 #    File > Import > lab-03-bgp-pic-and-addpaths.unl
 
-# 2. Push initial configurations (lab-02 solutions — BFD + timers + NSF + BGP GR + NSR + LFA + R-LFA + MPLS LDP pre-loaded)
+# 2. Push initial configurations (lab-02 solutions — BFD + timers + IS-IS NSF + BGP GR + LFA + R-LFA + MPLS LDP pre-loaded)
 python3 setup_lab.py --host <eve-ng-ip>
 
 # 3. Open the workbook

@@ -2,10 +2,10 @@
 """
 Fault Injection: Scenario 02. Restore with: python3 apply_solution.py --host <eve-ng-ip>
 
-Ticket 2: Removes mpls ip from R2's Gi0/1 (L2 to R3). This breaks the LDP LSP
+Ticket 2: Removes mpls ip from R2's Gi2 (L2 to R3). This breaks the LDP LSP
           on a path-critical link, causing R-LFA tunnels that traverse R2→R3
           to fail. Per-prefix LFA still works; only Remote LFA is impaired.
-Symptom: show mpls ldp neighbor on R2 shows only R1 (via Gi0/0), missing R3.
+Symptom: show mpls ldp neighbor on R2 shows only R1 (via Gi1), missing R3.
          show isis fast-reroute remote-lfa tunnels on R1 shows some R-LFA tunnels
          in Down/LDP-not-ready state instead of Active.
 """
@@ -22,18 +22,18 @@ from eve_ng import EveNgError, connect_node, discover_ports, find_open_lab, requ
 
 DEVICE_NAME = "R2"
 FAULT_COMMANDS = [
-    "interface GigabitEthernet0/1",
+    "interface GigabitEthernet2",
     "no mpls ip",
 ]
 
-PREFLIGHT_CMD = "show running-config interface GigabitEthernet0/1"
+PREFLIGHT_CMD = "show running-config interface GigabitEthernet2"
 PREFLIGHT_SOLUTION_MARKER = "mpls ip"
 
 
 def preflight(conn) -> bool:
     output = conn.send_command(PREFLIGHT_CMD)
     if PREFLIGHT_SOLUTION_MARKER not in output:
-        print("[!] Pre-flight failed: mpls ip not present on R2 Gi0/1 — lab not in expected pre-injection state.")
+        print("[!] Pre-flight failed: mpls ip not present on R2 Gi2 — lab not in expected pre-injection state.")
         print("    Run apply_solution.py first to restore the known-good config.")
         return False
     return True
@@ -52,7 +52,7 @@ def main() -> int:
     host = require_host(args.host)
 
     print("=" * 60)
-    print("Fault Injection: Scenario 02 — R2 MPLS LDP missing on Gi0/1 (L2)")
+    print("Fault Injection: Scenario 02 — R2 MPLS LDP missing on Gi2 (L2)")
     print("=" * 60)
 
     if args.lab_path:

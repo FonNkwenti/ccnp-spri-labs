@@ -22,7 +22,7 @@
 - **1.7.e** — BGP PIC (edge and core)
 - **1.7.g** — BGP additional and backup path
 
-This lab builds on the full fast-convergence stack from lab-00, lab-01, and lab-02: BFD, tuned timers, NSF/NSR, BGP GR, and IS-IS LFA/R-LFA with MPLS LDP are all active. You will now add BGP Prefix-Independent Convergence (PIC) — the BGP-level mechanism that pre-computes and installs a backup next-hop in the FIB/Cisco Express Forwarding table so that BGP convergence on an edge failure happens in the forwarding plane without waiting for BGP best-path recomputation.
+This lab builds on the full fast-convergence stack from lab-00, lab-01, and lab-02: BFD, tuned timers, IS-IS NSF, BGP GR, and IS-IS LFA/R-LFA with MPLS LDP are all active. You will now add BGP Prefix-Independent Convergence (PIC) — the BGP-level mechanism that pre-computes and installs a backup next-hop in the FIB/Cisco Express Forwarding table so that BGP convergence on an edge failure happens in the forwarding plane without waiting for BGP best-path recomputation.
 
 The lab also covers **BGP Add-Paths** (additional paths) — the mechanism that allows BGP speakers to advertise more than one path for the same prefix. Add-paths is the plumbing that delivers multiple paths to iBGP peers; PIC consumes those additional paths to pre-install the backup.
 
@@ -73,7 +73,7 @@ router bgp 65100
 
 Add-paths (RFC 7911) extends BGP UPDATE messages to carry multiple paths for the same NLRI (Network Layer Reachability Information). Each path has a **path identifier** that distinguishes it.
 
-On IOSv, add-paths is configured per neighbor under the address-family:
+On CSR1000v, add-paths is configured per neighbor under the address-family:
 
 ```
 address-family ipv4
@@ -114,34 +114,34 @@ LFA protects the IGP next-hop — if a link fails, the packet is rerouted at the
 
 ## 2. Topology & Scenario
 
-**Scenario:** Your SP core already has BFD, tuned IS-IS timers, NSF/NSR, BGP GR, and IS-IS LFA/R-LFA from labs 00–02. The NOC has observed that during an eBGP edge-router failure, BGP convergence on the external prefix (192.0.2.0/24) takes 5–10 seconds because every iBGP speaker recomputes best-path from scratch. You must deploy BGP PIC and Add-Paths to pre-compute backup next-hops in the FIB so that forwarding-plane switchover is sub-second.
+**Scenario:** Your SP core already has BFD, tuned IS-IS timers, IS-IS NSF, BGP GR, and IS-IS LFA/R-LFA from labs 00–02. The NOC has observed that during an eBGP edge-router failure, BGP convergence on the external prefix (192.0.2.0/24) takes 5–10 seconds because every iBGP speaker recomputes best-path from scratch. You must deploy BGP PIC and Add-Paths to pre-compute backup next-hops in the FIB so that forwarding-plane switchover is sub-second.
 
 ```
               AS 65100 (SP core — IS-IS L2 + iBGP full mesh)
 
          ┌──────────────────────┐              ┌──────────────────────┐
          │         R1           │── L1 ─────── │         R2           │
-         │  SP Edge AS 65100    │  Gi0/0 Gi0/0 │  SP Core AS 65100    │
+         │  SP Edge AS 65100    │  Gi1   Gi1   │  SP Core AS 65100    │
          │  Lo0: 10.0.0.1/32    │  10.1.12.0   │  Lo0: 10.0.0.2/32    │
          └──┬──────┬──────┬─────┘              └────────────┬─────────┘
-        L4  │  L5  │  L6  │ Gi0/3                       L2  │ Gi0/1
-      Gi0/1 │ Gi0/2│      │ 10.1.15.0                       │ 10.1.23.0
+        L4  │  L5  │  L6  │ Gi4                          L2  │ Gi2
+       Gi2  │ Gi3  │      │ 10.1.15.0                       │ 10.1.23.0
             │      │      │                                  │
    ┌────────┴──┐   │      │                      ┌───────────┴────────────┐
    │    R4     │   └──────┼──────────────────────►         R3             │
-   │  SP Core  │          │            Gi0/2 L5  │  SP Edge AS 65100      │
-   │ 10.0.0.4  │          │     Gi0/1 10.1.34.0  │  Lo0: 10.0.0.3/32     │
-   │  /32      │◄── L3 ──►│              Gi0/0   │                        │
+   │  SP Core  │          │             Gi3 L5  │  SP Edge AS 65100      │
+   │ 10.0.0.4  │          │       Gi2 10.1.34.0  │  Lo0: 10.0.0.3/32     │
+   │  /32      │◄── L3 ──►│              Gi1     │                        │
    └───────────┘  10.1.34 │              L3      └──┬───────────────────┬─┘
-                          │                     L7  │ Gi0/3             │ Gi0/2
+       Gi1 R4            │                     L7  │ Gi4              L5 │ Gi3
                           │               10.1.35.0 │                   │
                           │                         │                   │
                           │                ┌────────┴──────────────────┘
                           │                │
                           │       ┌────────┴──────────────────┐
                           └───────►         R5                │
-                            L6 Gi0/0│   CE AS 65200           │
-                         10.1.15.0  │  Lo0: 10.0.0.5/32      │
+                            L6 Gi1│   CE AS 65200             │
+                         10.1.15.0 │  Lo0: 10.0.0.5/32        │
                                     │  Lo1: 192.0.2.1/24      │
                                     └────────────────────────-┘
 ```
@@ -150,18 +150,18 @@ LFA protects the IGP next-hop — if a link fails, the packet is rerouted at the
 
 | Link | Source | Target | Subnet | Purpose |
 |------|--------|--------|--------|---------|
-| L1 | R1 Gi0/0 | R2 Gi0/0 | 10.1.12.0/24 | SP core — IS-IS L2, iBGP transport, MPLS LDP |
-| L2 | R2 Gi0/1 | R3 Gi0/0 | 10.1.23.0/24 | SP core — IS-IS L2, iBGP transport, MPLS LDP |
-| L3 | R3 Gi0/1 | R4 Gi0/0 | 10.1.34.0/24 | SP core — IS-IS L2, iBGP transport, MPLS LDP |
-| L4 | R1 Gi0/1 | R4 Gi0/1 | 10.1.14.0/24 | Ring closer — IS-IS L2, LFA alternate, MPLS LDP |
-| L5 | R1 Gi0/2 | R3 Gi0/2 | 10.1.13.0/24 | Diagonal — IS-IS L2, short path R1↔R3, MPLS LDP |
-| L6 | R1 Gi0/3 | R5 Gi0/0 | 10.1.15.0/24 | eBGP R1 (AS 65100) ↔ R5 (AS 65200) |
-| L7 | R3 Gi0/3 | R5 Gi0/1 | 10.1.35.0/24 | eBGP R3 (AS 65100) ↔ R5 (AS 65200) |
+| L1 | R1 Gi1 | R2 Gi1 | 10.1.12.0/24 | SP core — IS-IS L2, iBGP transport, MPLS LDP |
+| L2 | R2 Gi2 | R3 Gi1 | 10.1.23.0/24 | SP core — IS-IS L2, iBGP transport, MPLS LDP |
+| L3 | R3 Gi2 | R4 Gi1 | 10.1.34.0/24 | SP core — IS-IS L2, iBGP transport, MPLS LDP |
+| L4 | R1 Gi2 | R4 Gi2 | 10.1.14.0/24 | Ring closer — IS-IS L2, LFA alternate, MPLS LDP |
+| L5 | R1 Gi3 | R3 Gi3 | 10.1.13.0/24 | Diagonal — IS-IS L2, short path R1↔R3, MPLS LDP |
+| L6 | R1 Gi4 | R5 Gi1 | 10.1.15.0/24 | eBGP R1 (AS 65100) ↔ R5 (AS 65200) |
+| L7 | R3 Gi4 | R5 Gi2 | 10.1.35.0/24 | eBGP R3 (AS 65100) ↔ R5 (AS 65200) |
 
 **Key relationships:**
 - R1 and R3 are the BGP PIC edge routers. Each runs an eBGP session to R5 (AS 65200) and learns the external prefix 192.0.2.0/24. With add-paths, each edge router conveys the R5-learned path plus any additional iBGP paths from the other edge router.
 - R2 and R4 are the BGP PIC core routers. They receive multiple paths for 192.0.2.0/24 via add-paths from both R1 and R3. PIC core pre-installs the backup next-hop.
-- The full convergence stack from labs 00–02 (BFD, NSF/NSR, BGP GR, LFA/R-LFA, MPLS LDP) remains active — this lab adds BGP PIC as the final layer.
+- The full convergence stack from labs 00–02 (BFD, IS-IS NSF, BGP GR, LFA/R-LFA, MPLS LDP) remains active — this lab adds BGP PIC as the final layer.
 
 ---
 
@@ -171,11 +171,11 @@ LFA protects the IGP next-hop — if a link fails, the packet is rerouted at the
 
 | Device | Role | Platform | Image | RAM |
 |--------|------|----------|-------|-----|
-| R1 | SP Edge — eBGP to AS 65200, iBGP in AS 65100 | IOSv | vios-adventerprisek9-m.SPA.156-2.T | 512 MB |
-| R2 | SP Core — iBGP in AS 65100 | IOSv | vios-adventerprisek9-m.SPA.156-2.T | 512 MB |
-| R3 | SP Edge — eBGP to AS 65200, iBGP in AS 65100 | IOSv | vios-adventerprisek9-m.SPA.156-2.T | 512 MB |
-| R4 | SP Core — redundant path, iBGP in AS 65100 | IOSv | vios-adventerprisek9-m.SPA.156-2.T | 512 MB |
-| R5 | External CE — dual-homed eBGP in AS 65200 | IOSv | vios-adventerprisek9-m.SPA.156-2.T | 512 MB |
+| R1 | SP Edge — eBGP to AS 65200, iBGP in AS 65100 | CSR1000v | csr1000vng-universalk9.17.03.05 | 3 GB |
+| R2 | SP Core — iBGP in AS 65100 | CSR1000v | csr1000vng-universalk9.17.03.05 | 3 GB |
+| R3 | SP Edge — eBGP to AS 65200, iBGP in AS 65100 | CSR1000v | csr1000vng-universalk9.17.03.05 | 3 GB |
+| R4 | SP Core — redundant path, iBGP in AS 65100 | CSR1000v | csr1000vng-universalk9.17.03.05 | 3 GB |
+| R5 | External CE — dual-homed eBGP in AS 65200 | CSR1000v | csr1000vng-universalk9.17.03.05 | 3 GB |
 
 ### Loopback Addresses
 
@@ -192,13 +192,13 @@ LFA protects the IGP next-hop — if a link fails, the packet is rerouted at the
 
 | Link ID | From | To | Subnet | Interface (From) | Interface (To) |
 |---------|------|----|--------|-----------------|----------------|
-| L1 | R1 | R2 | 10.1.12.0/24 | GigabitEthernet0/0 | GigabitEthernet0/0 |
-| L2 | R2 | R3 | 10.1.23.0/24 | GigabitEthernet0/1 | GigabitEthernet0/0 |
-| L3 | R3 | R4 | 10.1.34.0/24 | GigabitEthernet0/1 | GigabitEthernet0/0 |
-| L4 | R1 | R4 | 10.1.14.0/24 | GigabitEthernet0/1 | GigabitEthernet0/1 |
-| L5 | R1 | R3 | 10.1.13.0/24 | GigabitEthernet0/2 | GigabitEthernet0/2 |
-| L6 | R1 | R5 | 10.1.15.0/24 | GigabitEthernet0/3 | GigabitEthernet0/0 |
-| L7 | R3 | R5 | 10.1.35.0/24 | GigabitEthernet0/3 | GigabitEthernet0/1 |
+| L1 | R1 | R2 | 10.1.12.0/24 | GigabitEthernet1 | GigabitEthernet1 |
+| L2 | R2 | R3 | 10.1.23.0/24 | GigabitEthernet2 | GigabitEthernet1 |
+| L3 | R3 | R4 | 10.1.34.0/24 | GigabitEthernet2 | GigabitEthernet1 |
+| L4 | R1 | R4 | 10.1.14.0/24 | GigabitEthernet2 | GigabitEthernet2 |
+| L5 | R1 | R3 | 10.1.13.0/24 | GigabitEthernet3 | GigabitEthernet3 |
+| L6 | R1 | R5 | 10.1.15.0/24 | GigabitEthernet4 | GigabitEthernet1 |
+| L7 | R3 | R5 | 10.1.35.0/24 | GigabitEthernet4 | GigabitEthernet2 |
 
 ### Console Access Table
 
@@ -219,19 +219,19 @@ The following is **pre-loaded** via `setup_lab.py`:
 **IS pre-loaded:**
 - Hostnames on all five routers
 - Interface IP addressing on all routed links and loopbacks
-- `no ip domain-lookup` on all routers
+- `no ip domain lookup` on all routers
 - IS-IS L2 on R1–R4 with tuned hello/hold timers (1 s / 3 s) and SPF/PRC throttle
+- IS-IS Graceful Restart (NSF) on R1–R4 (`nsf ietf` under `router isis`) — inherited from lab-01
 - BFD single-hop on all IS-IS core interfaces (150 ms × 3 = 450 ms detection)
 - iBGP full mesh in AS 65100 (R1–R4), loopback-sourced with `next-hop-self` on R1 and R3
 - eBGP sessions R1↔R5 and R3↔R5, loopback-sourced with multihop, BFD multi-hop, and tuned timers
 - BGP multi-hop BFD templates and peer bindings on R1, R3, and R5
 - BGP Graceful Restart on R1–R5 (`bgp graceful-restart` under `router bgp`)
-
-> **Platform note:** IS-IS NSF (`nsf ietf`), IS-IS NSR (`nsr`), and BGP NSR (`bgp nsr`) are not available on IOSv — these commands are rejected. They appear conceptually in lab-01 but are not pre-loaded.
-
 - Per-prefix LFA on R1–R4 (`fast-reroute per-prefix level-2 all`)
 - Remote LFA on R1 and R3 (`fast-reroute per-prefix remote-lfa level-2 tunnel mpls-ldp`)
-- MPLS LDP on all core IS-IS interfaces (R1–R4)
+- MPLS LDP on all core IS-IS interfaces (R1–R4) — `mpls ldp router-id Loopback0 force` globally, `mpls ip` on each core interface
+
+> **Platform note:** IS-IS NSR (`nsr`) and BGP NSR (`bgp nsr`) are not supported on the single-RP CSR1000v platform. These commands are rejected. They are covered conceptually in lab-01.
 
 **IS NOT pre-loaded** (student configures this):
 - `bgp additional-paths install` and `bgp additional-paths select backup` on R1–R4
@@ -316,12 +316,12 @@ Now test the PIC edge behavior by failing R1's eBGP session to R5.
   ```
   ping 192.0.2.1 source lo0 repeat 200 timeout 0
   ```
-- Shut down R1's Gi0/3 (L6 to R5). This removes R1's eBGP-learned path to 192.0.2.0/24.
+- Shut down R1's Gi4 (L6 to R5). This removes R1's eBGP-learned path to 192.0.2.0/24.
 - Observe the ping on R2. With PIC:
   - **If R2's primary path was via R1**, R2's FIB already has the backup via R3 pre-installed. The switchover should be sub-second with at most a few dropped pings.
   - **If R2's primary path was via R3**, the disruption should be zero — R2's primary is unaffected.
-- Bring Gi0/3 back up after testing.
-- Repeat the test by shutting R3's Gi0/3 (L7 to R5) instead.
+- Bring Gi4 back up after testing.
+- Repeat the test by shutting R3's Gi4 (L7 to R5) instead.
 
 > `ping 192.0.2.1 source lo0 repeat 200 timeout 0` sends pings as fast as IOS processes them — useful for catching sub-second gaps.
 
@@ -393,7 +393,7 @@ Paths: (1 available, best #1, table default)
 R2# show ip cef 192.0.2.0 detail
 192.0.2.0/24, epoch 0, flags [rib only nolabel, rib defined all labels]
   recursive via 10.0.0.1
-    attached to GigabitEthernet0/0
+    attached to GigabitEthernet1
                   ! ← single next-hop, no backup
 ```
 
@@ -418,9 +418,9 @@ Paths: (2 available, best #1, table default)
 R2# show ip cef 192.0.2.0 detail
 192.0.2.0/24, epoch 0, flags [rib only nolabel, rib defined all labels]
   recursive via 10.0.0.1
-    attached to GigabitEthernet0/0
+    attached to GigabitEthernet1
   recursive via 10.0.0.3, backup          ! ← backup next-hop pre-installed
-    attached to GigabitEthernet0/1
+    attached to GigabitEthernet2
 ```
 
 ### Task 5 — PIC Edge Failure Test
@@ -435,8 +435,8 @@ Packet sent with a source address of 10.0.0.2
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 Success rate is 100 percent (100/100)
 
-! Shut R1 Gi0/3 (L6 to R5) during ping
-R1(config)# interface gi0/3
+! Shut R1 Gi4 (L6 to R5) during ping
+R1(config)# interface gigabitEthernet4
 R1(config-if)# shutdown
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!.!.!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -446,7 +446,7 @@ Success rate is 99 percent (99/100)    ! ← 1 drop (PIC sub-second switchover)
 R2# show ip cef 192.0.2.0 detail
 192.0.2.0/24, epoch 0, flags [rib only nolabel, rib defined all labels]
   recursive via 10.0.0.3              ! ← backup now active
-    attached to GigabitEthernet0/1
+    attached to GigabitEthernet2
 ```
 
 ### Task 6 — PIC Core Failure Test
@@ -460,7 +460,7 @@ R1(config-if)# no ip router isis
 R2# show ip cef 192.0.2.0 detail
 192.0.2.0/24, epoch 0, flags [rib only nolabel, rib defined all labels]
   recursive via 10.0.0.3              ! ← only R3's loopback reachable now
-    attached to GigabitEthernet0/1
+    attached to GigabitEthernet2
 
 ! R2 BGP table — R1 path withdrawn (next-hop unreachable)
 R2# show ip bgp 192.0.2.0
@@ -849,7 +849,7 @@ After the sessions re-establish, verify with `show ip bgp 192.0.2.0` on R4 — t
 - [ ] Add-paths configured per-neighbor on all iBGP sessions: both `advertise additional-paths best 2` and `additional-paths receive` present for every iBGP peer on every router (Task 3)
 - [ ] BGP sessions soft-cleared after configuration; two paths visible for 192.0.2.0/24 on R2: `show ip bgp 192.0.2.0` shows `Paths: (2 available)` (Task 3)
 - [ ] PIC backup confirmed in CEF: `show ip cef 192.0.2.0 detail` on R2 shows `recursive via X, backup` (Task 4)
-- [ ] PIC edge failure test: R1 Gi0/3 shutdown causes ≤ 3 ping drops from R2 to 192.0.2.1 (Task 5)
+- [ ] PIC edge failure test: R1 Gi4 shutdown causes ≤ 3 ping drops from R2 to 192.0.2.1 (Task 5)
 - [ ] PIC core failure test: R1 Loopback0 IS-IS removal causes ≤ 5 ping drops from R2 to 192.0.2.1 (Task 6)
 - [ ] Add-paths path identifier inspection: path IDs documented for each iBGP session (Task 7)
 

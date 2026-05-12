@@ -55,7 +55,7 @@ When no directly-connected neighbor qualifies as an LFA, Remote LFA uses a tunne
 - **P-space** of the source: the set of routers reachable from S without traversing the protected link.
 - **Q-space** of the destination: the set of routers that can reach D without traversing the protected link.
 
-A PQ node can forward the traffic toward D without looping back to S. R-LFA tunnels the packet to the PQ node using MPLS (LDP label stacking on IOSv, or SR on newer platforms). The PQ node then forwards natively to D.
+A PQ node can forward the traffic toward D without looping back to S. R-LFA tunnels the packet to the PQ node using MPLS (LDP label stacking on CSR1000v, or SR on newer platforms). The PQ node then forwards natively to D.
 
 ```
 ! Enable Remote LFA with MPLS LDP tunnels
@@ -99,27 +99,27 @@ R-LFA requires MPLS LDP on all core IS-IS interfaces — the tunnel is built fro
 
          ┌──────────────────────┐              ┌──────────────────────┐
          │         R1           │── L1 ─────── │         R2           │
-         │  SP Edge AS 65100    │  Gi0/0 Gi0/0 │  SP Core AS 65100    │
+         │  SP Edge AS 65100    │   Gi1  Gi1   │  SP Core AS 65100    │
          │  Lo0: 10.0.0.1/32    │  10.1.12.0   │  Lo0: 10.0.0.2/32    │
          └──┬──────┬──────┬─────┘              └────────────┬─────────┘
-        L4  │  L5  │  L6  │ Gi0/3                       L2  │ Gi0/1
-      Gi0/1 │ Gi0/2│      │ 10.1.15.0                       │ 10.1.23.0
+        L4  │  L5  │  L6  │ Gi4                          L2  │ Gi2
+       Gi2  │ Gi3  │      │ 10.1.15.0                       │ 10.1.23.0
             │      │      │                                  │
    ┌────────┴──┐   │      │                      ┌───────────┴────────────┐
    │    R4     │   └──────┼──────────────────────►         R3             │
-   │  SP Core  │          │            Gi0/2 L5  │  SP Edge AS 65100      │
-   │ 10.0.0.4  │          │     Gi0/1 10.1.34.0  │  Lo0: 10.0.0.3/32     │
-   │  /32      │◄── L3 ──►│              Gi0/0   │                        │
+   │  SP Core  │          │             Gi3 L5   │  SP Edge AS 65100      │
+   │ 10.0.0.4  │          │       Gi2 10.1.34.0  │  Lo0: 10.0.0.3/32     │
+   │  /32      │◄── L3 ──►│              Gi1     │                        │
    └───────────┘  10.1.34 │              L3      └──┬───────────────────┬─┘
-                          │                     L7  │ Gi0/3             │ Gi0/2
+       Gi1 R4            │                     L7  │ Gi4              L5 │ Gi3
                           │               10.1.35.0 │                   │
                           │                         │                   │
                           │                ┌────────┴──────────────────┘
                           │                │
                           │       ┌────────┴──────────────────┐
                           └───────►         R5                │
-                            L6 Gi0/0│   CE AS 65200           │
-                         10.1.15.0  │  Lo0: 10.0.0.5/32      │
+                            L6 Gi1│   CE AS 65200             │
+                         10.1.15.0 │  Lo0: 10.0.0.5/32        │
                                     │  Lo1: 192.0.2.1/24      │
                                     └────────────────────────-┘
 ```
@@ -128,13 +128,13 @@ R-LFA requires MPLS LDP on all core IS-IS interfaces — the tunnel is built fro
 
 | Link | Source | Target | Subnet | Purpose |
 |------|--------|--------|--------|---------|
-| L1 | R1 Gi0/0 | R2 Gi0/0 | 10.1.12.0/24 | SP core — IS-IS L2, iBGP transport, MPLS LDP |
-| L2 | R2 Gi0/1 | R3 Gi0/0 | 10.1.23.0/24 | SP core — IS-IS L2, iBGP transport, MPLS LDP |
-| L3 | R3 Gi0/1 | R4 Gi0/0 | 10.1.34.0/24 | SP core — IS-IS L2, iBGP transport, MPLS LDP |
-| L4 | R1 Gi0/1 | R4 Gi0/1 | 10.1.14.0/24 | Ring closer — IS-IS L2, LFA alternate, MPLS LDP |
-| L5 | R1 Gi0/2 | R3 Gi0/2 | 10.1.13.0/24 | Diagonal — IS-IS L2, short path R1↔R3, MPLS LDP |
-| L6 | R1 Gi0/3 | R5 Gi0/0 | 10.1.15.0/24 | eBGP R1 (AS 65100) ↔ R5 (AS 65200) |
-| L7 | R3 Gi0/3 | R5 Gi0/1 | 10.1.35.0/24 | eBGP R3 (AS 65100) ↔ R5 (AS 65200) |
+| L1 | R1 Gi1 | R2 Gi1 | 10.1.12.0/24 | SP core — IS-IS L2, iBGP transport, MPLS LDP |
+| L2 | R2 Gi2 | R3 Gi1 | 10.1.23.0/24 | SP core — IS-IS L2, iBGP transport, MPLS LDP |
+| L3 | R3 Gi2 | R4 Gi1 | 10.1.34.0/24 | SP core — IS-IS L2, iBGP transport, MPLS LDP |
+| L4 | R1 Gi2 | R4 Gi2 | 10.1.14.0/24 | Ring closer — IS-IS L2, LFA alternate, MPLS LDP |
+| L5 | R1 Gi3 | R3 Gi3 | 10.1.13.0/24 | Diagonal — IS-IS L2, short path R1↔R3, MPLS LDP |
+| L6 | R1 Gi4 | R5 Gi1 | 10.1.15.0/24 | eBGP R1 (AS 65100) ↔ R5 (AS 65200) |
+| L7 | R3 Gi4 | R5 Gi2 | 10.1.35.0/24 | eBGP R3 (AS 65100) ↔ R5 (AS 65200) |
 
 **Key relationships:**
 - All five core links (L1–L5) carry IS-IS L2, iBGP transport, and — once MPLS LDP is configured — MPLS LDP label distribution. Each link has preconfigured BFD single-hop from lab-00.
@@ -150,11 +150,11 @@ R-LFA requires MPLS LDP on all core IS-IS interfaces — the tunnel is built fro
 
 | Device | Role | Platform | Image | RAM |
 |--------|------|----------|-------|-----|
-| R1 | SP Edge — eBGP to AS 65200, iBGP in AS 65100 | IOSv | vios-adventerprisek9-m.SPA.156-2.T | 512 MB |
-| R2 | SP Core — iBGP in AS 65100 | IOSv | vios-adventerprisek9-m.SPA.156-2.T | 512 MB |
-| R3 | SP Edge — eBGP to AS 65200, iBGP in AS 65100 | IOSv | vios-adventerprisek9-m.SPA.156-2.T | 512 MB |
-| R4 | SP Core — redundant path, iBGP in AS 65100 | IOSv | vios-adventerprisek9-m.SPA.156-2.T | 512 MB |
-| R5 | External CE — dual-homed eBGP in AS 65200 | IOSv | vios-adventerprisek9-m.SPA.156-2.T | 512 MB |
+| R1 | SP Edge — eBGP to AS 65200, iBGP in AS 65100 | CSR1000v | csr1000vng-universalk9.17.03.05 | 3 GB |
+| R2 | SP Core — iBGP in AS 65100 | CSR1000v | csr1000vng-universalk9.17.03.05 | 3 GB |
+| R3 | SP Edge — eBGP to AS 65200, iBGP in AS 65100 | CSR1000v | csr1000vng-universalk9.17.03.05 | 3 GB |
+| R4 | SP Core — redundant path, iBGP in AS 65100 | CSR1000v | csr1000vng-universalk9.17.03.05 | 3 GB |
+| R5 | External CE — dual-homed eBGP in AS 65200 | CSR1000v | csr1000vng-universalk9.17.03.05 | 3 GB |
 
 ### Loopback Addresses
 
@@ -171,13 +171,13 @@ R-LFA requires MPLS LDP on all core IS-IS interfaces — the tunnel is built fro
 
 | Link ID | From | To | Subnet | Interface (From) | Interface (To) |
 |---------|------|----|--------|-----------------|----------------|
-| L1 | R1 | R2 | 10.1.12.0/24 | GigabitEthernet0/0 | GigabitEthernet0/0 |
-| L2 | R2 | R3 | 10.1.23.0/24 | GigabitEthernet0/1 | GigabitEthernet0/0 |
-| L3 | R3 | R4 | 10.1.34.0/24 | GigabitEthernet0/1 | GigabitEthernet0/0 |
-| L4 | R1 | R4 | 10.1.14.0/24 | GigabitEthernet0/1 | GigabitEthernet0/1 |
-| L5 | R1 | R3 | 10.1.13.0/24 | GigabitEthernet0/2 | GigabitEthernet0/2 |
-| L6 | R1 | R5 | 10.1.15.0/24 | GigabitEthernet0/3 | GigabitEthernet0/0 |
-| L7 | R3 | R5 | 10.1.35.0/24 | GigabitEthernet0/3 | GigabitEthernet0/1 |
+| L1 | R1 | R2 | 10.1.12.0/24 | GigabitEthernet1 | GigabitEthernet1 |
+| L2 | R2 | R3 | 10.1.23.0/24 | GigabitEthernet2 | GigabitEthernet1 |
+| L3 | R3 | R4 | 10.1.34.0/24 | GigabitEthernet2 | GigabitEthernet1 |
+| L4 | R1 | R4 | 10.1.14.0/24 | GigabitEthernet2 | GigabitEthernet2 |
+| L5 | R1 | R3 | 10.1.13.0/24 | GigabitEthernet3 | GigabitEthernet3 |
+| L6 | R1 | R5 | 10.1.15.0/24 | GigabitEthernet4 | GigabitEthernet1 |
+| L7 | R3 | R5 | 10.1.35.0/24 | GigabitEthernet4 | GigabitEthernet2 |
 
 ### Console Access Table
 
@@ -198,15 +198,16 @@ The following is **pre-loaded** via `setup_lab.py`:
 **IS pre-loaded:**
 - Hostnames on all five routers
 - Interface IP addressing on all routed links and loopbacks
-- `no ip domain-lookup` on all routers
+- `no ip domain lookup` on all routers
 - IS-IS L2 on R1–R4 with tuned hello/hold timers (1 s / 3 s) and SPF/PRC throttle
+- IS-IS Graceful Restart (NSF) on R1–R4 (`nsf ietf` under `router isis`) — inherited from lab-01
 - BFD single-hop on all IS-IS core interfaces (150 ms × 3 = 450 ms detection)
 - iBGP full mesh in AS 65100 (R1–R4), loopback-sourced with `next-hop-self` on R1 and R3
 - eBGP sessions R1↔R5 and R3↔R5, loopback-sourced with multihop, BFD multi-hop, and tuned timers
 - BGP multi-hop BFD templates and peer bindings on R1, R3, and R5
-- BGP Graceful Restart on R1–R5 (`bgp graceful-restart` under `router bgp`)
+- BGP Graceful Restart on R1–R5 (`bgp graceful-restart` under `router bgp`) — inherited from lab-01
 
-> **Platform note:** IS-IS NSF (`nsf ietf`), IS-IS NSR (`nsr`), and BGP NSR (`bgp nsr`) are not available on IOSv — these commands are rejected. They appear conceptually in lab-01 but are not pre-loaded.
+> **Platform note:** IS-IS NSR (`nsr`) and BGP NSR (`bgp nsr`) are not supported on the single-RP CSR1000v platform. These commands are rejected. They are covered conceptually in lab-01.
 
 **IS NOT pre-loaded** (student configures this):
 - Per-prefix LFA on R1–R4 under `router isis`
@@ -241,13 +242,13 @@ The following is **pre-loaded** via `setup_lab.py`:
 ### Task 3: LFA Failure Test — Measure Sub-50 ms Convergence
 
 - From R2, start a sustained extended ping to R4's loopback (10.0.0.4) sourced from R2's Loopback0. R2's primary path to 10.0.0.4 is via R3 (L2+L3, metric 20).
-- Shut down R2's Gi0/1 (L2 to R3). Observe that the ping experiences at most one or two lost packets — the precomputed LFA backup path via R1 (L1→L4 or L1→L5→L3) takes over in the FIB before IS-IS SPF recomputes.
+- Shut down R2's Gi2 (L2 to R3). Observe that the ping experiences at most one or two lost packets — the precomputed LFA backup path via R1 (L1→L4 or L1→L5→L3) takes over in the FIB before IS-IS SPF recomputes.
 - Bring the interface back up after observing the convergence. Note the approximate packet loss count.
 - Compare this to what would happen without LFA: based on your lab-00 measurement, IS-IS with BFD takes ~450 ms to detect + SPF runtime ≈ 500 ms total. With LFA, the switchover is < 50 ms.
 
 > Use `ping 10.0.0.4 source lo0 repeat 200 timeout 0` for a fast-firing sustained ping. The `timeout 0` sends pings as fast as IOS processes them — useful for catching sub-second gaps.
 
-**Verification:** During the Gi0/1 shutdown, `show isis fast-reroute 10.0.0.4/32 detail` on R2 must show the backup path is in use (`Repair path in use` or similar indicator). After the interface comes back up, the primary path should be restored.
+**Verification:** During the Gi2 shutdown, `show isis fast-reroute 10.0.0.4/32 detail` on R2 must show the backup path is in use (`Repair path in use` or similar indicator). After the interface comes back up, the primary path should be restored.
 
 ---
 
@@ -267,22 +268,22 @@ The following is **pre-loaded** via `setup_lab.py`:
 
 Remote LFA uses MPLS LDP tunnels to reach PQ nodes. Before configuring R-LFA, LDP must be running on all core interfaces.
 
-- On R1, R2, R3, and R4, configure MPLS LDP globally with the loopback0 interface as the router ID. Use the `force` keyword to ensure the router-id takes effect immediately.
-- On every core IS-IS interface (Gi0/0, Gi0/1, Gi0/2 on each router; R2 and R4 only have Gi0/0, Gi0/1), enable MPLS LDP with the `mpls ip` interface command.
-- Do NOT enable MPLS on the eBGP interfaces (R1 Gi0/3 L6, R3 Gi0/3 L7) or on R5 — MPLS is internal to the SP core only.
+- On R1, R2, R3, and R4, configure MPLS LDP globally with the Loopback0 interface as the router ID. Use the `force` keyword to ensure the router-id takes effect immediately.
+- On every core IS-IS interface (Gi1, Gi2, Gi3 on R1 and R3; Gi1, Gi2 on R2 and R4), enable MPLS LDP with the `mpls ip` interface command.
+- Do NOT enable MPLS on the eBGP interfaces (R1 Gi4 L6, R3 Gi4 L7) or on R5 — MPLS is internal to the SP core only.
 
 ```
 ! Global LDP configuration (all four core routers)
 mpls ldp router-id Loopback0 force
 !
 ! On each core interface (R1 example)
-interface GigabitEthernet0/0
+interface GigabitEthernet1
  mpls ip
 !
-interface GigabitEthernet0/1
+interface GigabitEthernet2
  mpls ip
 !
-interface GigabitEthernet0/2
+interface GigabitEthernet3
  mpls ip
 ```
 
@@ -348,16 +349,16 @@ Prefixes:
 ```
 R1# show isis fast-reroute 10.0.0.4/32 detail
 L2 10.0.0.4/32 [20/115]
-     via 10.1.14.4, GigabitEthernet0/1, R4, Weight: 0    ! ← primary path (L4 direct)
-       Backup path: 10.1.13.3, GigabitEthernet0/2, R3, Weight: 0, Metric: 30  ! ← LFA via R3 (L5+L3)
+     via 10.1.14.4, GigabitEthernet2, R4, Weight: 0    ! ← primary path (L4 direct)
+       Backup path: 10.1.13.3, GigabitEthernet3, R3, Weight: 0, Metric: 30  ! ← LFA via R3 (L5+L3)
        P: No, TM: 30, LC: No, NP: No, D: No
-     via 10.1.13.3, GigabitEthernet0/2, R3, Weight: 0
-       Backup path: 10.1.14.4, GigabitEthernet0/1, R4, Weight: 0, Metric: 30  ! ← LFA via R4 (L4+L3)
+     via 10.1.13.3, GigabitEthernet3, R3, Weight: 0
+       Backup path: 10.1.14.4, GigabitEthernet2, R4, Weight: 0, Metric: 30  ! ← LFA via R4 (L4+L3)
 
 R1# show isis fast-reroute 10.0.0.2/32 detail
 L2 10.0.0.2/32 [15/115]
-     via 10.1.12.2, GigabitEthernet0/0, R2, Weight: 0    ! ← primary path (L1)
-       Backup path: 10.1.13.3, GigabitEthernet0/2, R3, Weight: 0, Metric: 20  ! ← LFA via R3 (L5+L2)
+     via 10.1.12.2, GigabitEthernet1, R2, Weight: 0    ! ← primary path (L1)
+       Backup path: 10.1.13.3, GigabitEthernet3, R3, Weight: 0, Metric: 20  ! ← LFA via R3 (L5+L2)
        P: No, TM: 20, LC: No, NP: No, D: No
 ```
 
@@ -373,8 +374,8 @@ Packet sent with a source address of 10.0.0.2
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 Success rate is 100 percent (100/100)
 
-! Shut Gi0/1 (L2 to R3) during ping — observe at most 1-2 drops
-R2(config)# interface gi0/1
+! Shut Gi2 (L2 to R3) during ping — observe at most 1-2 drops
+R2(config)# interface gi2
 R2(config-if)# shutdown
 ...
 !!!!!!!!!!!!!!!!!!.!.!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!  ! ← 1-2 drops at most
@@ -383,8 +384,8 @@ Success rate is 99 percent (99/100)
 ! Verify backup path is active
 R2# show isis fast-reroute 10.0.0.4/32 detail
 L2 10.0.0.4/32 [20/115]
-     via 10.1.23.3, GigabitEthernet0/1, R3, Weight: 0             ! ← primary (now down)
-       Backup path: 10.1.12.1, GigabitEthernet0/0, R1, Weight: 0, Metric: 40  ! ← LFA in use via R1
+     via 10.1.23.3, GigabitEthernet2, R3, Weight: 0             ! ← primary (now down)
+       Backup path: 10.1.12.1, GigabitEthernet1, R1, Weight: 0, Metric: 40  ! ← LFA in use via R1
        P: No, TM: 40, LC: No, NP: No, D: No
 ```
 
@@ -397,19 +398,19 @@ R1# show mpls ldp neighbor
         State: Oper; Msgs sent/rcvd: 42/40; Downstream
         Up time: 00:15:32
         LDP discovery sources:
-          GigabitEthernet0/0, Src IP addr: 10.1.12.2
+          GigabitEthernet1, Src IP addr: 10.1.12.2
     Peer LDP Ident: 10.0.0.3:0; Local LDP Ident 10.0.0.1:0
         TCP connection: 10.0.0.3.646 - 10.0.0.1.16384
         State: Oper; Msgs sent/rcvd: 38/35; Downstream
         Up time: 00:15:30
         LDP discovery sources:
-          GigabitEthernet0/2, Src IP addr: 10.1.13.3
+          GigabitEthernet3, Src IP addr: 10.1.13.3
     Peer LDP Ident: 10.0.0.4:0; Local LDP Ident 10.0.0.1:0
         TCP connection: 10.0.0.4.646 - 10.0.0.1.14326
         State: Oper; Msgs sent/rcvd: 35/33; Downstream
         Up time: 00:15:28
         LDP discovery sources:
-          GigabitEthernet0/1, Src IP addr: 10.1.14.4
+          GigabitEthernet2, Src IP addr: 10.1.14.4
 ```
 
 ### Task 6 — R-LFA Tunnels
@@ -417,14 +418,11 @@ R1# show mpls ldp neighbor
 ```
 R1# show isis fast-reroute remote-lfa tunnels
 
-Load for five secs: 11%/0%; one minute: 10%; five minutes: 8%
-No time source, 00:31:07.626 UTC Sat May 9 2026
-
 L2 Remote LFA Tunnels:
 
 Interface                     Destination  State         Exit
-Gi0/1 (to R4)                 10.0.0.2     Ready         Gi0/2 (to R3)  ! ← PQ-node tunnel to R3
-Gi0/0 (to R2)                 10.0.0.4     Ready         Gi0/2 (to R3)  ! ← PQ-node tunnel to R3
+Gi2 (to R4)                   10.0.0.2     Ready         Gi3 (to R3)   ! ← PQ-node tunnel to R3
+Gi1 (to R2)                   10.0.0.4     Ready         Gi3 (to R3)   ! ← PQ-node tunnel to R3
 
 R1# show isis fast-reroute summary
 IS-IS IPv4 Fast-Reroute Summary:
@@ -465,8 +463,8 @@ router isis
 ! Global
 mpls ldp router-id Loopback0 force
 !
-! Per core interface
-interface GigabitEthernet0/0
+! Per core interface (CSR1000v GigabitEthernetX naming)
+interface GigabitEthernet1
  mpls ip
 ```
 
@@ -491,7 +489,7 @@ router isis
 | `show isis fast-reroute remote-lfa summary` | R-LFA coverage summary |
 | `show isis fast-reroute X.X.X.X/32 detail` | Check if prefix uses direct LFA or R-LFA backup |
 
-> **Exam tip:** `tunnel mpls-ldp` is the tunnel method for IOSv. On newer platforms (IOS-XR, NX-OS), `tunnel mpls-ldp` is also valid, and SR platforms use `tunnel segment-routing`. The R-LFA clause is additive — it extends coverage beyond direct LFA; it does not replace per-prefix LFA.
+> **Exam tip:** `tunnel mpls-ldp` is the tunnel method for CSR1000v. On newer platforms (IOS-XR, NX-OS), `tunnel mpls-ldp` is also valid, and SR platforms use `tunnel segment-routing`. The R-LFA clause is additive — it extends coverage beyond direct LFA; it does not replace per-prefix LFA.
 
 ### Verification Commands
 
@@ -587,13 +585,13 @@ show isis fast-reroute
 ! R1 — Global LDP + per-interface
 mpls ldp router-id Loopback0 force
 !
-interface GigabitEthernet0/0
+interface GigabitEthernet1
  mpls ip
 !
-interface GigabitEthernet0/1
+interface GigabitEthernet2
  mpls ip
 !
-interface GigabitEthernet0/2
+interface GigabitEthernet3
  mpls ip
 ```
 
@@ -606,10 +604,10 @@ interface GigabitEthernet0/2
 ! R2 — Global LDP + per-interface
 mpls ldp router-id Loopback0 force
 !
-interface GigabitEthernet0/0
+interface GigabitEthernet1
  mpls ip
 !
-interface GigabitEthernet0/1
+interface GigabitEthernet2
  mpls ip
 ```
 
@@ -622,13 +620,13 @@ interface GigabitEthernet0/1
 ! R3 — Global LDP + per-interface
 mpls ldp router-id Loopback0 force
 !
-interface GigabitEthernet0/0
+interface GigabitEthernet1
  mpls ip
 !
-interface GigabitEthernet0/1
+interface GigabitEthernet2
  mpls ip
 !
-interface GigabitEthernet0/2
+interface GigabitEthernet3
  mpls ip
 ```
 
@@ -641,10 +639,10 @@ interface GigabitEthernet0/2
 ! R4 — Global LDP + per-interface
 mpls ldp router-id Loopback0 force
 !
-interface GigabitEthernet0/0
+interface GigabitEthernet1
  mpls ip
 !
-interface GigabitEthernet0/1
+interface GigabitEthernet2
  mpls ip
 ```
 
@@ -764,8 +762,8 @@ The monitoring dashboard shows that R1's Remote LFA tunnels for certain destinat
 1. Run `show isis fast-reroute remote-lfa tunnels` on R1 — some tunnels show `State: LDP not ready` instead of `Ready` or `Active`.
 2. Run `show mpls ldp neighbor` on R1 — all three neighbors (R2, R3, R4) appear `Oper`. R1's LDP is fine.
 3. Run `show mpls ldp neighbor` on R2 — only R1 appears as an LDP peer. R3 is missing.
-4. Run `show running-config interface GigabitEthernet0/1` on R2 — the L2 interface to R3 is missing `mpls ip`. LDP is not enabled on this interface, so R2 and R3 cannot exchange labels over L2.
-5. Root cause: `mpls ip` was removed from R2's Gi0/1 (L2 to R3). This breaks the end-to-end LDP LSP across the R2↔R3 segment, preventing R-LFA tunnels that require traversal through R2→R3 from being built.
+4. Run `show running-config interface GigabitEthernet2` on R2 — the L2 interface to R3 is missing `mpls ip`. LDP is not enabled on this interface, so R2 and R3 cannot exchange labels over L2.
+5. Root cause: `mpls ip` was removed from R2's Gi2 (L2 to R3). This breaks the end-to-end LDP LSP across the R2↔R3 segment, preventing R-LFA tunnels that require traversal through R2→R3 from being built.
 
 </details>
 
@@ -776,7 +774,7 @@ On R2, re-enable MPLS LDP on the L2 interface:
 
 ```bash
 ! On R2
-interface GigabitEthernet0/1
+interface GigabitEthernet2
  mpls ip
 ```
 
@@ -836,7 +834,7 @@ After applying, run `show isis fast-reroute summary` on R3 and confirm `Prefixes
 ### Troubleshooting
 
 - [ ] Ticket 1: Broken route-map prefix-list filter on R1 identified and replaced with `all`
-- [ ] Ticket 2: Missing `mpls ip` on R2 Gi0/1 identified and restored; R-LFA tunnels back to `Ready`
+- [ ] Ticket 2: Missing `mpls ip` on R2 Gi2 identified and restored; R-LFA tunnels back to `Ready`
 - [ ] Ticket 3: Missing `fast-reroute` clause on R3 identified and restored; all four routers now LFA-protected
 
 ---

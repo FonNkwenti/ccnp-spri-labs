@@ -1,6 +1,6 @@
 ---
 name: drawio
-description: Visual style guide and workflow for creating Cisco network topology diagrams in Draw.io. Use when generating a topology diagram, creating or updating a topology.drawio file, exporting a PNG, or when any other skill needs to produce or validate a network diagram.
+description: Visual style guide and workflow for creating Cisco network topology diagrams in Draw.io. Use when generating a topology diagram, creating or updating a topology.drawio file, or when any other skill needs to produce or validate a network diagram.
 ---
 
 # Draw.io Diagram Skill
@@ -40,7 +40,7 @@ This section defines the canonical visual style for all topology diagrams. Every
 ### 4.1 Canvas & Layout
 
 - **Background**: `#1a1a2e` (dark navy). Set in the `<mxGraphModel background="#1a1a2e">` attribute of the XML root element.
-- **Title**: Positioned at the **top center** of the canvas. Bold, 16pt, white text.
+- **Title**: Positioned at the **top center** of the canvas. Bold, 16pt, white text. Wrapped in a **rounded frame** with a white border and no fill (`strokeColor=default;fillColor=none;rounded=1;`) — the framing visually anchors the title against the dark canvas. Do NOT use `strokeColor=none`.
 - **Legend Box**: Required in every diagram. Positioned at the **bottom-right** corner. Black fill (`#000000`) with white text (`#FFFFFF`), rounded corners, 10pt font.
 
 ### 4.2 Device Icons
@@ -112,11 +112,14 @@ Labels **must not overlap any connection lines**. Choose the placement based on 
 ### 4.5 IP Last Octet Labels
 
 - **Required**: Every router interface endpoint must have a small label showing the **last octet** of its IP address (e.g., `.1`, `.2`).
-- **Position**: Near the router's side of the connection line, close to the interface.
-  - Use the router's X + ~50px (to the right of the icon edge).
-  - Y coordinate near the interface exit point on the router.
-- **Style**: `edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=10;`
-- **Purpose**: Allows instant identification of which IP belongs to which router without reading the full subnet label.
+- **Bind octet labels to the link (NOT to canvas coordinates).** This is mandatory: the octet must follow the link when nodes are repositioned. Octets parented to `"1"` (canvas root) at absolute X/Y must be repositioned by hand every time a node moves — that is the wrong pattern and is forbidden.
+- **Parenting**: Set the octet cell's `parent` to the **link cell's id** (e.g., `parent="link_L1"`), and use a relative geometry along the edge.
+- **Position along the edge** uses `mxGeometry x` as a 1D coordinate from `-1` (source endpoint) to `+1` (target endpoint):
+  - **Source-side octet**: `x="-0.7"` — sits ~70% toward the source, near the source router.
+  - **Target-side octet**: `x="0.7"` — sits ~70% toward the target, near the target router.
+- **Style**: `edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=10;fontColor=#FFFFFF;`
+- **Color matching**: When the parent link has a non-white stroke (e.g., orange L2 AC, cyan pseudowire), set `fontColor` on the octet to match the link color so the octet is read as part of that link's identity.
+- **Purpose**: Allows instant identification of which IP belongs to which router without reading the full subnet label, and survives node repositioning automatically.
 
 ### 4.6 Legend Box
 
@@ -132,6 +135,13 @@ Every diagram must include a legend box with the following properties:
   - Link type indicators (solid = physical, dashed = tunnel)
   - Any cost or metric annotations
   - Protocol identifiers (OSPF Process ID, EIGRP AS, etc.)
+  - Role badges present in the diagram (RR, ABR, ASBR, DR, etc.) — see §4.11
+- **Color the swatch, not the words**: The legend renders HTML, so a line that is dotted orange in the diagram must appear as dotted orange in the legend's swatch column. Wrap the dash characters in a `<font color="#XXXXXX">…</font>` matching the link's `strokeColor`. Do NOT prefix the description with the word "Orange:" or "Blue:" — the colored swatch is the identifier; the text describes the role.
+
+  **Wrong:** `- - - Orange: EVPN VPWS attachment circuit`
+  **Right:** `<font color="#FFA500">- - -</font> EVPN VPWS attachment circuit (L2 AC)`
+
+  Use `─── ` (U+2500) for solid lines, `- - -` for dashed, `. . .` for dotted (curved tunnels). One swatch per link/tunnel/zone color in the diagram.
 
 ### 4.7 Reference XML Snippets
 
@@ -146,10 +156,10 @@ Every diagram must include a legend box with the following properties:
 </mxGraphModel>
 ```
 
-**Title Cell:**
+**Title Cell (rounded white-bordered frame):**
 ```xml
-<mxCell id="title" value="&lt;font style=&quot;font-size:16px;&quot; color=&quot;#FFFFFF&quot;&gt;&lt;b&gt;Lab N: Title Here&lt;/b&gt;&lt;/font&gt;" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;strokeColor=none;fillColor=none;" vertex="1" parent="1">
-  <mxGeometry x="200" y="20" width="500" height="35" as="geometry" />
+<mxCell id="title" value="&lt;font style=&quot;font-size:16px;&quot; color=&quot;#FFFFFF&quot;&gt;&lt;b&gt;Lab N: Title Here&lt;/b&gt;&lt;/font&gt;" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;strokeColor=default;fillColor=none;rounded=1;" vertex="1" parent="1">
+  <mxGeometry x="150" y="20" width="870" height="35" as="geometry" />
 </mxCell>
 ```
 
@@ -178,19 +188,37 @@ Every diagram must include a legend box with the following properties:
 </mxCell>
 ```
 
-**IP Last Octet Label:**
+**IP Last Octet Labels (edge-parented — moves with the link/node):**
 ```xml
-<mxCell id="R1_Fa0_0_octet" value=".1" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=10;" vertex="1" connectable="0" parent="1">
-  <mxGeometry x="450" y="270" as="geometry" />
+<!-- Source-side octet: parent = link cell id, x = -0.7 along the edge -->
+<mxCell id="link_R1_R2_src_oct" value=".1" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=10;fontColor=#FFFFFF;" vertex="1" connectable="0" parent="link_R1_R2">
+  <mxGeometry x="-0.7" relative="1" as="geometry">
+    <mxPoint as="offset" />
+  </mxGeometry>
+</mxCell>
+<!-- Target-side octet: x = +0.7 -->
+<mxCell id="link_R1_R2_dst_oct" value=".2" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=10;fontColor=#FFFFFF;" vertex="1" connectable="0" parent="link_R1_R2">
+  <mxGeometry x="0.7" relative="1" as="geometry">
+    <mxPoint as="offset" />
+  </mxGeometry>
 </mxCell>
 ```
 
-**Legend Box:**
+**Role Badge (e.g., RR overlay on a router):**
 ```xml
-<mxCell id="legend" value="&lt;b&gt;LEGEND&lt;/b&gt;&lt;br&gt;━━━  Physical Link&lt;br&gt;[blue box] Area 0 Backbone&lt;br&gt;OSPF Process ID: 1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#000000;strokeColor=#FFFFFF;fontColor=#FFFFFF;fontSize=10;align=left;verticalAlign=top;spacingLeft=8;spacingTop=8;arcSize=3;" vertex="1" parent="1">
-  <mxGeometry x="620" y="650" width="180" height="100" as="geometry" />
+<!-- Place AFTER the device cell so it renders on top. Position over the icon's upper-right corner. -->
+<mxCell id="P1_rr_badge" value="&lt;b style=&quot;color:#FFD700;font-size:11px;&quot;&gt;RR&lt;/b&gt;" style="text;html=1;align=center;verticalAlign=middle;strokeColor=#FFD700;fillColor=#333300;rounded=1;fontSize=11;fontStyle=1;" vertex="1" parent="1">
+  <mxGeometry x="595" y="205" width="32" height="20" as="geometry" />
 </mxCell>
 ```
+
+**Legend Box (colored swatches that match the diagram's lines):**
+```xml
+<mxCell id="legend" value="&lt;b&gt;LEGEND&lt;/b&gt;&lt;br&gt;─── Physical link (white, IS-IS + LDP)&lt;br&gt;&lt;font color=&quot;#FFA500&quot;&gt;- - -&lt;/font&gt; EVPN VPWS attachment circuit (L2 AC)&lt;br&gt;&lt;font color=&quot;#00AAFF&quot;&gt;. . .&lt;/font&gt; EVPN VPWS pseudowire (BGP-signalled)&lt;br&gt;[gray zone] MPLS Core domain&lt;br&gt;&lt;font color=&quot;#FFD700&quot;&gt;[RR badge]&lt;/font&gt; Route Reflector (iBGP EVPN)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#000000;strokeColor=#FFFFFF;fontColor=#FFFFFF;fontSize=10;align=left;verticalAlign=top;spacingLeft=8;spacingTop=8;arcSize=3;" vertex="1" parent="1">
+  <mxGeometry x="620" y="650" width="350" height="135" as="geometry" />
+</mxCell>
+```
+Each swatch's `<font color="...">` MUST match the corresponding link's `strokeColor`, the role badge's `strokeColor`, or the zone's `strokeColor`. If you change a line color in the diagram, update the matching swatch in the legend.
 
 ### 4.8 Layout Rules — Avoiding Link Overlap
 
@@ -280,24 +308,23 @@ Tunnel lines must arc **above** the physical topology, not route through interme
 
 #### 4.9.4 Tunnel Endpoint Octet Labels
 
-Each tunnel arc endpoint must have a small `.1` / `.2` last-octet label placed **near the top of the device**, at the point where the arc exits/enters.
+Each tunnel arc endpoint must have a small `.1` / `.2` last-octet label near the source/target endpoints. **Use the same edge-parented pattern as §4.5** so the labels follow the tunnel when nodes move.
 
-- **Source device** gets `.1`: position `(source_x + 44, source_y - 15)`
-- **Target device** gets `.2`: position `(target_x + 44, target_y - 15)`
-- **Style**: `edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=10;`
-- **Parent**: `"1"` (canvas root — same as physical octet labels, NOT parented to the tunnel edge)
+- **Parent**: the tunnel cell's id (e.g., `parent="tunnel_R1_R6_0"`).
+- **Position along the arc**: `x="-0.7"` (source-side) and `x="0.7"` (target-side).
+- **Style**: `edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=10;fontColor=<TUNNEL_COLOR>;` — match the tunnel color (e.g., `#00AAFF` for VXLAN/pseudowire) so the octets read as part of the overlay.
 
-**Example XML** (R1 at 400,200 → R6 at 200,200):
+**Example XML** (cyan VXLAN/pseudowire tunnel R1→R6):
 ```xml
 <mxCell id="tunnel_R1_R6_0_src_octet" value=".1"
-  style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=10;"
-  vertex="1" connectable="0" parent="1">
-  <mxGeometry x="444" y="185" as="geometry" />
+  style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=10;fontColor=#00AAFF;"
+  vertex="1" connectable="0" parent="tunnel_R1_R6_0">
+  <mxGeometry x="-0.7" relative="1" as="geometry"><mxPoint as="offset"/></mxGeometry>
 </mxCell>
 <mxCell id="tunnel_R1_R6_0_dst_octet" value=".2"
-  style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=10;"
-  vertex="1" connectable="0" parent="1">
-  <mxGeometry x="244" y="185" as="geometry" />
+  style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=10;fontColor=#00AAFF;"
+  vertex="1" connectable="0" parent="tunnel_R1_R6_0">
+  <mxGeometry x="0.7" relative="1" as="geometry"><mxPoint as="offset"/></mxGeometry>
 </mxCell>
 ```
 
@@ -459,6 +486,74 @@ Since Draw.io legend cells are plain text, describe colors in words or use Unico
 | VRF / MPLS                        | One ellipse per VRF or MPLS domain if topologically relevant |
 | Single-protocol flat topology     | Zone shapes optional but recommended for clarity        |
 
+### 4.11 Device Role Badges
+
+Role badges are small text overlays attached to a device icon to call out a **lab-specific role** that the device plays — Route Reflector (RR), Area Border Router (ABR), Designated Router (DR), Autonomous System Boundary Router (ASBR), Provider Edge running XR (XR), etc. They are used in labs where the lab's learning objective hinges on the role.
+
+#### 4.11.1 When to Use a Role Badge
+
+Add a badge when **all** of the following are true:
+
+- The device's role is the **subject of the lab** (e.g., "configure P1 as the EVPN route reflector"), not just incidental topology context.
+- The role is **not obvious** from the device's hostname or position. (`PE1` already implies "provider edge"; you would not badge it `PE`.)
+- A reader looking at the diagram alone should recognize the role at a glance, without reading the workbook.
+
+Do NOT add badges for:
+- Generic topology positions already encoded in the hostname (`R1`, `PE2`, `CE1`, etc.)
+- Every device — overuse drowns out the signal. Most labs need 0–2 badges.
+
+#### 4.11.2 Style
+
+| Property | Value |
+|----------|-------|
+| Shape style | `text;html=1;rounded=1;` |
+| Width × Height | `32 × 20` (typical; widen to `42 × 20` for 3-letter badges) |
+| Position | Overlap the device icon's upper-right corner. Typical offset: `(device_x + 50, device_y - 5)` for a 60×60 icon. |
+| `value` | `<b style="color:#FFD700;font-size:11px;">RR</b>` (bold, sized text in role color) |
+| `fontStyle` | `1` (bold) |
+| Drawing order | Place the badge cell **after** the device cell in XML so it renders on top. |
+
+#### 4.11.3 Color Table by Role
+
+Pick the row that matches the role. Each role has a stroke (border + text), a dark-tinted fill, and a default label.
+
+| Role                                   | strokeColor | fillColor | Label |
+|----------------------------------------|-------------|-----------|-------|
+| Route Reflector (BGP / EVPN)           | `#FFD700`   | `#333300` | `RR`  |
+| Area Border Router (OSPF)              | `#1E88E5`   | `#0D2A40` | `ABR` |
+| Autonomous System Boundary Router      | `#E53935`   | `#3D0F0F` | `ASBR`|
+| Designated Router (OSPF/IS-IS)         | `#43A047`   | `#0F2A12` | `DR`  |
+| Provider Edge — IOS XR variant         | `#26C6DA`   | `#0E2E33` | `XR`  |
+| Hub (DMVPN / hub-and-spoke)            | `#FB8C00`   | `#3D2200` | `HUB` |
+| Spoke (DMVPN)                          | `#8E24AA`   | `#260F33` | `SPK` |
+| Other / lab-specific                   | pick a contrasting hex | dark-tinted version | 2–4 letters |
+
+Each badge color used in the diagram **must appear in the legend** with a matching colored swatch (see §4.6).
+
+#### 4.11.4 Reference XML Snippet
+
+```xml
+<!-- Device cell first... -->
+<mxCell id="P1" value="..." style="...mxgraph.cisco19.rect;prIcon=router;..." vertex="1" parent="1">
+  <mxGeometry x="545" y="210" width="60" height="60" as="geometry"/>
+</mxCell>
+<!-- ...then the badge, so it renders on top of the icon -->
+<mxCell id="P1_rr_badge" value="&lt;b style=&quot;color:#FFD700;font-size:11px;&quot;&gt;RR&lt;/b&gt;"
+  style="text;html=1;align=center;verticalAlign=middle;strokeColor=#FFD700;fillColor=#333300;rounded=1;fontSize=11;fontStyle=1;"
+  vertex="1" parent="1">
+  <mxGeometry x="595" y="205" width="32" height="20" as="geometry"/>
+</mxCell>
+```
+
+#### 4.11.5 Legend Entry
+
+Every badge color present in the diagram needs a legend entry using the swatch convention from §4.6:
+
+```
+<font color="#FFD700">[RR badge]</font> Route Reflector (iBGP EVPN)
+<font color="#1E88E5">[ABR badge]</font> OSPF Area Border Router
+```
+
 --# 5. Workflow
 
 ### Creating a New Diagram
@@ -466,22 +561,24 @@ Since Draw.io legend cells are plain text, describe colors in words or use Unico
 2.  Create the diagram following the Visual Style Guide (Section 4).
 3.  **Validation Checklist**:
     - [ ] Canvas background is `#1a1a2e` (set in `<mxGraphModel background="#1a1a2e">`).
-    - [ ] Title is at the top center, bold, 16pt, **white text**.
+    - [ ] Title is at the top center, bold, 16pt, **white text**, wrapped in a rounded white-bordered frame (`strokeColor=default;fillColor=none;rounded=1;`) — NOT `strokeColor=none`.
     - [ ] All device icons use `mxgraph.cisco19.rect;prIcon=<type>` — NOT the old `mxgraph.cisco.routers.router` shapes.
     - [ ] Device labels are **embedded in the device cell `value`** as HTML (white bold hostname + gray role/IP). No separate label cells.
     - [ ] Label position uses `labelPosition=` / `verticalLabelPosition=` attributes, following the Empty Side Rule (Section 4.3.1).
     - [ ] All connection lines are **white** (`#FFFFFF`), strokeWidth=2.
     - [ ] Every device has a hostname, role, and Loopback IP.
     - [ ] Every link has interface names on BOTH ends.
-    - [ ] Every interface has a **last octet** label (`.1`, `.2`) near the router.
+    - [ ] Every interface has a **last octet** label (`.1`, `.2`), and **each octet is parented to its link cell** (`parent="link_<id>"` with `mxGeometry x="±0.7" relative="1"`) — NOT to canvas root with absolute X/Y. Octets must move with the link. (See §4.5.)
     - [ ] Subnet ID is visible on every link (centered edge label).
     - [ ] **No link visually crosses through an intermediate device** (see Section 4.8).
     - [ ] **Tunnel overlays** use thin colored dotted lines and arc above physical devices (see Section 4.9).
-    - [ ] **Tunnel endpoint octets** (`.1` / `.2`) are placed near the top of source/target devices (see Section 4.9.4).
+    - [ ] **Tunnel endpoint octets** (`.1` / `.2`) are also edge-parented to the tunnel cell (§4.9.4).
     - [ ] **Protocol domain zones** (OSPF areas, BGP AS, VRFs) drawn as `rounded=1;arcSize=5` dashed semi-transparent boxes — placed FIRST in XML so they render behind routers and links (see Section 4.10). Do NOT use `ellipse`.
     - [ ] Each zone uses the correct color from the §4.10.3 table (blue=backbone, green=normal, orange=stub, teal=BGP local AS, etc.).
     - [ ] Zone boxes fully enclose their member devices with ≥20px padding; overlapping zones are correct at ABR/ASBR boundaries.
+    - [ ] **Role badges** added for any device whose role is the subject of the lab (RR, ABR, DR, etc.); badge cell placed AFTER the device cell so it renders on top (§4.11). Skip badges for roles already implied by the hostname.
     - [ ] **Legend box** is present (black fill, white text, bottom-right) and lists zone types and tunnel colors where applicable.
+    - [ ] **Legend swatches use HTML colors** that match the diagram (`<font color="#FFA500">- - -</font>`) — do NOT name the color in words ("Orange:") since the swatch itself is the identifier (§4.6).
 4.  Save the editable file as `.drawio` in the appropriate subdirectory.
 
 ### Updating a Diagram
@@ -521,6 +618,21 @@ Since Draw.io legend cells are plain text, describe colors in words or use Unico
 --# Device label overlaps a connection line
 - **Cause:** Label was placed on the same side as one or more connected links.
 - **Solution:** Apply the Empty Side Rule (Section 4.3.1) — place the label on the side with no connections exiting the icon.
+
+--# Octet labels (.1, .2) get left behind when a node is moved
+
+- **Cause:** Octets were placed as absolute-positioned cells with `parent="1"` and an `(x, y)` canvas coordinate. The link reroutes when its endpoint moves, but the octet stays where it was.
+- **Solution:** Re-parent each octet to the link cell (`parent="link_<id>"`) and replace the geometry with `<mxGeometry x="-0.7" relative="1">` for the source-side octet and `x="0.7"` for the target-side. See §4.5.
+
+--# Legend says "Orange:" but the swatch is white
+
+- **Cause:** The legend's dash glyphs were left as default (white) text and the line color was named in words instead.
+- **Solution:** Wrap the dashes in `<font color="#XXXXXX">…</font>` matching the link's `strokeColor`, and drop the color word from the description. See §4.6.
+
+--# Role badge renders behind the router icon
+
+- **Cause:** Badge cell was placed before the device cell in the XML. Draw.io renders in document order.
+- **Solution:** Move the badge cell to immediately after the device cell so it draws on top. See §4.11.4.
 
 --# generate_topo.py produces incorrect output
 - **Cause:** `baseline.yaml` is missing required fields (`links`, device coordinates, or interface definitions).

@@ -15,22 +15,22 @@ sys.path.insert(0, str(SCRIPT_DIR.parents[3] / "common" / "tools"))
 from eve_ng import EveNgError, connect_node, discover_ports, find_open_lab, require_host  # noqa: E402
 
 # Both sides of the L1 BFD session are faulted:
-#   R1 Gi0/0 → 500 ms intervals (slow side, drives the negotiated rate up)
-#   R2 Gi0/0 → 50 ms intervals, multiplier 1 (detection window = 500 × 1 = 500 ms)
+#   R1 Gi1 → 500 ms intervals (slow side, drives the negotiated rate up)
+#   R2 Gi1 → 50 ms intervals, multiplier 1 (detection window = 500 × 1 = 500 ms)
 DEVICE_NAMES = ["R1", "R2"]
 
 R1_FAULT_COMMANDS = [
-    "interface GigabitEthernet0/0",
+    "interface GigabitEthernet1",
     "bfd interval 500 min_rx 500 multiplier 3",
 ]
 
 R2_FAULT_COMMANDS = [
-    "interface GigabitEthernet0/0",
+    "interface GigabitEthernet1",
     "bfd interval 50 min_rx 50 multiplier 1",
 ]
 
 # Pre-flight on R2: verify the lab is in the expected solution state before injecting.
-PREFLIGHT_CMD = "show running-config interface GigabitEthernet0/0"
+PREFLIGHT_CMD = "show running-config interface GigabitEthernet1"
 # If this string is already present → fault already injected, bail out.
 PREFLIGHT_FAULT_MARKER = "bfd interval 50 min_rx 50 multiplier 1"
 # If this string is absent → not in solution state, bail out.

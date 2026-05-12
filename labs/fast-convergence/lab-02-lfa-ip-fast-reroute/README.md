@@ -1,6 +1,6 @@
 # Fast Convergence Lab 02 — IS-IS LFA and IP Fast Reroute
 
-Builds on lab-01 (NSF + BGP GR + NSR) and adds sub-50 ms IP convergence using
+Builds on lab-01 (NSF + BGP GR) and adds sub-50 ms IP convergence using
 IS-IS Loop-Free Alternate (LFA) and Remote LFA with MPLS LDP tunnels. Covers
 per-prefix LFA, R-LFA, PQ-node analysis, and LFA coverage verification.
 
@@ -14,7 +14,7 @@ per-prefix LFA, R-LFA, PQ-node analysis, and LFA coverage verification.
 
 - lab-01 (NSF and NSR) completed — initial-configs for this lab are lab-01 solutions
 - Python 3.8+ with Netmiko installed (`pip install netmiko`)
-- EVE-NG server running with IOSv image available
+- EVE-NG server running with CSR1000v image available
 - Lab `.unl` imported into EVE-NG and all nodes started
 
 ## Quick Start
@@ -23,7 +23,7 @@ per-prefix LFA, R-LFA, PQ-node analysis, and LFA coverage verification.
 # 1. Import topology into EVE-NG
 #    File > Import > lab-02-lfa-ip-fast-reroute.unl
 
-# 2. Push initial configurations (lab-01 solutions — BFD + timers + NSF + BGP GR + NSR pre-loaded)
+# 2. Push initial configurations (lab-01 solutions — BFD + timers + NSF + BGP GR pre-loaded)
 python3 setup_lab.py --host <eve-ng-ip>
 
 # 3. Open the workbook
@@ -37,7 +37,7 @@ lab-02-lfa-ip-fast-reroute/
 ├── workbook.md                          # Student workbook (11 sections)
 ├── README.md                            # This file
 ├── setup_lab.py                         # Initial config automation
-├── initial-configs/                     # lab-01 solutions (BFD + timers + NSF + BGP GR + NSR pre-loaded)
+├── initial-configs/                     # lab-01 solutions (BFD + timers + NSF + BGP GR pre-loaded)
 │   ├── R1.cfg  R2.cfg  R3.cfg
 │   ├── R4.cfg  R5.cfg
 ├── solutions/                           # Full solution configs (adds LFA + R-LFA + MPLS LDP)

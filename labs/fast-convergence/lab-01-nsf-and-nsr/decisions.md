@@ -13,6 +13,16 @@
 - Base config pre-loaded/not pre-loaded split matches initial-configs vs solutions delta
 - Outcome: PASS
 
+## Platform refactor — 2026-05-12
+- Change: All devices switched from iosv to csr1000v (IOS-XE)
+- Interface naming: Gi0/X → GigabitEthernet1/2/3/4 per CSR1000v convention
+- IS-IS GR (`nsf ietf`): Upgraded from conceptual reference to **live configuration**
+  (CSR1000v 17.03.05 supports the command, unlike IOSv 15.9)
+- NSR (`nsr`/`bgp nsr`): Confirmed **rejected** on CSR1000v (same as IOSv) — remains conceptual
+- Files updated: solutions/*.cfg, initial-configs/*.cfg, workbook.md (all sections),
+  topology/README.md, meta.yaml, README.md
+- Model gate: PASS (Intermediate, claude-sonnet-4-6)
+
 ## Design decisions — 2026-05-09
 
 ### BGP GR live test source/destination (Task 3 Part B)

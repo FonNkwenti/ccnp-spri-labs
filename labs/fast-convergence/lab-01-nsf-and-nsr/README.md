@@ -13,7 +13,7 @@ Builds on lab-00 (BFD + fast timers) and adds the HA layer that lets a restartin
 
 - lab-00 (BFD and Fast Timers) completed — initial-configs for this lab are lab-00 solutions
 - Python 3.8+ with Netmiko installed (`pip install netmiko`)
-- EVE-NG server running with IOSv image available
+- EVE-NG server running with CSR1000v image available
 - Lab `.unl` imported into EVE-NG and all nodes started
 
 ## Quick Start

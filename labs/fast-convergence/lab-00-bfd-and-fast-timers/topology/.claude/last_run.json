@@ -1,0 +1,17 @@
+{
+  "session_id": "3520819e-4ae9-44a2-a494-401e945f8493",
+  "model": "claude-opus-4-7",
+  "tool_calls": 15,
+  "duration_seconds": 543,
+  "tokens": {
+    "input": 47,
+    "output": 82606,
+    "cache_read": 1736115,
+    "cache_creation_5m": 0,
+    "cache_creation_1h": 286265
+  },
+  "cost_usd_estimate": 17.3883,
+  "pricing_date": "2026-05-06",
+  "written_at": "2026-05-12T08:44:09.574948+00:00",
+  "source": "stop-hook"
+}
