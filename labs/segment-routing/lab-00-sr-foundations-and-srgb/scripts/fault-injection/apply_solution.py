@@ -29,13 +29,23 @@ from pathlib import Path
 SCRIPT_DIR = Path(__file__).resolve().parent
 # Depth: fault-injection -> scripts -> lab-00-sr-foundations-and-srgb -> segment-routing -> labs/
 sys.path.insert(0, str(SCRIPT_DIR.parents[3] / "common" / "tools"))
-from eve_ng import EveNgError, connect_node, discover_ports, find_open_lab, require_host  # noqa: E402
+from eve_ng import (  # noqa: E402
+    EveNgError,
+    connect_node,
+    discover_ports,
+    find_open_lab,
+    push_config as _xr_push,
+    require_host,
+)
 
 # solutions/ is two levels above this script (lab root / scripts / fault-injection)
 SOLUTIONS_DIR = SCRIPT_DIR.parents[1] / "solutions"
 
 # Only R3 and R4 are faulted across scenarios -- restored in order.
-RESTORE_TARGETS = ["R3", "R4"]
+RESTORE_TARGETS = ["R1", "R2", "R3", "R4"]
+
+XR_USERNAME = "fon"
+XR_PASSWORD = "cisco123"
 
 
 def restore_device(host: str, ports: dict, name: str) -> bool:
@@ -51,19 +61,19 @@ def restore_device(host: str, ports: dict, name: str) -> bool:
 
     print(f"[*] Restoring {name} on {host}:{port} ...")
     try:
-        conn = connect_node(host, port, device_type="cisco_xr_telnet")
+        conn = connect_node(host, port, device_type="cisco_xr_telnet",
+                            username=XR_USERNAME, password=XR_PASSWORD)
         commands = [
             line.strip()
             for line in cfg_file.read_text().splitlines()
-            if line.strip() and not line.startswith("!")
+            if line.strip() and not line.startswith("!") and line.strip() != "end"
         ]
-        conn.send_config_set(commands, cmd_verify=False)
-        conn.save_config()
+        _xr_push(conn, commands, "cisco_xr_telnet")
         conn.disconnect()
         print(f"[+] {name} restored.")
         return True
     except Exception as exc:
-        print(f"[!] {name} restore failed: {exc}")
+        print(f"[!] {name} restore failed: {exc!r}")
         return False
 
 
