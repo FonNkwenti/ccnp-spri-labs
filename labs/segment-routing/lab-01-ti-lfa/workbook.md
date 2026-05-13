@@ -22,9 +22,66 @@
 
 Topology-Independent Loop-Free Alternate (TI-LFA) is the Segment Routing native fast-reroute mechanism. It extends classic LFA by using an SR label stack to encode a post-convergence repair path that can bypass any single link or node failure with 100% topological coverage — a guarantee that classic LFA cannot provide because LFA requires a direct loop-free alternate neighbor, which may not exist for every destination.
 
+### The Problem: Why Standard LFA Fails
+
+Standard LFA (Loop-Free Alternate, RFC 5286) only works if a neighbor has a path to the
+destination that does **not** send traffic back through *you* — the router doing the
+protection. If every neighbor's best path to the destination goes back through the
+protecting router, no loop-free alternate exists and the destination is unprotected.
+
+This is common in **ring or "square" topologies** — exactly the shape of this lab:
+
+```
+                        ┌─────────────────┐
+                        │   DESTINATION    │
+                        │   10.0.0.4/32    │
+                        └──┬────────────┬──┘
+                           │            │
+                      L4   │            │   L3
+                    (10)   │            │   (10)
+                           │            │
+         ┌─────────────────┴──┐      ┌──┴─────────────────┐
+         │        R1          │      │        R3          │
+         │   10.0.0.1/32      │      │   10.0.0.3/32      │
+         └──────────┬─────────┘      └─────────┬──────────┘
+                    │                          │
+               L1   │                          │   L2
+             (10)   │                          │   (10)
+                    │    ┌─────────────────┐    │
+                    └────┤       R2        ├────┘
+                         │  10.0.0.2/32    │
+                         │   THE "PLR"     │
+                         └─────────────────┘
+
+     Standard LFA problem — protecting L2 (R2 → R3):
+
+     R2 asks: "If L2 fails, can I send traffic for 10.0.0.4/32 to R1 instead?"
+
+     R1's shortest path to 10.0.0.4/32 = R1 → R4 (L4, cost 10)
+       → That's loop-free!  R1 does NOT send back through R2.
+       ✓ LFA WORKS for this destination.
+
+     R2 asks: "What about 10.0.0.3/32 (R3's loopback)?"
+
+     R1's shortest path to 10.0.0.3/32 WITHOUT L5 = R1 → R2 → R3 (cost 20)
+       → R1 sends traffic back through R2 — the protecting router!
+       ✗ NO LOOP-FREE ALTERNATE exists.  10.0.0.3/32 is UNPROTECTED.
+
+     Without the L5 diagonal, ~50% of prefixes would have zero coverage
+     under standard LFA in this topology.
+```
+
+TI-LFA solves this by **not** asking "is the neighbor loop-free?" — instead it asks:
+"What is the *post-convergence* path after the link fails, and how do I encode that
+as a label stack?"
+
 ### What Is TI-LFA?
 
-TI-LFA runs as part of the IS-IS SPF computation on each router (the PLR — Point of Local Repair). For each protected link or node, the PLR:
+TI-LFA (Topology-Independent Loop-Free Alternate) is the Segment Routing native
+fast-reroute mechanism that guarantees **100% coverage** for link and node protection
+in any network topology, typically recovering from a failure in under **50ms**. It
+runs as part of the IS-IS SPF computation on each router (the PLR — Point of Local
+Repair). For each protected link or node, the PLR:
 
 1. Removes the protected element from the topology.
 2. Runs a second SPF over the post-convergence graph.
@@ -33,33 +90,107 @@ TI-LFA runs as part of the IS-IS SPF computation on each router (the PLR — Poi
 
 When a BFD session or IS-IS hello times out, the local FRR engine flips the forwarding entry from primary to repair in hardware — typically within 50ms — without waiting for IGP reconvergence.
 
-### P-Nodes, Q-Nodes, and PQ-Nodes
+### P-Space, Q-Space, and the PQ-Node
 
-TI-LFA classifies intermediate nodes by their relationship to the failing element:
-
-**P-node** — reachable from the PLR without using the protected link/node.
-
-**Q-node** — can reach the destination without passing through the protected link/node from the destination side.
-
-**PQ-node** — a single node that is both P and Q. When a PQ-node exists adjacent to the destination, the repair label stack contains only one additional SID.
-
-Example in this lab topology — protecting L2 (R2↔R3):
+To find the right "hand-off" point for the backup path, TI-LFA uses two logic zones
+computed from the post-convergence topology (the network *after* the failed link/node
+is removed):
 
 ```
-   Protected link: L2 (R2 ─── R3)
-   PLR: R2
-
-   Post-convergence path:  R2 → R1 (via L1) → R3 (via L5)
-
-   R1 is a P-node: reachable from R2 via L1, not through L2.
-   R1 is a Q-node: can reach R3 via L5, not through L2.
-   Therefore R1 is the PQ-node.
-
-   Repair label stack on R2 for 10.0.0.3/32: {16003}
-     R1 is the immediate next-hop (adjacent on L1), so no outer steering label needed.
-     R2 imposes only 16003; R1 forwards it to R3 via L5 (post-convergence path).
-     A two-label stack {16001, 16003} would only be required if R1 were non-adjacent.
+               ENTIRE NETWORK (POST-CONVERGENCE TOPOLOGY)
+ ┌───────────────────────────────────────────────────────────────┐
+ │                                                               │
+ │   ┌─────────────┐                     ┌─────────────┐         │
+ │   │    P-SPACE   │                     │   Q-SPACE   │         │
+ │   │             │                     │             │         │
+ │   │  Routers    │    PQ-NODE(s)        │  Routers    │         │
+ │   │  reachable  │   ┌─────────┐        │  that can   │         │
+ │   │  from PLR   │   │ INTER-  │        │  reach DST  │         │
+ │   │  without    ├───┤ SECTION ├────────┤  without    │         │
+ │   │  using      │   │ OF P &  │        │  going      │         │
+ │   │  failed     │   │  Q SPACE│        │  through    │         │
+ │   │  element    │   └─────────┘        │  failed     │         │
+ │   │             │                     │  element    │         │
+ │   └─────────────┘                     └─────────────┘         │
+ │          ↑                                  ↑                 │
+ │          │                                  │                 │
+ │     ┌────┴────┐                        ┌────┴────┐            │
+ │     │   PLR   │  ═══ FAILED LINK ═══   │   DST   │            │
+ │     └─────────┘                        └─────────┘            │
+ └───────────────────────────────────────────────────────────────┘
 ```
+
+- **P-Space:** The set of routers the PLR can reach **without** using the failed
+  link or passing through the failed node. Computed by running a forward SPF from
+  the PLR in the post-convergence graph.
+
+- **Q-Space:** The set of routers that can reach the **destination** without
+  passing through the failed link/node. Computed by running a reverse SPF from
+  the destination in the post-convergence graph.
+
+- **PQ-Node:** A router that sits in **both** spaces — the intersection. TI-LFA
+  simply "zips" the traffic to the PQ-node using a Segment ID (SID), ensuring no
+  loops occur. From the PQ-node onward, normal IP/MPLS forwarding takes over.
+
+**Why the intersection matters:** If you tunnel traffic from the PLR to a node
+that's only in P-space (not Q-space), that node might send traffic back through
+the failed element — creating a loop. If you tunnel to a node only in Q-space,
+you might not be able to reach it from the PLR without using the failed element.
+Only a node in **both** (the PQ-node) guarantees loop-free delivery end-to-end.
+
+**Example in this lab topology — protecting L2 (R2↔R3):**
+
+```
+                    P-SPACE                          Q-SPACE
+                 (from R2, no L2)              (to R3/10.0.0.3, no L2)
+               ┌─────────────────┐             ┌─────────────────┐
+               │       R1        │             │       R1        │
+               │   ✓ reachable   │  PQ-NODE!   │   ✓ can reach   │
+               │   via L1        │◄───────────►│   R3 via L5     │
+               └────────┬────────┘             └────────┬────────┘
+                        │                               │
+                   L1   │                          L5   │
+                 (10)   │                        (10)   │
+                        │                               │
+   ┌────────────────────┴──┐                 ┌──────────┴──────────────┐
+   │         R2            │                 │         R3              │
+   │       THE PLR         │  ═══ L2 FAILS  │    DESTINATION          │
+   │    10.0.0.2/32        │  ══════════════│    10.0.0.3/32          │
+   └───────────────────────┘                 └─────────────────────────┘
+                        │                               │
+                        │                          L3   │
+                        │                        (10)   │
+                        │                               │
+               ┌────────┴────────┐             ┌────────┴────────┐
+               │       R4        │             │       R4        │
+               │   ✓ reachable   │             │   ✓ can reach   │
+               │   via R1→L4     │             │   via L3        │
+               └─────────────────┘             └─────────────────┘
+
+   P-space nodes: { R1, R4 }     — R2 can reach both without L2
+   Q-space nodes: { R1, R4 }     — both can reach R3 without L2
+
+   PQ-node: R1  — the intersection of P and Q.
+                  R1 is R2's immediate neighbor on L1.
+
+   Repair label stack on R2 for 10.0.0.3/32: { 16003 }
+     • R1 is the immediate next-hop (adjacent on L1), so no outer
+       steering label needed — the adjacency itself steers the packet.
+     • R2 imposes only 16003 (R3's prefix SID).
+     • R1 receives the labeled packet, pops 16003, and forwards to
+       R3 via L5 — the post-convergence path.
+
+   A two-label stack { 16001, 16003 } would only be required if
+   the PQ-node (R1) were non-adjacent to R2:
+     • Outer label 16001: steer packet to R1.
+     • Inner label 16003: R1's instruction — forward to R3.
+```
+
+**The label stack is the magic.** It doesn't matter if the immediate backup
+next-hop (R1) is loop-free — TI-LFA *forces* the packet onto the
+post-convergence path using SR labels. From R1's perspective, it just receives
+a labeled packet with 16003 and performs normal MPLS forwarding — it has no
+idea it's part of a repair path.
 
 ### The Role of the Diagonal (L5)
 
@@ -70,7 +201,26 @@ The L5 link (R1↔R3, Gi0/0/0/2 on both ends) is the key enabler of TI-LFA cover
 
 With L5 present, every single-link failure in this topology has a short (one or two label) TI-LFA repair path.
 
-### TI-LFA vs. Classic Per-Prefix LFA
+### Comparison of FRR Technologies
+
+| Feature | Standard LFA | Remote LFA (RLFA) | SR TI-LFA |
+|---------|-------------|-------------------|-----------|
+| **Topology Coverage** | ~50–70% (topology-dependent) | ~80–90% | **100% (guaranteed)** |
+| **Complexity** | Low | Medium (requires Targeted LDP) | **Low** (native to SR) |
+| **Path Selection** | Shortest path from neighbor | Targeted LDP session | **Post-convergence path** |
+| **Protocol Required** | IGP only (OSPF/IS-IS) | IGP + LDP | **Segment Routing only** |
+| **Repair Path Encoding** | Direct next-hop only | LDP tunnel to PQ-node | **SR label stack** |
+| **Configuration** | `fast-reroute per-prefix` | `fast-reroute per-prefix` + targeted LDP | `fast-reroute per-prefix ti-lfa` |
+| **Failure Detection** | IS-IS hello hold-down (~30s) | IS-IS hello hold-down (~30s) | **BFD sub-50ms** |
+| **Micro-loop Avoidance** | No — micro-loops possible during convergence | Partial | **Yes — inherent to post-convergence path** |
+| **State in Core** | Stateless | Stateful (targeted LDP sessions) | **Stateless** (core routers unaware of backup role) |
+
+> **Key takeaway:** RLFA improved on standard LFA by tunneling traffic to a remote
+> PQ-node using targeted LDP, but it required LDP (extra protocol) and still left
+> coverage gaps. TI-LFA achieves 100% coverage with zero additional protocols —
+> Segment Routing is all you need.
+
+### TI-LFA vs. Classic Per-Prefix LFA (Detailed)
 
 | Feature | Classic LFA (RFC 5286) | TI-LFA |
 |---------|----------------------|--------|
@@ -79,6 +229,117 @@ With L5 present, every single-link failure in this topology has a short (one or 
 | Configuration | `fast-reroute per-prefix` | `fast-reroute per-prefix ti-lfa` |
 | Failure detection | IS-IS hello hold-down (default 30s) | BFD sub-50ms |
 | Hardware pre-installation | Depends on platform | Yes — FIB swap happens locally |
+
+### Why TI-LFA Is a Game Changer
+
+```
+     TRADITIONAL CONVERGENCE (WITHOUT TI-LFA)
+     ═══════════════════════════════════════
+
+     Link fails
+        │
+        ▼
+     ┌──────────────────────────────────────────────────────┐
+     │  IS-IS hello hold-down timer (default 30 seconds)    │
+     │  ────────────────────────────────────────────────────│
+     │  • No BFD → detection takes 30s                     │
+     │  • Traffic blackholes or loops during these 30s      │
+     └────────────────────┬─────────────────────────────────┘
+                          │
+                          ▼
+     ┌──────────────────────────────────────────────────────┐
+     │  IS-IS LSP flood + SPF recomputation                 │
+     │  ────────────────────────────────────────────────────│
+     │  • Every router recalculates                        │
+     │  • Transient inconsistencies between routers        │
+     │  • MICRO-LOOPS possible (router A updated, B hasn't) │
+     │  • Duration: seconds (hundreds of ms to several s)  │
+     └────────────────────┬─────────────────────────────────┘
+                          │
+                          ▼
+     ┌──────────────────────────────────────────────────────┐
+     │  FIB update on all routers                           │
+     │  ────────────────────────────────────────────────────│
+     │  • Some routers update FIB faster than others       │
+     │  • More micro-loops possible                        │
+     └────────────────────┬─────────────────────────────────┘
+                          │
+                          ▼
+     ██████████████████████████████████████████████████████████
+     █  TOTAL CONVERGENCE TIME: 30–60 seconds              █
+     █  (without BFD, worst case)                          █
+     ██████████████████████████████████████████████████████████
+
+
+     WITH TI-LFA + BFD
+     ════════════════
+
+     Link fails
+        │
+        ▼
+     ┌──────────────────────────────────────────────────────┐
+     │  BFD detects failure in 150ms (50ms × 3)            │
+     │  ────────────────────────────────────────────────────│
+     │  • 3 missed BFD hellos = neighbor declared dead     │
+     │  • Detection: orders of magnitude faster than IS-IS  │
+     └────────────────────┬─────────────────────────────────┘
+                          │
+                          ▼
+     ┌──────────────────────────────────────────────────────┐
+     │  LOCAL FRR ENGINE FIRES (< 50ms)                     │
+     │  ────────────────────────────────────────────────────│
+     │  • Repair path ALREADY pre-installed in FIB         │
+     │  • No SPF recalculation needed                      │
+     │  • No LSP flooding needed                           │
+     │  • Just swap FIB entry: primary → backup            │
+     │  • This is a LOCAL decision on the PLR              │
+     └────────────────────┬─────────────────────────────────┘
+                          │
+                          ▼
+     ██████████████████████████████████████████████████████████
+     █  PACKETS FLOWING ON REPAIR PATH: < 50ms             █
+     █  (BFD detection 150ms + FRR flip ~10-50ms)          █
+     ██████████████████████████████████████████████████████████
+                          │
+                          │  (Meanwhile, in the background...)
+                          ▼
+     ┌──────────────────────────────────────────────────────┐
+     │  IS-IS reconverges                                   │
+     │  ────────────────────────────────────────────────────│
+     │  • LSP flood + SPF runs asynchronously              │
+     │  • When done, FIB updates to post-convergence path  │
+     │  • Traffic is ALREADY on this path via TI-LFA!      │
+     │  • No micro-loops — traffic stays on same path     │
+     └──────────────────────────────────────────────────────┘
+
+  TOTAL DISRUPTION: ~50ms (sub-50ms failover target met)
+```
+
+**Three properties that make TI-LFA transformative:**
+
+1. **Simplicity (Stateless):** Unlike MPLS TE Fast Reroute (FRR), which requires
+   complex RSVP-TE tunnels and state management on every hop, TI-LFA is completely
+   **stateless** in the core. Intermediate routers don't even know they are part of
+   a backup path — they just forward labeled packets normally. No RSVP, no
+   signaling, no state to maintain.
+
+2. **Predictability (Post-Convergence Path):** Because TI-LFA encodes the
+   **post-convergence path** (the exact path the IGP will eventually choose),
+   traffic doesn't "flap" twice. It moves to the backup path and **stays there**
+   once the IGP officially updates. There's no intermediate repair path that
+   differs from the final state.
+
+3. **Micro-loop Avoidance:** Micro-loops occur during IGP convergence when some
+   routers have updated their FIB while others haven't — creating temporary
+   forwarding loops. TI-LFA inherently prevents this because the repair path
+   **is** the post-convergence path. When the IGP finishes converging, nothing
+   changes — the traffic never needs to switch paths.
+
+> **The only real cost:** The hardware must be able to push multiple labels
+> (the Segment List). In some older hardware, pushing 3 or more labels can
+> impact forwarding performance, but most modern ASICs handle this without
+> breaking a sweat. In this lab, all repair stacks are a single label because
+> the PQ-node is always an adjacent router — maximum efficiency.
 
 ### IOS-XR TI-LFA Configuration Structure
 
@@ -101,12 +362,16 @@ router isis CORE
 
 | Skill | Description |
 |-------|-------------|
+| TI-LFA concepts | Understanding P-space, Q-space, PQ-node identification, and post-convergence path logic |
+| Standard LFA failure analysis | Identifying topologies where classic LFA leaves coverage gaps (ring/square designs) |
 | TI-LFA configuration | Enabling and verifying per-prefix TI-LFA on all core interfaces |
 | P/PQ-node analysis | Identifying repair nodes from the post-convergence SPF graph |
 | Repair label stack reading | Interpreting repair label stacks from `show mpls forwarding` and `show route` (not from `show isis fast-reroute`) |
 | BFD integration | Configuring BFD for sub-50ms failure detection with TI-LFA |
-| FRR coverage analysis | Comparing TI-LFA vs. classic LFA coverage gaps |
-| Topology impact | Understanding how the L5 diagonal affects FRR path diversity |
+| FRR coverage analysis | Comparing TI-LFA vs. classic LFA coverage gaps; understanding that 100% is guaranteed by TI-LFA, not discovered by LFA |
+| FRR technology comparison | Differentiating Standard LFA, Remote LFA (RLFA), and SR TI-LFA by coverage, complexity, and protocol requirements |
+| Topology impact | Understanding how the L5 diagonal affects FRR path diversity and label stack depth |
+| Convergence timeline analysis | Understanding the failover sequence: BFD detection → local FRR flip → traffic flowing on repair path — all before IS-IS reconverges |
 
 ---
 
@@ -226,6 +491,7 @@ initial configs — it uses the EVE-NG REST API to discover ports automatically.
 The following is **pre-loaded** via `setup_lab.py` (from `initial-configs/`):
 
 **IS pre-loaded:**
+
 - Hostnames on all routers
 - Interface IP addressing (all routed links L1–L5 and loopbacks)
 - SRGB declaration (`segment-routing global-block 16000 23999`)
@@ -235,6 +501,7 @@ The following is **pre-loaded** via `setup_lab.py` (from `initial-configs/`):
 - SR labels 16001–16004 installed in the LFIB on every router
 
 **IS NOT pre-loaded** (student configures this):
+
 - TI-LFA fast-reroute per-prefix (classic LFA)
 - TI-LFA label-stack repair extension
 - BFD sessions for sub-50ms failure detection
@@ -251,6 +518,7 @@ The following is **pre-loaded** via `setup_lab.py` (from `initial-configs/`):
 - Interfaces: R1 (3 core interfaces), R2 (2), R3 (3), R4 (2).
 
 **Verification:**
+
 - `show isis fast-reroute summary` on any router — must show `Unprotected: 0` across all priority columns, and `Total All paths protected` = 8 (or the count of reachable prefixes on that router). Critical/High columns show 0.00% because no prefixes carry those priority tags by default — this is expected.
 - `show run router isis` on each router — confirm `fast-reroute per-prefix` and `fast-reroute per-prefix ti-lfa` appear under every core interface's IPv4 address-family (and are absent from Loopback0).
 
@@ -266,6 +534,7 @@ The following is **pre-loaded** via `setup_lab.py` (from `initial-configs/`):
 - Now find the repair label stacks: use `show mpls forwarding prefix <p>/32 detail` for each loopback. Compare the backup (`(!)`) entries — all repair stacks in this topology are one label because the PQ-node is always adjacent to R2.
 
 **Verification:**
+
 - `show isis fast-reroute detail` on R2 — every reachable prefix must show a non-empty `FRR backup via` line.
 - `show mpls forwarding` on R2 — the `(!)` backup entries must show repair labels (16001, 16003, 16004) for the three remote loopbacks.
 - Connected link subnets show `RIB backup` entries with FRR lines; these are valid even without explicit MPLS backup entries because the subnet is locally attached.
@@ -280,6 +549,7 @@ The following is **pre-loaded** via `setup_lab.py` (from `initial-configs/`):
 - Confirm the repair label stack (use `show mpls forwarding prefix 10.0.0.3/32 detail` — `show isis fast-reroute` shows the path but not the label) and explain what each label does.
 
 **Verification:**
+
 - `show isis fast-reroute detail 10.0.0.3/32` on R2 — must show primary via Gi0/0/0/1 (L2), FRR backup via Gi0/0/0/0 (L1→R1), flags: `P: No, TM: 20, NP: No, D: No, SRLG: Yes`.
 - `show mpls forwarding prefix 10.0.0.3/32 detail` on R2 — must show backup entry `(!) 16003` via Gi0/0/0/0 (repair label = 16003).
 - `show route ipv4 10.0.0.3/32 detail` on R2 — must show backup path with `Label: 16003` via 10.1.12.1.
@@ -295,6 +565,7 @@ The following is **pre-loaded** via `setup_lab.py` (from `initial-configs/`):
 > **Platform reality check:** On classic XRv 6.3.1 (the image actually running), BFD sessions do NOT form — this is a software-forwarding limitation. The BFD configuration commands are still exam-correct. Verify you configured them via `show run router isis`, then confirm TI-LFA protection via `show isis adjacency detail` (Adjacency SID shows `(protected)` with a backup label stack — this works on all XR platforms). The "sub-50ms failover demo" (ping + shut L2) will still work because TI-LFA repair paths are pre-installed regardless of BFD — the failover just takes IS-IS holddown time (~30s) instead of 150ms.
 
 **Verification:**
+
 - `show run router isis` on R2 — confirm `bfd minimum-interval 50` and `bfd multiplier 3` appear under every core IS-IS interface.
 - `show isis adjacency detail` on R2 — each adjacency must show `Adjacency SID: <n> (protected)` with a `Backup label stack` and `Backup nexthop` populated.
 - `show bfd session` — expected empty on classic XRv 6.3.1; on XRv9k/hardware would show sessions Up with 50ms interval.
@@ -310,6 +581,7 @@ The following is **pre-loaded** via `setup_lab.py` (from `initial-configs/`):
 - Restore TI-LFA on Gi0/0/0/0.
 
 **Verification:**
+
 - `show isis fast-reroute summary` — 100% coverage in both states (expected).
 - `show isis fast-reroute detail 10.0.0.4/32` — flags unchanged (NP: Yes, D: Yes in both states). This is correct for this topology — the conceptual difference between TI-LFA and classic LFA is about guarantees, not always visible output.
 
@@ -721,6 +993,7 @@ router isis CORE
 !
 commit
 ```
+
 </details>
 
 <details>
@@ -747,6 +1020,7 @@ router isis CORE
 !
 commit
 ```
+
 </details>
 
 <details>
@@ -781,6 +1055,7 @@ router isis CORE
 !
 commit
 ```
+
 </details>
 
 <details>
@@ -807,6 +1082,7 @@ router isis CORE
 !
 commit
 ```
+
 </details>
 
 <details>
@@ -819,6 +1095,7 @@ show isis fast-reroute detail 10.0.0.3/32
 show mpls forwarding prefix 10.0.0.3/32 detail
 show bfd session
 ```
+
 </details>
 
 ### Task 5: Compare TI-LFA vs. Classic LFA (Conceptual)
@@ -854,6 +1131,7 @@ router isis CORE
 !
 commit
 ```
+
 </details>
 
 ---
@@ -903,6 +1181,7 @@ R2# show running-config router isis CORE interface GigabitEthernet0/0/0/0
 ! Both fast-reroute per-prefix and fast-reroute per-prefix ti-lfa are missing
 ! under the address-family ipv4 unicast block
 ```
+
 </details>
 
 <details>
@@ -927,6 +1206,7 @@ show isis fast-reroute summary
 show isis fast-reroute detail 10.0.0.1/32
 ! FRR backup via 10.1.23.3 Gi0/0/0/1 (R3) must be present
 ```
+
 </details>
 
 ---
@@ -961,6 +1241,7 @@ R2# show running-config router isis CORE
 ! bfd minimum-interval + bfd multiplier are configured at the interface level.
 ! The repair only fires after IS-IS declares the neighbor down — 30 seconds later.
 ```
+
 </details>
 
 <details>
@@ -980,6 +1261,7 @@ commit
 show bfd session
 ! Gi0/0/0/1 must show State Up, interval 50ms, multiplier 3
 ```
+
 </details>
 
 ---
@@ -1021,6 +1303,7 @@ R1# show interfaces GigabitEthernet0/0/0/2
 ! R2 without using L1 is R4, so the repair stack grows to two labels.
 ! Coverage remains 100% (TI-LFA guarantees it) but path efficiency degrades.
 ```
+
 </details>
 
 <details>
@@ -1039,6 +1322,7 @@ show isis adjacency
 show isis fast-reroute detail 10.0.0.1/32
 ! Backup path must show only Prefix label — no P-node label line
 ```
+
 </details>
 
 ---
@@ -1047,23 +1331,23 @@ show isis fast-reroute detail 10.0.0.1/32
 
 ### Core Implementation
 
-- [ ] TI-LFA enabled on all core IS-IS interfaces on R1, R2, R3, R4 (`show run router isis` confirms `fast-reroute per-prefix` + `fast-reroute per-prefix ti-lfa` on every core interface; absent from Loopback0)
-- [ ] `show isis fast-reroute summary` on every router shows `Unprotected: 0` and `Total All paths protected` > 0 (100% coverage; 0.00% on Critical/High is expected)
-- [ ] `show isis fast-reroute detail` on R2 shows a non-empty `FRR backup via` line for every reachable prefix; 10.0.0.4/32 shows `P: Yes` (ECMP mutual backup), 10.0.0.1/32 and 10.0.0.3/32 show `P: No` (single primary path)
-- [ ] `show mpls forwarding` on R2 shows `(!)` backup entries with repair labels for remote loopbacks: 16001, 16003, 16004 (all single-label stacks — PQ-node is always adjacent)
-- [ ] `show isis fast-reroute detail 10.0.0.3/32` on R2 shows FRR backup via Gi0/0/0/0 (R1) with flags `P: No, TM: 20, NP: No, D: No, SRLG: Yes`; `show mpls forwarding prefix 10.0.0.3/32 detail` shows backup entry `(!) 16003`; `show route ipv4 10.0.0.3/32 detail` shows `Backup (Local-LFA)` with `Label: 16003`
-- [ ] BFD config present (`bfd minimum-interval 50` + `bfd multiplier 3`) on all core IS-IS interfaces — verified via `show run router isis` (no separate `isis bfd` or `bfd fast-detect` command needed)
-- [ ] `show isis adjacency detail` on R2 shows Adjacency SIDs as `(protected)` with backup label stacks and backup nexthop populated (primary verification on XRv 6.3.1 where BFD sessions don't form)
-- [ ] `show bfd session` on R2 — expected empty on classic XRv 6.3.1; on XRv9k/hardware would show sessions Up with 50ms interval
-- [ ] Classic LFA vs. TI-LFA compared: `show isis fast-reroute detail 10.0.0.4/32` before/after removing `ti-lfa` from Gi0/0/0/0 — flags and coverage stay identical in this topology (L5 + ECMP gives classic LFA the same NP/D properties). The conceptual difference (TI-LFA guarantees vs. classic LFA discovers) is the exam-relevant learning.
-- [ ] TI-LFA restored after comparison (`fast-reroute per-prefix ti-lfa` re-added under Gi0/0/0/0 af)
+- [x] TI-LFA enabled on all core IS-IS interfaces on R1, R2, R3, R4 (`show run router isis` confirms `fast-reroute per-prefix` + `fast-reroute per-prefix ti-lfa` on every core interface; absent from Loopback0)
+- [x] `show isis fast-reroute summary` on every router shows `Unprotected: 0` and `Total All paths protected` > 0 (100% coverage; 0.00% on Critical/High is expected)
+- [x] `show isis fast-reroute detail` on R2 shows a non-empty `FRR backup via` line for every reachable prefix; 10.0.0.4/32 shows `P: Yes` (ECMP mutual backup), 10.0.0.1/32 and 10.0.0.3/32 show `P: No` (single primary path)
+- [x] `show mpls forwarding` on R2 shows `(!)` backup entries with repair labels for remote loopbacks: 16001, 16003, 16004 (all single-label stacks — PQ-node is always adjacent)
+- [x] `show isis fast-reroute detail 10.0.0.3/32` on R2 shows FRR backup via Gi0/0/0/0 (R1) with flags `P: No, TM: 20, NP: No, D: No, SRLG: Yes`; `show mpls forwarding prefix 10.0.0.3/32 detail` shows backup entry `(!) 16003`; `show route ipv4 10.0.0.3/32 detail` shows `Backup (Local-LFA)` with `Label: 16003`
+- [x] BFD config present (`bfd minimum-interval 50` + `bfd multiplier 3`) on all core IS-IS interfaces — verified via `show run router isis` (no separate `isis bfd` or `bfd fast-detect` command needed)
+- [x] `show isis adjacency detail` on R2 shows Adjacency SIDs as `(protected)` with backup label stacks and backup nexthop populated (primary verification on XRv 6.3.1 where BFD sessions don't form)
+- [x] `show bfd session` on R2 — expected empty on classic XRv 6.3.1; on XRv9k/hardware would show sessions Up with 50ms interval
+- [x] Classic LFA vs. TI-LFA compared: `show isis fast-reroute detail 10.0.0.4/32` before/after removing `ti-lfa` from Gi0/0/0/0 — flags and coverage stay identical in this topology (L5 + ECMP gives classic LFA the same NP/D properties). The conceptual difference (TI-LFA guarantees vs. classic LFA discovers) is the exam-relevant learning.
+- [x] TI-LFA restored after comparison (`fast-reroute per-prefix ti-lfa` re-added under Gi0/0/0/0 af)
 
 ### Troubleshooting
 
-- [ ] Ticket 1: FRR coverage gap (both `fast-reroute per-prefix` and `ti-lfa` missing from Gi0/0/0/0) identified and fixed; `show isis fast-reroute detail 10.0.0.1/32` confirmed showing "No FRR backup" before fix
-- [ ] Ticket 2: Slow failover (missing BFD timers on Gi0/0/0/1) identified and fixed; understood that BFD sessions don't form on XRv 6.3.1 but config must still be present
-- [ ] Ticket 3: Adjacency loss + repair path complexity increase (L5 diagonal shut) identified and fixed; R1 adjacency confirmed returning from 2 to 3 after fix
-- [ ] `apply_solution.py` run after each ticket to restore lab to known-good state
+- [x] Ticket 1: FRR coverage gap (both `fast-reroute per-prefix` and `ti-lfa` missing from Gi0/0/0/0) identified and fixed; `show isis fast-reroute detail 10.0.0.1/32` confirmed showing "No FRR backup" before fix
+- [x] Ticket 2: Slow failover (missing BFD timers on Gi0/0/0/1) identified and fixed; understood that BFD sessions don't form on XRv 6.3.1 but config must still be present
+- [x] Ticket 3: Adjacency loss + repair path complexity increase (L5 diagonal shut) identified and fixed; R1 adjacency confirmed returning from 2 to 3 after fix
+- [x] `apply_solution.py` run after each ticket to restore lab to known-good state
 
 ---
 

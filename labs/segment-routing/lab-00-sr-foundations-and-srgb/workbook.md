@@ -158,7 +158,7 @@ Five links → five IS-IS L2 adjacencies expected when the core is fully converg
 
 | Component | Value |
 |-----------|-------|
-| Platform | Cisco IOS-XRv 9000, version 7.x |
+| Platform | Cisco IOS-XRv 9000, version 24.3.1 |
 | Hypervisor | EVE-NG Pro |
 | RAM per node | 12 GB |
 | Boot time per node | 8–12 minutes (must wait for `RP/0/0/CPU0:<host>#` prompt) |
@@ -416,12 +416,14 @@ router isis CORE
 !
 commit
 ```
+
 </details>
 
 <details>
 <summary>Click to view R2, R3, R4 Configuration</summary>
 
 R2, R3, R4 follow the same pattern. The only differences:
+
 - NET system ID: `0000.0000.0002`, `0000.0000.0003`, `0000.0000.0004`
 - R2 has only Gi0/0/0/0 and Gi0/0/0/1; R4 has only Gi0/0/0/0 and Gi0/0/0/1; R3 has Gi0/0/0/0, Gi0/0/0/1, Gi0/0/0/2 (full set).
 
@@ -441,6 +443,7 @@ segment-routing
 !
 commit
 ```
+
 </details>
 
 ---
@@ -463,15 +466,18 @@ router isis CORE
 !
 commit
 ```
+
 </details>
 
 <details>
 <summary>Click to view R2, R3, R4 SR Activation</summary>
 
 Same structure as R1, only the prefix-sid index changes:
+
 - R2: `prefix-sid index 2`
 - R3: `prefix-sid index 3`
 - R4: `prefix-sid index 4`
+
 </details>
 
 ---
@@ -497,6 +503,7 @@ A network engineer reports that `traceroute mpls ipv4 10.0.0.3/32` from R1 fails
 **Inject:** `python3 scripts/fault-injection/inject_scenario_01.py --host <eve-ng-ip>`
 
 **Symptom:**
+
 - IS-IS adjacencies are all Up (5 total).
 - IP routes are present in the RIB on every router.
 - `show isis segment-routing label table` on R1, R2, and R4 shows three entries instead of four — labels 16001, 16002, and 16004 are present but `10.0.0.3 → 16003` is missing.
@@ -523,6 +530,7 @@ The hint pattern: when **one** SR label is missing on **every** router, the faul
 <summary>Click to view Fix</summary>
 
 On R3:
+
 ```
 router isis CORE
  address-family ipv4 unicast
@@ -533,10 +541,12 @@ commit
 ```
 
 IS-IS LSPs propagate the SR sub-TLV within seconds. Verify on R1:
+
 ```
 show isis segment-routing label table          ! 16003 reappears
 traceroute mpls ipv4 10.0.0.3/32                ! label-switched again
 ```
+
 </details>
 
 ---
@@ -548,6 +558,7 @@ Operators noticed that R4 is "intermittent" — `show isis adjacency` on R4 only
 **Inject:** `python3 scripts/fault-injection/inject_scenario_02.py --host <eve-ng-ip>`
 
 **Symptom:**
+
 - `show isis adjacency` on R4 lists only R1 (over Gi0/0/0/1 / L4). The L3 adjacency to R3 is missing.
 - `show isis adjacency` on R3 also lists only 2 neighbors instead of 3 — R4 is no longer adjacent over L3.
 - `show isis database` on R4 still has the full LSP set (R4 reaches the rest of the topology via R1).
@@ -564,12 +575,14 @@ Operators noticed that R4 is "intermittent" — `show isis adjacency` on R4 only
 3. Inspect the IS-IS interface attachment on R4: `show running-config router isis CORE` — under `interface GigabitEthernet0/0/0/0`, the `address-family ipv4 unicast` sub-block is missing.
 4. Understand the impact: on IOS-XR, an IS-IS interface needs both `point-to-point` (or default broadcast) AND a per-interface address-family block to actually run IS-IS for that AF. With the AF block removed, the interface stays attached to IS-IS but does not exchange IPv4 hellos — adjacency cannot form.
 5. Cross-check from R3's side: `show isis adjacency` on R3 also misses R4 — confirming the failure is symmetric (no IS-IS hello traffic from either side reaches the other).
+
 </details>
 
 <details>
 <summary>Click to view Fix</summary>
 
 On R4:
+
 ```
 router isis CORE
  interface GigabitEthernet0/0/0/0
@@ -581,14 +594,17 @@ commit
 ```
 
 Adjacency forms within seconds (one IS-IS hello interval). Verify on R4:
+
 ```
 show isis adjacency               ! 2 neighbors: R1 and R3
 ```
 
 And on R3:
+
 ```
 show isis adjacency               ! 3 neighbors: R1, R2, R4
 ```
+
 </details>
 
 ---
@@ -600,6 +616,7 @@ A network engineer is debugging an SR-TE policy from R1 toward R4. The policy fa
 **Inject:** `python3 scripts/fault-injection/inject_scenario_03.py --host <eve-ng-ip>`
 
 **Symptom:**
+
 - All 5 IS-IS adjacencies are Up.
 - `show isis segment-routing label table` on R1, R2, and R3 shows 3 entries (16001, 16002, 16003) — label 16004 is missing.
 - On R4 itself, the label table shows the three remote labels but no local SID for its own loopback.
@@ -622,15 +639,18 @@ This looks superficially like Ticket 1 (one prefix SID missing) but the fault is
 5. Confirm via the LSP: `show isis database R4 detail | include Prefix-SID` from R1 — TLV 135 has the prefix `10.0.0.4/32` but no SID/Label sub-TLV under it.
 
 Three failure modes for "missing label" — distinguishing them is the lesson:
+
 - Ticket 1 (R3 missing `segment-routing mpls`): R3 originates **no** SR sub-TLVs for any prefix.
 - Ticket 3 (R4 missing `prefix-sid index 4`): R4 originates SR sub-TLVs in general but **none for its own loopback**.
 - A third possibility (not in this ticket set): SRGB mismatch — would prevent label installation downstream, not advertisement upstream.
+
 </details>
 
 <details>
 <summary>Click to view Fix</summary>
 
 On R4:
+
 ```
 router isis CORE
  interface Loopback0
@@ -643,11 +663,13 @@ commit
 ```
 
 Verify on R1:
+
 ```
 show isis segment-routing label table     ! 16004 reappears
 show mpls forwarding labels 16004          ! LFIB entry installed
 traceroute mpls ipv4 10.0.0.4/32           ! label-switched again
 ```
+
 </details>
 
 ---
@@ -656,25 +678,25 @@ traceroute mpls ipv4 10.0.0.4/32           ! label-switched again
 
 ### Core Implementation
 
-- [ ] IS-IS CORE process configured on R1, R2, R3, R4 with correct NET (`49.0001.0000.0000.000X.00`)
-- [ ] `is-type level-2-only` on every router
-- [ ] `metric-style wide` under IS-IS IPv4 unicast af on every router
-- [ ] Loopback0 attached as `passive`; core interfaces attached as `point-to-point`
-- [ ] `show isis adjacency` shows 5 unique adjacencies across the domain (3 on R1, 2 on R2, 3 on R3, 2 on R4)
-- [ ] Top-level `segment-routing global-block 16000 23999` configured on every router
-- [ ] `show segment-routing srgb` shows 16000–23999 on every router
-- [ ] `segment-routing mpls` under IS-IS IPv4 unicast af on every router
-- [ ] `prefix-sid index N` configured on each router's Loopback0 (1, 2, 3, 4)
-- [ ] `show isis segment-routing label table` shows 4 entries (16001–16004) on every router
-- [ ] `show mpls forwarding labels 16003` from R1 shows the SR LFIB entry
-- [ ] `traceroute mpls ipv4 10.0.0.3/32` from R1 shows label 16003 in the path
-- [ ] `ping 10.0.0.4 source 10.0.0.1` succeeds (5/5)
+- [x] IS-IS CORE process configured on R1, R2, R3, R4 with correct NET (`49.0001.0000.0000.000X.00`)
+- [x] `is-type level-2-only` on every router
+- [x] `metric-style wide` under IS-IS IPv4 unicast af on every router
+- [x] Loopback0 attached as `passive`; core interfaces attached as `point-to-point`
+- [x] `show isis adjacency` shows 5 unique adjacencies across the domain (3 on R1, 2 on R2, 3 on R3, 2 on R4)
+- [x] Top-level `segment-routing global-block 16000 23999` configured on every router
+- [x] `show segment-routing srgb` shows 16000–23999 on every router
+- [x] `segment-routing mpls` under IS-IS IPv4 unicast af on every router
+- [x] `prefix-sid index N` configured on each router's Loopback0 (1, 2, 3, 4)
+- [x] `show isis segment-routing label table` shows 4 entries (16001–16004) on every router
+- [x] `show mpls forwarding labels 16003` from R1 shows the SR LFIB entry
+- [x] `traceroute mpls ipv4 10.0.0.3/32` from R1 shows label 16003 in the path
+- [x] `ping 10.0.0.4 source 10.0.0.1` succeeds (5/5)
 
 ### Troubleshooting
 
-- [ ] Ticket 1 resolved: label 16003 reappears after `segment-routing mpls` re-added under R3 IS-IS af
-- [ ] Ticket 2 resolved: R4's L3 adjacency reappears after re-attaching `address-family ipv4 unicast` under R4 Gi0/0/0/0
-- [ ] Ticket 3 resolved: label 16004 reappears after `prefix-sid index 4` re-added on R4 Loopback0
+- [x] Ticket 1 resolved: label 16003 reappears after `segment-routing mpls` re-added under R3 IS-IS af
+- [x] Ticket 2 resolved: R4's L3 adjacency reappears after re-attaching `address-family ipv4 unicast` under R4 Gi0/0/0/0
+- [x] Ticket 3 resolved: label 16004 reappears after `prefix-sid index 4` re-added on R4 Loopback0
 
 ---
 

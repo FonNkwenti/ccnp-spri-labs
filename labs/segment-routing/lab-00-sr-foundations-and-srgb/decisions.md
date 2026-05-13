@@ -12,7 +12,7 @@
 
 `ios-compatibility.yaml` has no `xrv9k` platform entries. All segment-routing SR-MPLS
 commands (`segment-routing global-block`, `router isis / segment-routing mpls`,
-`prefix-sid index N`) are well-documented Cisco IOS-XR 7.x features with stable
+`prefix-sid index N`) are well-documented Cisco IOS-XR 24.3.1 features with stable
 syntax across the 7.1+ release family. Per the precedent established in
 `mpls/lab-03-rsvp-te-tunnels/decisions.md`, these commands are treated as `pass`
 without running `verify_ios_commands.py` (which requires a live EVE-NG instance).

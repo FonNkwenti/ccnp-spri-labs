@@ -37,7 +37,7 @@ For IS-IS prefixes that have a native prefix-SID advertisement, SR wins by defau
 
 ### SR Mapping Server
 
-Not every router in a large SP network can be migrated to SR at the same time. Legacy PEs may not support IOS-XR 7.x, or a node may be running IOS-XE which has a different SR feature set. The SR mapping server solves this: an SR-capable router (the mapping server) advertises segment IDs on behalf of prefixes that do not natively advertise prefix SIDs.
+Not every router in a large SP network can be migrated to SR at the same time. Legacy PEs may not support IOS-XR 24.3.1, or a node may be running IOS-XE which has a different SR feature set. The SR mapping server solves this: an SR-capable router (the mapping server) advertises segment IDs on behalf of prefixes that do not natively advertise prefix SIDs.
 
 On IOS-XR, the mapping server configuration has two parts:
 
@@ -152,10 +152,10 @@ Mapping Server (R1):
 
 | Device | Role | Platform | Image |
 |--------|------|----------|-------|
-| R1 | SP Edge / SR Mapping Server | IOS-XRv 9000 | xrv9k-fullk9-x.vrr-7.x |
-| R2 | SP Core / TI-LFA PLR | IOS-XRv 9000 | xrv9k-fullk9-x.vrr-7.x |
-| R3 | SP Edge | IOS-XRv 9000 | xrv9k-fullk9-x.vrr-7.x |
-| R4 | SP Core / Disjoint Path | IOS-XRv 9000 | xrv9k-fullk9-x.vrr-7.x |
+| R1 | SP Edge / SR Mapping Server | IOS-XRv 9000 | xrv9k-fullk9-x.vrr.vga-24.3.1 |
+| R2 | SP Core / TI-LFA PLR | IOS-XRv 9000 | xrv9k-fullk9-x.vrr.vga-24.3.1 |
+| R3 | SP Edge | IOS-XRv 9000 | xrv9k-fullk9-x.vrr.vga-24.3.1 |
+| R4 | SP Core / Disjoint Path | IOS-XRv 9000 | xrv9k-fullk9-x.vrr.vga-24.3.1 |
 
 ### Loopback Addresses
 

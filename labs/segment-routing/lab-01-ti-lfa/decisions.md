@@ -17,12 +17,12 @@ be removed before the student begins.
 ### TI-LFA IOS-XR syntax
 Two knobs required per IS-IS interface af: `fast-reroute per-prefix` (enables per-prefix FRR)
 and `fast-reroute per-prefix ti-lfa` (elevates to TI-LFA mode). Both must be present; omitting
-the first while keeping only the second is not valid on IOS-XRv 9000 7.x.
+the first while keeping only the second is not valid on IOS-XRv 9000 24.3.1.
 
 ### BFD configuration placement
 BFD parameters (`bfd minimum-interval 50`, `bfd multiplier 3`) are placed at the IS-IS
 interface level (not under the address-family). `bfd fast-detect` is placed under the
-address-family. This matches IOS-XR 7.x CLI hierarchy exactly.
+address-family. This matches IOS-XR 24.3.1 CLI hierarchy exactly.
 
 ### L5 diagonal repair path
 L5 (R1↔R3, Gi0/0/0/2) is the key PQ-node anchor for R2→R3 protection. When L2 (R2↔R3)

@@ -23,10 +23,10 @@ Diagonal: L5 (R1-R3, subnet 10.1.13.0/24).
 
 | Device | Role                  | EVE-NG Template | Image               | RAM   |
 |--------|-----------------------|-----------------|---------------------|-------|
-| R1     | SP Edge / SR Ingress  | IOS-XRv 9000    | xrv9k-fullk9.iso 7.x | 16 GB |
-| R2     | SP Core               | IOS-XRv 9000    | xrv9k-fullk9.iso 7.x | 16 GB |
-| R3     | SP Edge / SR Egress   | IOS-XRv 9000    | xrv9k-fullk9.iso 7.x | 16 GB |
-| R4     | SP Core               | IOS-XRv 9000    | xrv9k-fullk9.iso 7.x | 16 GB |
+| R1     | SP Edge / SR Ingress  | IOS-XRv 9000    | xrv9k-fullk9-x.vrr.vga-24.3.1 | 16 GB |
+| R2     | SP Core               | IOS-XRv 9000    | xrv9k-fullk9-x.vrr.vga-24.3.1 | 16 GB |
+| R3     | SP Edge / SR Egress   | IOS-XRv 9000    | xrv9k-fullk9-x.vrr.vga-24.3.1 | 16 GB |
+| R4     | SP Core               | IOS-XRv 9000    | xrv9k-fullk9-x.vrr.vga-24.3.1 | 16 GB |
 
 ## Starting the Lab
 

@@ -14,7 +14,7 @@ All IOS-XR commands used in this lab (OSPF + SR: `router ospf`, `segment-routing
 therefore recorded as `unknown` in the compatibility check. They are verified by
 cross-reference with labs 00-04 in this same topic, which use the identical IOS-XRv 9000
 platform with confirmed working IS-IS SR commands. The OSPF SR command set is well-established
-IOS-XR 7.x syntax; no platform substitution was required.
+IOS-XR 24.3.1 syntax; no platform substitution was required.
 
 ## Standalone lab design — 2026-04-30
 

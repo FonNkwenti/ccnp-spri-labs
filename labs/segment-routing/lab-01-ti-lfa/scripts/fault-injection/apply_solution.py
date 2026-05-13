@@ -43,11 +43,10 @@ from eve_ng import (  # noqa: E402
 # solutions/ is two levels above this script (lab root / scripts / fault-injection)
 SOLUTIONS_DIR = SCRIPT_DIR.parents[1] / "solutions"
 
-# Devices touched by the troubleshooting scenarios:
-#   Scenario 01 -> R2 (TI-LFA knob removed from Gi0/0/0/0)
-#   Scenario 02 -> R2 (BFD fast-detect removed from Gi0/0/0/1)
-#   Scenario 03 -> R1 (Gi0/0/0/2 / L5 diagonal shut)
-RESTORE_TARGETS = ["R1", "R2"]
+# Restore all four routers to known-good state.
+# Fault injection only touches R1 and R2, but R3 and R4 are restored as well
+# to guarantee a fully clean lab (consistent with all other segment-routing labs).
+RESTORE_TARGETS = ["R1", "R2", "R3", "R4"]
 
 XR_USERNAME = "fon"
 XR_PASSWORD = "cisco123"

@@ -236,10 +236,10 @@ IS-IS must advertise TE extensions for CSPF to read these TE metrics. This requi
 
 | Device | Role | Platform | Image |
 |--------|------|----------|-------|
-| R1 | SP Edge / Ingress PE | IOS-XRv 9000 | xrv9k-fullk9-x.vrr-7.3.2 |
-| R2 | SP Core | IOS-XRv 9000 | xrv9k-fullk9-x.vrr-7.3.2 |
-| R3 | SP Edge / Egress PE | IOS-XRv 9000 | xrv9k-fullk9-x.vrr-7.3.2 |
-| R4 | SP Core | IOS-XRv 9000 | xrv9k-fullk9-x.vrr-7.3.2 |
+| R1 | SP Edge / Ingress PE | IOS-XRv 9000 | xrv9k-fullk9-x.vrr.vga-24.3.1 |
+| R2 | SP Core | IOS-XRv 9000 | xrv9k-fullk9-x.vrr.vga-24.3.1 |
+| R3 | SP Edge / Egress PE | IOS-XRv 9000 | xrv9k-fullk9-x.vrr.vga-24.3.1 |
+| R4 | SP Core | IOS-XRv 9000 | xrv9k-fullk9-x.vrr.vga-24.3.1 |
 | CE1 | Customer Edge (AS 65101) | IOSv | vios-adventerprisek9-m.SPA.156-2.T |
 | CE2 | Customer Edge (AS 65102) | IOSv | vios-adventerprisek9-m.SPA.156-2.T |
 

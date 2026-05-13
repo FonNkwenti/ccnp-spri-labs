@@ -40,14 +40,21 @@ from eve_ng import (  # noqa: E402
 # solutions/ is two directory levels above this script (lab root / solutions/)
 SOLUTIONS_DIR = SCRIPT_DIR.parents[1] / "solutions"
 
-# All devices affected by any troubleshooting scenario — restored in order.
-# Scenarios 01 and 03 target R2; Scenario 02 targets R1.
-RESTORE_TARGETS = ["R1", "R2"]
+# Restore all seven nodes to known-good state.
+# Fault injection only touches R1 and R2, but all nodes are restored to guarantee
+# a fully clean lab (consistent with all other segment-routing labs).
+RESTORE_TARGETS = ["R1", "R2", "R3", "R4", "CE1", "CE2", "PCE"]
 
-# Device type map: all SP routers are IOS-XRv 9000.
+# Device type map: IOS-XRv 9000 routers (R1-R4, PCE) use cisco_xr_telnet;
+# IOSv CE devices use cisco_ios_telnet.
 DEVICE_TYPES = {
     "R1": "cisco_xr_telnet",
     "R2": "cisco_xr_telnet",
+    "R3": "cisco_xr_telnet",
+    "R4": "cisco_xr_telnet",
+    "PCE": "cisco_xr_telnet",
+    "CE1": "cisco_ios_telnet",
+    "CE2": "cisco_ios_telnet",
 }
 
 XR_USERNAME = "fon"
@@ -71,8 +78,10 @@ def restore_device(host: str, ports: dict, name: str, *, reset: bool) -> bool:
             soft_reset_device(host, port, cfg_file)
 
         device_type = DEVICE_TYPES.get(name, "cisco_xr_telnet")
+        username = XR_USERNAME if device_type.startswith("cisco_xr") else ""
+        password = XR_PASSWORD if device_type.startswith("cisco_xr") else ""
         conn = connect_node(host, port, device_type=device_type,
-                            username=XR_USERNAME, password=XR_PASSWORD)
+                            username=username, password=password)
         commands = [
             line.strip()
             for line in cfg_file.read_text().splitlines()

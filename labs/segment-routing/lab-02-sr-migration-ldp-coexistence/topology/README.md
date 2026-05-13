@@ -17,10 +17,10 @@
 
 | Device | EVE-NG Template | RAM | Image |
 |--------|----------------|-----|-------|
-| R1 | Cisco XRv 9000 | 4096 MB | xrv9k-fullk9-x.vrr-7.x |
-| R2 | Cisco XRv 9000 | 4096 MB | xrv9k-fullk9-x.vrr-7.x |
-| R3 | Cisco XRv 9000 | 4096 MB | xrv9k-fullk9-x.vrr-7.x |
-| R4 | Cisco XRv 9000 | 4096 MB | xrv9k-fullk9-x.vrr-7.x |
+| R1 | Cisco XRv 9000 | 4096 MB | xrv9k-fullk9-x.vrr.vga-24.3.1 |
+| R2 | Cisco XRv 9000 | 4096 MB | xrv9k-fullk9-x.vrr.vga-24.3.1 |
+| R3 | Cisco XRv 9000 | 4096 MB | xrv9k-fullk9-x.vrr.vga-24.3.1 |
+| R4 | Cisco XRv 9000 | 4096 MB | xrv9k-fullk9-x.vrr.vga-24.3.1 |
 
 ## Starting the Lab
 

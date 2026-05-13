@@ -35,7 +35,7 @@ on a more complex topology.
 
 ### Tree SID xrv9k caveat
 Per spec Section "Tree SID (4.3.e) configured with a behavioral-gap caveat", the workbook
-documents that xrv9k 7.x converges Tree SID control plane (PCEP delegation, p2mp policy
+documents that xrv9k 24.3.1 converges Tree SID control plane (PCEP delegation, p2mp policy
 state) but does not perform ASIC-level P2MP packet replication in QEMU. Verification stops
 at `show segment-routing traffic-eng p2mp policy`. A short callout box in Section 5 Task 7
 makes this explicit so students don't waste time hunting for non-existent data-plane state.

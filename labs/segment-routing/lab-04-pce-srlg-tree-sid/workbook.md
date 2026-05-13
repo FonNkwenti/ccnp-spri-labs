@@ -67,7 +67,7 @@ srlg
 
 ### Tree SID - P2MP via Centralized Computation
 
-Tree SID is SR-MPLS Point-to-Multipoint with PCE-driven branch computation. The PCE holds a `p2mp policy` defining a root, a leaf set, and a color. The PCE computes the optimal Steiner tree, allocates P2MP segment identifiers, and pushes per-PCC instructions: the root encapsulates with the tree-SID label, intermediate nodes replicate per branch, leaves decapsulate. **Behavioural caveat (xrv9k 7.x):** the control plane (`show segment-routing traffic-eng p2mp policy`) works in QEMU; ASIC-level packet replication does not. Production ASR 9000 hardware would replicate at branch points.
+Tree SID is SR-MPLS Point-to-Multipoint with PCE-driven branch computation. The PCE holds a `p2mp policy` defining a root, a leaf set, and a color. The PCE computes the optimal Steiner tree, allocates P2MP segment identifiers, and pushes per-PCC instructions: the root encapsulates with the tree-SID label, intermediate nodes replicate per branch, leaves decapsulate. **Behavioural caveat (xrv9k 24.3.1):** the control plane (`show segment-routing traffic-eng p2mp policy`) works in QEMU; ASIC-level packet replication does not. Production ASR 9000 hardware would replicate at branch points.
 
 ### IOS-XR Reference Syntax
 
@@ -134,11 +134,11 @@ PCE is reachable through R2 only. R2 carries `10.0.0.99/32` as a redistributed s
 
 | Device | Role | Platform | Image |
 |--------|------|----------|-------|
-| R1 | SP edge / SR ingress, Tree SID root, PCC | IOS-XRv 9000 | xrv9k-fullk9-x.vrr-7.3.2 |
-| R2 | SP core / BGP-LS producer to PCE | IOS-XRv 9000 | xrv9k-fullk9-x.vrr-7.3.2 |
-| R3 | SP edge / SR egress, Tree SID leaf, PCC | IOS-XRv 9000 | xrv9k-fullk9-x.vrr-7.3.2 |
-| R4 | SP core / Tree SID leaf, PCC | IOS-XRv 9000 | xrv9k-fullk9-x.vrr-7.3.2 |
-| PCE | SR PCE controller / BGP-LS receiver | IOS-XRv 9000 | xrv9k-fullk9-x.vrr-7.3.2 |
+| R1 | SP edge / SR ingress, Tree SID root, PCC | IOS-XRv 9000 | xrv9k-fullk9-x.vrr.vga-24.3.1 |
+| R2 | SP core / BGP-LS producer to PCE | IOS-XRv 9000 | xrv9k-fullk9-x.vrr.vga-24.3.1 |
+| R3 | SP edge / SR egress, Tree SID leaf, PCC | IOS-XRv 9000 | xrv9k-fullk9-x.vrr.vga-24.3.1 |
+| R4 | SP core / Tree SID leaf, PCC | IOS-XRv 9000 | xrv9k-fullk9-x.vrr.vga-24.3.1 |
+| PCE | SR PCE controller / BGP-LS receiver | IOS-XRv 9000 | xrv9k-fullk9-x.vrr.vga-24.3.1 |
 | CE1 | Customer edge AS 65101 | IOSv | vios-adventerprisek9-m.SPA.156-2.T |
 | CE2 | Customer edge AS 65102 | IOSv | vios-adventerprisek9-m.SPA.156-2.T |
 
@@ -278,7 +278,7 @@ The following is **pre-loaded** via `setup_lab.py` (chained from lab-03 solution
 
 **Verification:** `show segment-routing traffic-eng p2mp policy` on PCE must report the P2MP policy in administrative `up` state with the configured color and endpoint.
 
-> **xrv9k 7.x caveat:** the control plane converges; ASIC-level P2MP replication is unsupported in QEMU. Verification stops at the control-plane state. On real ASR 9000 hardware the line card replicates packets per branch.
+> **xrv9k 24.3.1 caveat:** the control plane converges; ASIC-level P2MP replication is unsupported in QEMU. Verification stops at the control-plane state. On real ASR 9000 hardware the line card replicates packets per branch.
 
 ---
 

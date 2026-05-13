@@ -29,7 +29,7 @@ this as the standard operational model.
 
 ### IOS-XR TE metric syntax
 baseline.yaml objective text references `mpls traffic-eng / interface X / administrative-weight N`
-which is IOS-XE syntax. On IOS-XR 7.x (xrv9k), the correct syntax for SR-TE CSPF TE metric
+which is IOS-XE syntax. On IOS-XR 24.3.1 (xrv9k), the correct syntax for SR-TE CSPF TE metric
 override is `segment-routing / traffic-eng / interface X / metric N`. This sets the metric
 used by local CSPF when `dynamic metric type te` is configured. The workbook uses the
 IOS-XR syntax in all examples and solution blocks. A callout note explains the syntax

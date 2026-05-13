@@ -141,7 +141,7 @@ every bullet again end-to-end.
   students are warned to start nodes early. Five XRv nodes plus two
   IOSv nodes fit comfortably in the 64 GB host (22 GB RAM total).
 - **Tree SID (4.3.e) configured with a behavioral-gap caveat.** IOS-XRv
-  9000 7.1.1 has partial Tree SID support — the CLI accepts the policy
+  9000 24.3.1 has partial Tree SID support — the CLI accepts the policy
   and PCE computes the tree, but P2MP data-plane replication is an
   ASIC feature the QEMU-emulated XR cannot fully demonstrate. Lab-04
   configures Tree SID end-to-end (PCE policy, PCC delegation), verifies

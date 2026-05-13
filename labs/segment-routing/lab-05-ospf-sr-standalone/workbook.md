@@ -154,10 +154,10 @@ Gi0/0/0/2: 10.1.13.3/24 (L5 diagonal to R1)
 
 | Device | Role | Platform | Image |
 |--------|------|----------|-------|
-| R1 | SP Edge / SR Ingress | IOS-XRv 9000 | xrv9k-fullk9.iso (7.x) |
-| R2 | SP Core | IOS-XRv 9000 | xrv9k-fullk9.iso (7.x) |
-| R3 | SP Edge / SR Egress | IOS-XRv 9000 | xrv9k-fullk9.iso (7.x) |
-| R4 | SP Core | IOS-XRv 9000 | xrv9k-fullk9.iso (7.x) |
+| R1 | SP Edge / SR Ingress | IOS-XRv 9000 | xrv9k-fullk9-x.vrr.vga-24.3.1 |
+| R2 | SP Core | IOS-XRv 9000 | xrv9k-fullk9-x.vrr.vga-24.3.1 |
+| R3 | SP Edge / SR Egress | IOS-XRv 9000 | xrv9k-fullk9-x.vrr.vga-24.3.1 |
+| R4 | SP Core | IOS-XRv 9000 | xrv9k-fullk9-x.vrr.vga-24.3.1 |
 
 > **Boot note:** IOS-XRv 9000 nodes take 8-12 minutes to fully boot. Wait for the
 > `RP/0/0/CPU0:<hostname>#` prompt on all nodes before running `setup_lab.py`.

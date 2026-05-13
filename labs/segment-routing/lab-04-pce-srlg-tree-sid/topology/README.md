@@ -14,11 +14,11 @@ Seven-node SP topology: four IOS-XRv 9000 core routers (R1, R2, R3, R4), two IOS
 
 | Device | EVE-NG Template | RAM (MB) | Image |
 |--------|----------------|----------|-------|
-| R1 | Cisco XRv9K | 3072 | xrv9k-fullk9-x.vrr-7.3.2 |
-| R2 | Cisco XRv9K | 3072 | xrv9k-fullk9-x.vrr-7.3.2 |
-| R3 | Cisco XRv9K | 3072 | xrv9k-fullk9-x.vrr-7.3.2 |
-| R4 | Cisco XRv9K | 3072 | xrv9k-fullk9-x.vrr-7.3.2 |
-| PCE | Cisco XRv9K | 3072 | xrv9k-fullk9-x.vrr-7.3.2 |
+| R1 | Cisco XRv9K | 3072 | xrv9k-fullk9-x.vrr.vga-24.3.1 |
+| R2 | Cisco XRv9K | 3072 | xrv9k-fullk9-x.vrr.vga-24.3.1 |
+| R3 | Cisco XRv9K | 3072 | xrv9k-fullk9-x.vrr.vga-24.3.1 |
+| R4 | Cisco XRv9K | 3072 | xrv9k-fullk9-x.vrr.vga-24.3.1 |
+| PCE | Cisco XRv9K | 3072 | xrv9k-fullk9-x.vrr.vga-24.3.1 |
 | CE1 | Cisco IOSv | 512 | vios-adventerprisek9-m.SPA.156-2.T |
 | CE2 | Cisco IOSv | 512 | vios-adventerprisek9-m.SPA.156-2.T |
 
