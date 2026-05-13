@@ -55,9 +55,10 @@ Example in this lab topology — protecting L2 (R2↔R3):
    R1 is a Q-node: can reach R3 via L5, not through L2.
    Therefore R1 is the PQ-node.
 
-   Repair label stack on R2 for 10.0.0.3/32: {16001, 16003}
-     Outer 16001 → steer to R1
-     Inner 16003 → R1 pops 16001, routes 16003 to R3 via L5
+   Repair label stack on R2 for 10.0.0.3/32: {16003}
+     R1 is the immediate next-hop (adjacent on L1), so no outer steering label needed.
+     R2 imposes only 16003; R1 forwards it to R3 via L5 (post-convergence path).
+     A two-label stack {16001, 16003} would only be required if R1 were non-adjacent.
 ```
 
 ### The Role of the Diagonal (L5)
@@ -177,10 +178,10 @@ protected.
 
 | Device | Role | Platform | Image |
 |--------|------|----------|-------|
-| R1 | SP edge / SR ingress / TI-LFA PLR | IOS-XRv 9000 | xrv9k-fullk9-x.vrr-7.1.1 |
-| R2 | SP core / TI-LFA PLR | IOS-XRv 9000 | xrv9k-fullk9-x.vrr-7.1.1 |
-| R3 | SP edge / SR egress / TI-LFA PLR | IOS-XRv 9000 | xrv9k-fullk9-x.vrr-7.1.1 |
-| R4 | SP core / TI-LFA alternate-path router | IOS-XRv 9000 | xrv9k-fullk9-x.vrr-7.1.1 |
+| R1 | SP edge / SR ingress / TI-LFA PLR | IOS-XRv 9000 | xrv9k-fullk9-x.vrr.vga-24.3.1 |
+| R2 | SP core / TI-LFA PLR | IOS-XRv 9000 | xrv9k-fullk9-x.vrr.vga-24.3.1 |
+| R3 | SP edge / SR egress / TI-LFA PLR | IOS-XRv 9000 | xrv9k-fullk9-x.vrr.vga-24.3.1 |
+| R4 | SP core / TI-LFA alternate-path router | IOS-XRv 9000 | xrv9k-fullk9-x.vrr.vga-24.3.1 |
 
 ### Loopback Addresses
 
@@ -254,7 +255,7 @@ The following is **pre-loaded** via `setup_lab.py` (from `initial-configs/`):
 - Confirm that every destination has a backup path (0 prefixes without backup).
 - Identify which destination has the shortest repair label stack (R2 is directly adjacent, so PHP applies) and which has the longest.
 
-**Verification:** `show isis fast-reroute topology ipv4 unicast` on R2 — every prefix must show a non-empty Backup/Repair entry.
+**Verification:** `show isis fast-reroute detail` on R2 — every prefix must show a non-empty FRR backup entry.
 
 ---
 
@@ -264,7 +265,7 @@ The following is **pre-loaded** via `setup_lab.py` (from `initial-configs/`):
 - Determine which router is the PQ-node for the L2 (R2↔R3) failure scenario and explain why.
 - Confirm the repair label stack and explain what each label in the stack does.
 
-**Verification:** `show isis fast-reroute ipv4 10.0.0.3/32` on R2 — must show primary via Gi0/0/0/1 (L2) and backup via Gi0/0/0/0 (L1→R1) with repair label stack {16001, 16003}.
+**Verification:** `show isis fast-reroute detail 10.0.0.3/32` on R2 — must show primary via Gi0/0/0/1 (L2) and FRR backup via Gi0/0/0/0 (L1→R1) with repair label 16003.
 
 ---
 
@@ -315,43 +316,58 @@ IS-IS CORE IPv4 Unicast FRR Summary
 ### Task 2 — Per-Prefix FRR Topology
 
 ```
-RP/0/0/CPU0:R2# show isis fast-reroute topology ipv4 unicast
-Tue Apr 30 12:00:00.000 UTC
+RP/0/0/CPU0:R2# show isis fast-reroute detail
+Wed May 13 07:48:15.210 UTC
 
-IS-IS CORE Level-2 FRR Topology:
+IS-IS CORE IPv4 Unicast FRR backups
 
-Prefix          NextHop         FRR NextHop     Repair Label Stack
-10.0.0.1/32     Gi0/0/0/0:R1    Gi0/0/0/1:R3   {16001}         ! ← PHP via R3, one label
-10.0.0.2/32     (self)          —               —               ! ← R2's own loopback
-10.0.0.3/32     Gi0/0/0/1:R3    Gi0/0/0/0:R1   {16001, 16003}  ! ← PQ=R1, two-label stack
-10.0.0.4/32     Gi0/0/0/0:R1    Gi0/0/0/1:R3   {16003, 16004}  ! ← PQ=R3, via L2 then L3
-10.1.12.0/24    Gi0/0/0/0:R1    Gi0/0/0/1:R3   {16001}
-10.1.23.0/24    (self)          —               —
-10.1.13.0/24    Gi0/0/0/0:R1    Gi0/0/0/1:R3   {16001}
-10.1.14.0/24    Gi0/0/0/0:R1    Gi0/0/0/1:R3   {16001}
-10.1.34.0/24    Gi0/0/0/1:R3    Gi0/0/0/0:R1   {16001, 16004}  ! ← reachable via R1→R4
+Codes: D - Downstream, LC - Line card disjoint, NP - Node protecting
+       P - Primary path, SRLG - SRLG disjoint, TM - Total metric via backup
+
+L2 10.0.0.1/32 [10/115] medium priority
+     via 10.1.12.1, GigabitEthernet0/0/0/0, R1, SRGB Base: 16000, Weight: 0
+       FRR backup via 10.1.23.3, GigabitEthernet0/0/0/1, R3, SRGB Base: 16000, Weight: 0, Metric: 20
+       P: No, TM: 20, LC: No, NP: No, D: No, SRLG: Yes
+L2 10.0.0.3/32 [10/115] medium priority           ! ← backup via R1 (Gi0/0/0/0)
+     via 10.1.23.3, GigabitEthernet0/0/0/1, R3, SRGB Base: 16000, Weight: 0
+       FRR backup via 10.1.12.1, GigabitEthernet0/0/0/0, R1, SRGB Base: 16000, Weight: 0, Metric: 20
+       P: No, TM: 20, LC: No, NP: No, D: No, SRLG: Yes
+L2 10.0.0.4/32 [20/115] medium priority           ! ← two equal-cost paths, each backs up the other
+     via 10.1.23.3, GigabitEthernet0/0/0/1, R3, ...
+       FRR backup via 10.1.12.1, GigabitEthernet0/0/0/0, R1, ...
+     via 10.1.12.1, GigabitEthernet0/0/0/0, R1, ...
+       FRR backup via 10.1.23.3, GigabitEthernet0/0/0/1, R3, ...
+! ... link subnets follow, all showing FRR backup entries ...
 ```
 
 ### Task 3 — Repair Label Stack for 10.0.0.3/32
 
 ```
-RP/0/0/CPU0:R2# show isis fast-reroute ipv4 10.0.0.3/32
-Tue Apr 30 12:00:00.000 UTC
+RP/0/0/CPU0:R2# show isis fast-reroute detail 10.0.0.3/32
+Wed May 13 07:48:15.500 UTC
 
-IS-IS CORE Level-2 IPv4 Fast-Reroute Entry:
-  Prefix     : 10.0.0.3/32
-  Primary    : GigabitEthernet0/0/0/1, next-hop 10.1.23.3, label 16003     ! ← normal fwd via L2
-  Backup     : GigabitEthernet0/0/0/0, next-hop 10.1.12.1                  ! ← repair via L1 to R1
-  Repair     : {16001, 16003}                                               ! ← PQ-node = R1
-  Type       : TI-LFA
-  P-node     : R1 (10.0.0.1)
-  Path       : R2 → R1 (L1) → R3 (L5)                                     ! ← diagonal is the key
+L2 10.0.0.3/32 [10/115] medium priority
+     via 10.1.23.3, GigabitEthernet0/0/0/1, R3, SRGB Base: 16000, Weight: 0
+       FRR backup via 10.1.12.1, GigabitEthernet0/0/0/0, R1, SRGB Base: 16000, Weight: 0, Metric: 20
+       P: No, TM: 20, LC: No, NP: No, D: No, SRLG: Yes
+
+RP/0/0/CPU0:R2# show mpls forwarding prefix 10.0.0.3/32 detail
+! Primary:  Pop  via Gi0/0/0/1 (R3 via L2)   Label Stack: { Imp-Null }  (PHP)
+! Backup:   16003 via Gi0/0/0/0 (R1 via L1)  Label Stack: { 16003 }     ! ← repair label
+! (!) marks the FRR pure backup entry
+
+RP/0/0/CPU0:R2# show route ipv4 10.0.0.3/32 detail
+  10.1.12.1, via GigabitEthernet0/0/0/0, Backup (Local-LFA)
+    Label: 16003                                   ! ← R1 forwards 16003 to R3 via L5
+  10.1.23.3, via GigabitEthernet0/0/0/1, Protected ! ← primary via L2
 
 Explanation:
-  Outer label 16001: steer packet from R2 to R1 via L1.
-  R1 pops 16001 (its own SID), sees inner label 16003.
-  R1 forwards 16003 toward R3 via L5 (post-convergence path).
-  R3 pops 16003 (implicit-null), delivers native IP.
+  R1 is the PQ-node and is R2's immediate neighbor (adjacent on L1).
+  Because R1 is the next-hop, no outer steering label (16001) is needed.
+  R2 imposes only label 16003 on the backup path via Gi0/0/0/0.
+  R1 receives label 16003 and routes it to R3 via L5 (post-convergence path).
+  R3 pops 16003 (implicit-null / PHP), delivers native IP.
+  Repair label stack = { 16003 }  (one label; R1 is adjacent PQ-node)
 ```
 
 ### Task 4 — BFD Sessions
@@ -416,13 +432,15 @@ router isis CORE
 | Command | What to Look For |
 |---------|-----------------|
 | `show isis fast-reroute summary` | TI-LFA enabled on all interfaces; 100% coverage |
-| `show isis fast-reroute topology ipv4 unicast` | Every prefix has a non-empty Repair entry |
-| `show isis fast-reroute ipv4 <prefix>` | Primary NH, backup NH, and repair label stack |
+| `show isis fast-reroute detail` | Every prefix has a non-empty FRR backup entry |
+| `show isis fast-reroute detail <prefix>` | Primary NH and FRR backup NH for a specific prefix |
+| `show mpls forwarding prefix <prefix> detail` | Repair label stack under the `(!)` backup entry |
+| `show route ipv4 <prefix> detail` | Backup path with imposed label; confirms backup NH |
 | `show bfd session` | All IS-IS BFD sessions Up; negotiate interval 50ms |
 | `show isis segment-routing label table` | SR label bindings still intact (not TI-LFA-specific) |
 | `show mpls forwarding` | FRR next-hop column shows backup NH installed |
 
-> **Exam tip:** `show isis fast-reroute topology ipv4 unicast` and `show isis fast-reroute summary` are the primary diagnostic commands for TI-LFA. The former gives per-prefix detail; the latter gives coverage percentages per interface.
+> **Exam tip (IOS-XR 7.x):** `show isis fast-reroute detail` and `show isis fast-reroute summary` are the primary diagnostic commands for TI-LFA. The former gives per-prefix backup detail; the latter gives coverage percentages per interface. The `topology` subcommand does not exist on IOS-XRv 9000 7.1.1 — use `detail` instead.
 
 ### BFD Quick Reference
 
@@ -584,8 +602,9 @@ commit
 
 ```
 show isis fast-reroute summary
-show isis fast-reroute topology ipv4 unicast
-show isis fast-reroute ipv4 10.0.0.3/32
+show isis fast-reroute detail
+show isis fast-reroute detail 10.0.0.3/32
+show mpls forwarding prefix 10.0.0.3/32 detail
 show bfd session
 ```
 </details>
@@ -659,8 +678,8 @@ R2# show isis fast-reroute summary
 ! Look for Gi0/0/0/0 showing TI-LFA: Disabled or < 100% coverage
 
 ! Step 2: Check specific prefix
-R2# show isis fast-reroute ipv4 10.0.0.1/32
-! No Backup entry visible
+R2# show isis fast-reroute detail 10.0.0.1/32
+! No FRR backup entry visible
 
 ! Step 3: Inspect running config for Gi0/0/0/0
 R2# show running-config router isis CORE
@@ -683,7 +702,7 @@ router isis CORE
 commit
 ! Verify:
 show isis fast-reroute summary
-show isis fast-reroute ipv4 10.0.0.1/32
+show isis fast-reroute detail 10.0.0.1/32
 ```
 </details>
 
@@ -691,7 +710,7 @@ show isis fast-reroute ipv4 10.0.0.1/32
 
 ### Ticket 2 — Link Failure on L2 Takes 30 Seconds to Reconverge
 
-A network operator reports that when L2 (R2↔R3) goes down, traffic to R3 blackholes for approximately 30 seconds before recovering — far longer than the sub-second behavior expected from TI-LFA. The TI-LFA repair paths appear to be correctly installed in `show isis fast-reroute topology`.
+A network operator reports that when L2 (R2↔R3) goes down, traffic to R3 blackholes for approximately 30 seconds before recovering — far longer than the sub-second behavior expected from TI-LFA. The TI-LFA repair paths appear to be correctly installed in `show isis fast-reroute detail`.
 
 **Inject:** `python3 scripts/fault-injection/inject_scenario_02.py --host <eve-ng-ip>`
 
@@ -702,8 +721,8 @@ A network operator reports that when L2 (R2↔R3) goes down, traffic to R3 black
 
 ```
 ! Step 1: Confirm TI-LFA repair paths are present (they are)
-R2# show isis fast-reroute topology ipv4 unicast
-! 10.0.0.3/32 shows Repair: {16001, 16003} — repair IS pre-installed
+R2# show isis fast-reroute detail
+! 10.0.0.3/32 shows FRR backup via Gi0/0/0/0 (R1) — repair IS pre-installed
 
 ! Step 2: Check BFD sessions
 R2# show bfd session
@@ -802,8 +821,8 @@ show isis fast-reroute summary
 
 - [ ] TI-LFA enabled on all core IS-IS interfaces on R1, R2, R3, R4
 - [ ] `show isis fast-reroute summary` shows 100% TI-LFA coverage on all interfaces on all routers
-- [ ] `show isis fast-reroute topology ipv4 unicast` on R2 shows a non-empty Repair entry for every prefix
-- [ ] `show isis fast-reroute ipv4 10.0.0.3/32` on R2 shows backup via Gi0/0/0/0 with repair label stack {16001, 16003}
+- [ ] `show isis fast-reroute detail` on R2 shows a non-empty FRR backup entry for every prefix
+- [ ] `show isis fast-reroute detail 10.0.0.3/32` on R2 shows FRR backup via Gi0/0/0/0 (R1); `show mpls forwarding prefix 10.0.0.3/32 detail` shows backup label stack `{ 16003 }`
 - [ ] BFD sessions configured (`bfd minimum-interval 50` + `bfd multiplier 3`) on all core IS-IS interfaces
 - [ ] `show bfd session` on R2 shows 2 sessions Up (toward R1 and R3) with 150ms detect time
 - [ ] Classic LFA vs. TI-LFA coverage compared: TI-LFA restores coverage to 100% after removal test
