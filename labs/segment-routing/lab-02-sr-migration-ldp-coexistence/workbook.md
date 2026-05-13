@@ -241,7 +241,7 @@ The following is **pre-loaded** via `setup_lab.py`:
 - Verify the local mapping table on R1 — confirm the entry shows index 50 and the correct absolute label (SRGB_base + 50 = 16050).
 - Configure IS-IS on R1 to originate SID/Label Binding TLVs for the local mapping entries so that all other routers learn the mapping via IS-IS.
 
-**Verification:** `show segment-routing mapping-server prefix-sid-map ipv4 summary` on R1 must show the 192.0.2.0/24 entry with start-SID 16050 and range 100. `show isis database detail R1` on any router must show a SID/Label Binding TLV in R1's LSP for 192.0.2.0/24.
+**Verification:** `show segment-routing mapping-server prefix-sid-map ipv4` on R1 must show the 192.0.2.0/24 entry with start-SID 16050 and range 100. `show isis database detail R1` on any router must show a SID/Label Binding TLV in R1's LSP for 192.0.2.0/24.
 
 ---
 
@@ -362,7 +362,7 @@ R2# show mpls ldp bindings 10.0.0.3/32 detail
 ### Task 3: Mapping Server Local Table
 
 ```
-R1# show segment-routing mapping-server prefix-sid-map ipv4 summary
+R1# show segment-routing mapping-server prefix-sid-map ipv4
 
 Prefix                  SID Index    Range       Flags
 192.0.2.0/24            50           100         M      ! ← M = locally originated (this is the mapping server)
@@ -447,7 +447,7 @@ router isis CORE
 
 | Command | Purpose |
 |---------|---------|
-| `show segment-routing mapping-server prefix-sid-map ipv4 summary` | Show locally configured mapping entries |
+| `show segment-routing mapping-server prefix-sid-map ipv4` | Show locally configured mapping entries |
 | `show segment-routing mapping-server prefix-sid-map ipv4 detail` | Show mapping entries with SRGB-resolved absolute labels |
 | `show isis database detail <router-id>` | Inspect IS-IS LSP for SID/Label Binding TLVs (TLV 149) |
 | `show isis segment-routing prefix-sid-map active-policy` | Show all active mapping entries received from mapping servers |
@@ -634,7 +634,7 @@ commit
 <summary>Click to view Verification Commands</summary>
 
 ```bash
-show segment-routing mapping-server prefix-sid-map ipv4 summary
+show segment-routing mapping-server prefix-sid-map ipv4
 show isis database detail R1
 ```
 </details>
@@ -768,7 +768,7 @@ The operations team updated the SRGB configuration on R3 during a change window.
 
 **Inject:** `python3 scripts/fault-injection/inject_scenario_01.py --host <eve-ng-ip>`
 
-**Success criteria:** `show segment-routing mapping-server prefix-sid-map ipv4 summary` on R3 shows the 192.0.2.0/24 mapping entry with label 16050 installed (no conflict). `show mpls forwarding prefix 192.0.2.0/24` on R3 shows an MPLS forwarding entry.
+**Success criteria:** `show segment-routing mapping-server prefix-sid-map ipv4` on R3 shows the 192.0.2.0/24 mapping entry with label 16050 installed (no conflict). `show mpls forwarding prefix 192.0.2.0/24` on R3 shows an MPLS forwarding entry.
 
 <details>
 <summary>Click to view Diagnosis Steps</summary>
@@ -804,7 +804,7 @@ segment-routing
 !
 commit
 ! Verify:
-show segment-routing mapping-server prefix-sid-map ipv4 summary
+show segment-routing mapping-server prefix-sid-map ipv4
 ! 192.0.2.0/24 should now appear with label 16050 (no conflict flag)
 ```
 </details>
