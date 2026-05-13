@@ -237,11 +237,15 @@ The following is **pre-loaded** via `setup_lab.py`:
 
 ### Task 3: Configure R1 as the SR Mapping Server
 
+The SR mapping server assigns SIDs to prefixes that ARE in the IS-IS topology but lack native SR prefix-SIDs — typically prefixes from LDP-only nodes. For the MPLS forwarding entry to be programmed on peers, the prefix must be reachable via IS-IS.
+
+- On R1, create a static route for 192.0.2.0/24 pointing to Null0. This simulates an external or LDP-only prefix entering the SR domain.
+- On R1, redistribute static routes into IS-IS CORE so the prefix is flooded to all routers.
 - On R1, configure the SR mapping server to allocate SID index 50 with a range of 100 SIDs for the prefix 192.0.2.0/24.
 - Verify the local mapping table on R1 — confirm the entry shows index 50 and the correct absolute label (SRGB_base + 50 = 16050).
 - Configure IS-IS on R1 to originate SID/Label Binding TLVs for the local mapping entries so that all other routers learn the mapping via IS-IS.
 
-**Verification:** `show segment-routing mapping-server prefix-sid-map ipv4` on R1 must show the 192.0.2.0/24 entry with start-SID 16050 and range 100. `show isis database detail R1` on any router must show a SID/Label Binding TLV in R1's LSP for 192.0.2.0/24.
+**Verification:** `show segment-routing mapping-server prefix-sid-map ipv4` on R1 must show the 192.0.2.0/24 entry with SID index 50 and range 100. `show route ipv4 192.0.2.0/24` on R2 must show the prefix learned via IS-IS. `show isis database detail R1` on any router must show a SID/Label Binding TLV in R1's LSP for 192.0.2.0/24.
 
 ---
 
@@ -250,7 +254,10 @@ The following is **pre-loaded** via `setup_lab.py`:
 - On R2, R3, and R4, confirm that each router received R1's SID/Label Binding TLV via IS-IS LSP flooding.
 - On R2, verify that the FIB has installed a forwarding entry for 192.0.2.0/24 using the SR label 16050 as the outgoing label toward R1 (the mapping server origin).
 
-**Verification:** `show isis segment-routing prefix-sid-map active-policy` on R2 must show the 192.0.2.0/24 to 16050 mapping received from R1. `show mpls forwarding prefix 192.0.2.0/24` on R2 must show an MPLS forwarding entry with the SR label for the next hop toward R1.
+**Verification:**
+- `show isis segment-routing prefix-sid-map active-policy` on R2 must show the 192.0.2.0/24 to SID index 50 mapping received from R1.
+- `show route ipv4 192.0.2.0/24 detail` on R2 must show `labeled SR(SRMS)` and `Local Label: 16050`.
+- `show mpls forwarding labels 16050 16050 detail` on R2 must show `SR Pfx (idx 50)` with outgoing label `16050` toward R1 (Gi0/0/0/0). Note: `show mpls forwarding prefix 192.0.2.0/24` shows the LDP entry (dynamic local label) — use the label-based command to see the SR entry.
 
 ---
 
@@ -364,33 +371,64 @@ R2# show mpls ldp bindings 10.0.0.3/32 detail
 ```
 R1# show segment-routing mapping-server prefix-sid-map ipv4
 
-Prefix                  SID Index    Range       Flags
-192.0.2.0/24            50           100         M      ! ← M = locally originated (this is the mapping server)
+Prefix               SID Index    Range        Flags
+192.0.2.0/24         50           100          
 
-Total number of mapping entries: 1
+Number of mapping entries: 1
 ```
 
-### Task 4: SID/Label Binding TLV in IS-IS LSP
+> Note: the Flags column is empty — the `M` (mirror) flag is NOT shown on the local mapping server's own table. It only appears in the IS-IS LSP Binding TLV as `M:0` or `M:1`.
 
 ```
-R2# show isis database detail R1
+R1# show route ipv4 192.0.2.0/24
 
-IS-IS CORE (Level-2) Link State Database:
-  R1.00-00       LSP ... seq 0x0000001a ...
-    SR-Algorithm    : metric based SPF
-    SID/Label Binding:
-      Flags           : F=0, M=1, S=0, D=0, A=0
-      Weight          : 0
-      FEC prefix/Mask : 192.0.2.0/24
-      SID Index       : 50                          ! ← Mapping server TLV 149 present in R1's LSP
-      Range           : 100
+Routing entry for 192.0.2.0/24
+  Known via "static", distance 1, metric 0 (connected)
+    directly connected, via Null0
+```
+
+> 192.0.2.0/24 must be in R1's routing table (via static → Null0 + redistribute static into IS-IS). Without it, no MPLS forwarding entry will be programmed on any peer.
+
+### Task 4: SID/Label Binding TLV in IS-IS LSP and FIB Programming
+
+```
+R2# show isis database detail R1 | include 192.0
+
+  SID Binding:    192.0.2.0/24 F:0 M:0 S:0 D:0 A:0 Weight:0 Range:100
 ```
 
 ```
 R2# show isis segment-routing prefix-sid-map active-policy
 
-Prefix                  SID Index    Router     Flags
-192.0.2.0/24            50 (16050)   R1         M      ! ← M = received from mapping server
+IS-IS CORE active policy
+Prefix               SID Index    Range        Flags
+192.0.2.0/24         50           100          
+
+Number of mapping entries: 1
+```
+
+```
+R2# show route ipv4 192.0.2.0/24 detail
+
+Routing entry for 192.0.2.0/24
+  Known via "isis CORE", distance 115, metric 10, labeled SR(SRMS), type level-2
+  ...
+  Routing Descriptor Blocks
+    10.1.12.1, from 10.0.0.1, via GigabitEthernet0/0/0/0, Protected
+      Label: 0x3eb2 (16050)           ! ← SR(SRMS) label = SRGB base 16000 + index 50
+  Local Label: 0x3eb2 (16050)        ! ← R2 assigns 16050 as its local label for this prefix
+```
+
+> `labeled SR(SRMS)` confirms the SR Mapping Server label is active (not LDP). The outgoing label is 16050 — NOT Pop — because R1 is the "origin" of this mapping but not an SR-native node for this prefix, so no PHP applies.
+
+```
+R2# show mpls forwarding labels 16050 16050 detail
+
+Local  Outgoing    Prefix             Outgoing     Next Hop
+Label  Label       or ID              Interface
+------ ----------- ------------------ ------------ ---------------
+16050  16050       SR Pfx (idx 50)    Gi0/0/0/0    10.1.12.1       ! ← SR(SRMS) entry; label 16050 imposed toward R1
+       16050       SR Pfx (idx 50)    Gi0/0/0/1    10.1.23.3   (!) ! ← TI-LFA backup
 ```
 
 ### Task 6: SR Disabled on R4 — LDP Fallback
