@@ -800,7 +800,7 @@ python3 scripts/fault-injection/apply_solution.py --host <ip>         # restore 
 
 ---
 
-### Ticket 1 — R3 Cannot Install the Mapping Server Label for 192.0.2.0/24
+### Ticket 1 — MPLS Forwarding Entry for 192.0.2.0/24 Missing on R3
 
 The operations team updated the SRGB configuration on R3 during a change window. Shortly after, a monitoring script reports that the mapping server label for 192.0.2.0/24 is not being installed on R3. The prefix is reachable via IP, but SR-based label switching to the customer prefix is broken on R3.
 
@@ -851,7 +851,7 @@ R3# show mpls forwarding prefix 192.0.2.0/24
 
 ---
 
-### Ticket 2 — R2 Is Forwarding 192.0.2.0/24 via LDP Instead of SR
+### Ticket 2 — 192.0.2.0/24 Not Forwarding via Expected Path on R2
 
 A traffic-engineering audit shows that traffic destined to the legacy customer prefix 192.0.2.0/24 is not following the SR path on R2. The intent of the mapping server was to enable SR-based steering for this prefix, but R2 appears to be using an LDP label instead.
 
@@ -904,7 +904,7 @@ R2# show mpls forwarding prefix 192.0.2.0/24 detail
 
 ---
 
-### Ticket 3 — R4 Reports No LDP Neighbor on the R1 Link
+### Ticket 3 — R4 Shows Incomplete Label Table for R1 Prefixes
 
 The NOC received an alert that LDP adjacency between R4 and R1 on link L4 is missing. All IS-IS adjacencies and SR forwarding are intact on L4, but LDP label distribution for R1's prefixes is not occurring via L4.
 
