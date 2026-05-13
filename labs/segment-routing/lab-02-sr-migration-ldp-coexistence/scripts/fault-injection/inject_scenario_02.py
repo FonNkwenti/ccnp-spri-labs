@@ -21,29 +21,26 @@ from eve_ng import (  # noqa: E402
     require_host,
 )
 
-DEVICE_NAME = "R2"
+DEVICE_NAME = "R1"
 FAULT_COMMANDS = [
     "router isis CORE",
     " address-family ipv4 unicast",
-    "  no segment-routing mpls sr-prefer",
+    "  no segment-routing prefix-sid-map advertise-local",
     " !",
     "!",
     "commit",
 ]
 
-# Pre-flight: read IS-IS running config to verify sr-prefer is present
+# Pre-flight: read IS-IS running config on R1 to verify advertise-local is present
 # (solution state) before removing it.
 PREFLIGHT_CMD = "show running-config router isis CORE"
-# Fault marker: this string cannot appear once sr-prefer is removed, and it
-# does not exist in either state on its own, so use a string that only
-# appears when the fault is actively injected as a guard against double-inject.
-# The solution-marker check (sr-prefer absent = bail) is the primary guard.
+# Fault marker: sentinel that cannot exist in any real config state.
 PREFLIGHT_FAULT_MARKER = "FAULT_SCENARIO_02_ALREADY_ACTIVE_SENTINEL"
 
 XR_USERNAME = "fon"
 XR_PASSWORD = "cisco123"
 # If this string is absent → not in solution state, bail out.
-PREFLIGHT_SOLUTION_MARKER = "segment-routing mpls sr-prefer"
+PREFLIGHT_SOLUTION_MARKER = "segment-routing prefix-sid-map advertise-local"
 
 
 def preflight(conn) -> bool:

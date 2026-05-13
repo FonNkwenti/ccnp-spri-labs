@@ -853,11 +853,11 @@ R3# show mpls forwarding prefix 192.0.2.0/24
 
 ### Ticket 2 — R2 Is Forwarding 192.0.2.0/24 via LDP Instead of SR
 
-A traffic-engineering audit shows that traffic destined to the legacy customer prefix 192.0.2.0/24 is not following the SR path on R2. The intent of the mapping server was to enable SR-based steering for this prefix, but R2 appears to be ignoring the SR label.
+A traffic-engineering audit shows that traffic destined to the legacy customer prefix 192.0.2.0/24 is not following the SR path on R2. The intent of the mapping server was to enable SR-based steering for this prefix, but R2 appears to be using an LDP label instead.
 
 **Inject:** `python3 scripts/fault-injection/inject_scenario_02.py --host <eve-ng-ip>`
 
-**Success criteria:** `show mpls forwarding prefix 192.0.2.0/24 detail` on R2 shows the SR mapping-server label (not an LDP label) as the outgoing label.
+**Success criteria:** `show mpls forwarding prefix 192.0.2.0/24 detail` on R2 shows the SR mapping-server label (outgoing label 16050), not an LDP label.
 
 <details>
 <summary>Click to view Diagnosis Steps</summary>
@@ -865,20 +865,18 @@ A traffic-engineering audit shows that traffic destined to the legacy customer p
 ```
 ! Step 1: Check what label R2 is actually using for 192.0.2.0/24
 R2# show mpls forwarding prefix 192.0.2.0/24 detail
-! Note the label source: is it SR (from mapping server) or LDP?
+! Is the outgoing label an LDP dynamic label (24xxx) or the SR label (16050)?
 
-! Step 2: Verify the mapping server entry is present
+! Step 2: Check whether R2 has received the SR binding from the mapping server
 R2# show isis segment-routing prefix-sid-map active-policy
-! 192.0.2.0/24 should appear — if it's missing, the issue is IS-IS flooding, not sr-prefer
+! If 192.0.2.0/24 is ABSENT here, R2 never received the SID binding via IS-IS
+! (binding absent = mapping server not advertising — distinct from Ticket 1 where
+!  the binding is present but conflicted)
 
-! Step 3: Check LDP binding for 192.0.2.0/24
-R2# show mpls ldp bindings 192.0.2.0/24 detail
-! If an LDP binding exists for this prefix AND sr-prefer is missing, LDP wins
-
-! Step 4: Inspect IS-IS sr-prefer config
-R2# show running-config router isis CORE
-! Look for 'segment-routing mpls sr-prefer' under address-family ipv4 unicast
-! If absent, LDP label is being used for the mapped prefix instead of SR
+! Step 3: Confirm R1 is the mapping server and check its IS-IS advertisement config
+R1# show running-config router isis CORE
+! Look for 'segment-routing prefix-sid-map advertise-local' under address-family ipv4 unicast
+! If missing, R1 has the mapping configured locally but is not flooding the SID binding TLV
 ```
 </details>
 
@@ -886,17 +884,20 @@ R2# show running-config router isis CORE
 <summary>Click to view Fix</summary>
 
 ```bash
-! sr-prefer was removed from R2's IS-IS address-family
-! Fix: restore the knob so SR labels win over LDP for mapping-server prefixes
-R2# conf t
+! segment-routing prefix-sid-map advertise-local was removed from R1's IS-IS address-family
+! Without this knob R1 does not flood the SID binding TLV — peers have no SR entry to install
+! Fix: restore the knob on R1
+R1# conf t
 router isis CORE
  address-family ipv4 unicast
-  segment-routing mpls sr-prefer
+  segment-routing prefix-sid-map advertise-local
  !
 !
 commit
-! Verify:
-show mpls forwarding prefix 192.0.2.0/24 detail
+! Verify on R2 (allow a few seconds for IS-IS to reflood):
+R2# show isis segment-routing prefix-sid-map active-policy
+! 192.0.2.0/24 should now appear with SID index 50
+R2# show mpls forwarding prefix 192.0.2.0/24 detail
 ! Outgoing label should now be 16050 (SR mapping-server), not an LDP label
 ```
 </details>
