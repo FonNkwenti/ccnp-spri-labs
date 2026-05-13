@@ -178,10 +178,15 @@ protected.
 
 | Device | Role | Platform | Image |
 |--------|------|----------|-------|
-| R1 | SP edge / SR ingress / TI-LFA PLR | IOS-XRv 9000 | xrv9k-fullk9-x.vrr.vga-24.3.1 |
-| R2 | SP core / TI-LFA PLR | IOS-XRv 9000 | xrv9k-fullk9-x.vrr.vga-24.3.1 |
-| R3 | SP edge / SR egress / TI-LFA PLR | IOS-XRv 9000 | xrv9k-fullk9-x.vrr.vga-24.3.1 |
-| R4 | SP core / TI-LFA alternate-path router | IOS-XRv 9000 | xrv9k-fullk9-x.vrr.vga-24.3.1 |
+| R1 | SP edge / SR ingress / TI-LFA PLR | IOS-XRv (classic) | xrvr-os-mbi-6.3.1 |
+| R2 | SP core / TI-LFA PLR | IOS-XRv (classic) | xrvr-os-mbi-6.3.1 |
+| R3 | SP edge / SR egress / TI-LFA PLR | IOS-XRv (classic) | xrvr-os-mbi-6.3.1 |
+| R4 | SP core / TI-LFA alternate-path router | IOS-XRv (classic) | xrvr-os-mbi-6.3.1 |
+
+> **Platform note:** These nodes run classic IOS-XRv 6.3.1 (software forwarding, 3 GB RAM).
+> All TI-LFA and SR features work correctly. BFD sub-50ms sessions do not form on this
+> virtual platform — use `show isis adjacency detail` to verify TI-LFA protection instead.
+> Commands have been verified against the actual running platform.
 
 ### Loopback Addresses
 
@@ -282,11 +287,11 @@ The following is **pre-loaded** via `setup_lab.py` (from `initial-configs/`):
 ### Task 5: Compare TI-LFA vs. Classic LFA Coverage
 
 - On R2's Gi0/0/0/0 (L1), temporarily remove the TI-LFA extension (keep the base per-prefix FRR but remove the TI-LFA knob).
-- Run `show isis fast-reroute summary` to see which prefixes lose their backup.
-- Note the entries that show "No backup" — these are destinations for which a classic loop-free alternate does not exist in this topology.
-- Restore TI-LFA and verify 100% coverage returns.
+- Run `show isis fast-reroute summary` and `show isis fast-reroute detail`. Note: because L5 (the R1↔R3 diagonal) gives every prefix a classic loop-free alternate in this topology, coverage stays at 100% even without TI-LFA. This is by design — L5 is what makes TI-LFA's repair paths one-label rather than two.
+- The observable difference is in `show isis fast-reroute detail` flag changes: with TI-LFA, some entries show NP/D attributes indicating node-protecting and downstream-disjoint paths; classic LFA does not guarantee these stronger protection properties.
+- Restore TI-LFA and verify `show isis fast-reroute detail` returns to full TI-LFA flag coverage.
 
-**Verification:** After removing TI-LFA: `show isis fast-reroute summary` shows < 100% coverage on R2. After restore: 100% coverage.
+**Verification:** `show isis fast-reroute summary` shows 100% in both states (expected). `show isis fast-reroute detail` is the differentiator — compare backup path flags before and after restoring TI-LFA.
 
 ---
 
@@ -296,22 +301,21 @@ The following is **pre-loaded** via `setup_lab.py` (from `initial-configs/`):
 
 ```
 RP/0/0/CPU0:R2# show isis fast-reroute summary
-Tue Apr 30 12:00:00.000 UTC
 
-IS-IS CORE IPv4 Unicast FRR Summary
-  Topology    : IPv4 Unicast
-  Level       : 2
-  Total prefixes in table             : 8    ! ← 4 loopbacks + 5 link subnets = 9 but vary
-  Prefixes reachable in straight path : 8
-  Prefixes with FRR protection        : 8    ! ← must equal total; 0 unprotected
-  Prefixes with TI-LFA protection     : 8    ! ← all 8 covered by TI-LFA
-  Prefixes using TILFA P-space        : 8
-  Prefixes using TI-LFA (PQ Nodes)    : 8
+IS-IS CORE IPv4 Unicast FRR summary
 
-  Interface         Coverage    TI-LFA
-  Gi0/0/0/0 (L1)   100.00%    Enabled    ! ← TI-LFA active on L1
-  Gi0/0/0/1 (L2)   100.00%    Enabled    ! ← TI-LFA active on L2
+                          Critical   High       Medium     Low        Total
+                          Priority   Priority   Priority   Priority
+Prefixes reachable in L2
+  All paths protected     0          0          3          5          8    ! ← 8 total, all protected
+  Some paths protected    0          0          0          0          0
+  Unprotected             0          0          0          0          0    ! ← must be 0
+  Protection coverage     0.00%      0.00%      100.00%    100.00%    100.00%
 ```
+
+> **What to verify:** The "Unprotected" row is all zeros and "Total" All paths protected = 8.
+> Critical/High show 0.00% because IS-IS assigns loopbacks/links to Medium and Low priority
+> by default — 0.00% on Critical/High is expected and correct (no critical-priority prefixes).
 
 ### Task 2 — Per-Prefix FRR Topology
 
@@ -372,34 +376,64 @@ Explanation:
 
 ### Task 4 — BFD Sessions
 
+> **Platform note:** On classic XRv 6.3.1 (the image actually running in this EVE-NG lab),
+> BFD sessions for IS-IS do not form even when correctly configured. This is a software
+> forwarding limitation of the classic XRv platform — BFD sub-50ms hardware timers require
+> XRv9k or physical hardware. The BFD configuration commands are still correct and exam-relevant;
+> verify TI-LFA protection via `show isis adjacency detail` instead, which shows Adjacency SID
+> protection status independently of BFD.
+
 ```
 RP/0/0/CPU0:R2# show bfd session
-Tue Apr 30 12:00:00.000 UTC
+! On XRv 6.3.1: output will be empty (BFD sessions don't form on classic XRv).
+! On XRv9k / physical hardware the expected output is:
+!   Interface           Dest Addr           Local det time(int*mult)  State
+!   Gi0/0/0/0           10.1.12.1           150ms(50ms*3)             Up    ← R1 via L1
+!   Gi0/0/0/1           10.1.23.3           150ms(50ms*3)             Up    ← R3 via L2
 
-Interface         Dest Addr       Local det time(int*mult)  State    Echo
-GigabitEthernet0/0/0/0  10.1.12.1   150ms(50ms*3)     Up       Enabled  ! ← R1 via L1
-GigabitEthernet0/0/0/1  10.1.23.3   150ms(50ms*3)     Up       Enabled  ! ← R3 via L2
+RP/0/0/CPU0:R2# show isis adjacency detail
+! Use this instead — confirms TI-LFA protection is active via Adjacency SIDs:
 
-2 sessions, 2 up, 0 down
+IS-IS CORE Level-2 adjacencies:
+R1  Gi0/0/0/0  *PtoP*  Up  28  00:32:18 Yes None None
+  Adjacency SID:  24000 (protected)                  ! ← (protected) = TI-LFA backup pre-installed
+   Backup label stack:    [16001]                    ! ← repair label for this adjacency
+   Backup interface:      Gi0/0/0/1
+   Backup nexthop:        10.1.23.3
+R3  Gi0/0/0/1  *PtoP*  Up  29  00:28:27 Yes None None
+  Adjacency SID:  24002 (protected)
+   Backup label stack:    [16003]
+   Backup interface:      Gi0/0/0/0
+   Backup nexthop:        10.1.12.1
 ```
 
 ### Task 5 — Coverage Drop Without ti-lfa
 
+> **Note:** In this topology, the L5 diagonal (R1↔R3) means every prefix already has a
+> classic loop-free alternate neighbor, so `show isis fast-reroute summary` stays at 100%
+> coverage even after removing TI-LFA from Gi0/0/0/0. The coverage-drop effect requires
+> a topology without complete LFA coverage (e.g., a simple ring without L5). The value of
+> this task is observing that backup paths still exist under classic LFA, then confirming
+> TI-LFA restores the extended repair capabilities (node-protecting, arbitrary label stack).
+
 ```
 RP/0/0/CPU0:R2# show isis fast-reroute summary
-! (after removing fast-reroute per-prefix ti-lfa from Gi0/0/0/0)
+! (after removing fast-reroute per-prefix ti-lfa from Gi0/0/0/0 — classic LFA only)
 
-  Prefixes with FRR protection        : 6    ! ← was 8, now 6; 2 prefixes unprotected
-  Prefixes with TI-LFA protection     : 6
-  Interface         Coverage    TI-LFA
-  Gi0/0/0/0 (L1)    75.00%    Disabled   ! ← classic LFA cannot protect 2 of 8 prefixes
-  Gi0/0/0/1 (L2)   100.00%    Enabled
+IS-IS CORE IPv4 Unicast FRR summary
 
-! Re-enable TI-LFA, then:
+                          Critical   High       Medium     Low        Total
+                          Priority   Priority   Priority   Priority
+Prefixes reachable in L2
+  All paths protected     0          0          3          5          8    ! ← still 100%; L5 provides classic LFA
+  Some paths protected    0          0          0          0          0
+  Unprotected             0          0          0          0          0
+  Protection coverage     0.00%      0.00%      100.00%    100.00%    100.00%
 
-  Prefixes with FRR protection        : 8    ! ← back to 100%
-  Prefixes with TI-LFA protection     : 8
-  Gi0/0/0/0 (L1)   100.00%    Enabled    ! ← 100% restored
+! Re-enable TI-LFA, then verify summary is identical (coverage was never lost):
+! The key difference is in 'show isis fast-reroute detail' — TI-LFA provides
+! node-protecting (NP: Yes) and downstream-disjoint (D: Yes) backup paths
+! that classic LFA cannot guarantee.
 ```
 
 ---
@@ -436,11 +470,12 @@ router isis CORE
 | `show isis fast-reroute detail <prefix>` | Primary NH and FRR backup NH for a specific prefix |
 | `show mpls forwarding prefix <prefix> detail` | Repair label stack under the `(!)` backup entry |
 | `show route ipv4 <prefix> detail` | Backup path with imposed label; confirms backup NH |
-| `show bfd session` | All IS-IS BFD sessions Up; negotiate interval 50ms |
+| `show bfd session` | BFD sessions Up with 150ms detect time (XRv9k/hardware only; empty on classic XRv 6.3.1) |
+| `show isis adjacency detail` | Adjacency SID shows `(protected)` with backup label stack — works on all XR platforms |
 | `show isis segment-routing label table` | SR label bindings still intact (not TI-LFA-specific) |
 | `show mpls forwarding` | FRR next-hop column shows backup NH installed |
 
-> **Exam tip (IOS-XR 7.x):** `show isis fast-reroute detail` and `show isis fast-reroute summary` are the primary diagnostic commands for TI-LFA. The former gives per-prefix backup detail; the latter gives coverage percentages per interface. The `topology` subcommand does not exist on IOS-XRv 9000 7.1.1 — use `detail` instead.
+> **Exam tip (IOS-XR):** `show isis fast-reroute detail` and `show isis fast-reroute summary` are the primary diagnostic commands for TI-LFA. The former gives per-prefix backup detail; the latter gives coverage percentages by priority. The `topology` subcommand does not exist on IOS-XR — use `detail` instead. On classic XRv 6.3.1, use `show isis adjacency detail` to confirm TI-LFA protection (BFD sessions won't form on that platform).
 
 ### BFD Quick Reference
 
@@ -455,9 +490,9 @@ router isis CORE
 
 | Command | What to Look For |
 |---------|-----------------|
-| `show bfd session` | State = Up; interval = 50ms; multiplier = 3 |
+| `show bfd session` | State = Up; interval = 50ms; multiplier = 3 (XRv9k/hardware only) |
 | `show bfd session detail` | Last state change, down reason if not Up |
-| `show isis adjacency detail` | BFD state shown inline with IS-IS adjacency |
+| `show isis adjacency detail` | Adjacency SID `(protected)` + backup label/interface — use on XRv 6.3.1 |
 
 ### Common TI-LFA Failure Causes
 
@@ -623,10 +658,12 @@ router isis CORE
  !
 !
 commit
-! Observe coverage drop:
+! Coverage stays 100% (L5 provides classic LFA for all prefixes in this topology).
+! Compare flag differences instead:
 show isis fast-reroute summary
+show isis fast-reroute detail
 
-! Restore:
+! Restore TI-LFA:
 router isis CORE
  interface GigabitEthernet0/0/0/0
   address-family ipv4 unicast
@@ -636,6 +673,7 @@ router isis CORE
 !
 commit
 show isis fast-reroute summary
+show isis fast-reroute detail
 ```
 </details>
 
@@ -714,7 +752,7 @@ A network operator reports that when L2 (R2↔R3) goes down, traffic to R3 black
 
 **Inject:** `python3 scripts/fault-injection/inject_scenario_02.py --host <eve-ng-ip>`
 
-**Success criteria:** After fix, `show bfd session` on R2 shows State = Up for Gi0/0/0/1; shutting L2 triggers near-instant failover (packet loss < 3 pings).
+**Success criteria:** After fix, `show running-config router isis CORE` on R2 shows `bfd minimum-interval 50` and `bfd multiplier 3` under Gi0/0/0/1. On XRv9k/hardware: `show bfd session` shows State = Up for Gi0/0/0/1. On classic XRv 6.3.1: BFD sessions won't form (platform limitation), but the config is correct.
 
 <details>
 <summary>Click to view Diagnosis Steps</summary>
@@ -824,8 +862,9 @@ show isis fast-reroute summary
 - [ ] `show isis fast-reroute detail` on R2 shows a non-empty FRR backup entry for every prefix
 - [ ] `show isis fast-reroute detail 10.0.0.3/32` on R2 shows FRR backup via Gi0/0/0/0 (R1); `show mpls forwarding prefix 10.0.0.3/32 detail` shows backup label stack `{ 16003 }`
 - [ ] BFD sessions configured (`bfd minimum-interval 50` + `bfd multiplier 3`) on all core IS-IS interfaces
-- [ ] `show bfd session` on R2 shows 2 sessions Up (toward R1 and R3) with 150ms detect time
-- [ ] Classic LFA vs. TI-LFA coverage compared: TI-LFA restores coverage to 100% after removal test
+- [ ] BFD config verified in `show run router isis CORE` (sessions Up only on XRv9k/hardware; empty on classic XRv 6.3.1)
+- [ ] `show isis adjacency detail` on R2 shows Adjacency SIDs as `(protected)` with backup label stacks
+- [ ] Classic LFA vs. TI-LFA compared: coverage stays 100% in both states (L5 ensures classic LFA works); flag differences in `show isis fast-reroute detail` observed (NP/D attributes)
 
 ### Troubleshooting
 
