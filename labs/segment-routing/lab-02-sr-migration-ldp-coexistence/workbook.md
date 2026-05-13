@@ -223,11 +223,15 @@ The following is **pre-loaded** via `setup_lab.py`:
 
 ### Task 2: Observe the Default SR/LDP Label Preference
 
-- On R2, examine the MPLS forwarding table for R3's loopback (10.0.0.3/32). Identify both the outgoing SR label and the LDP-assigned label for the same prefix. Confirm which label the FIB has programmed.
-- On R2, examine the full LDP binding table and identify the LDP label R3 distributed for its loopback. Note the label value — it will differ from SR label 16003.
-- Compare `show mpls forwarding prefix 10.0.0.3/32 detail` against `show mpls ldp bindings 10.0.0.3/32 detail` on R2. Document which label source wins and why no additional configuration was needed.
+- On R2, run `show route ipv4 10.0.0.3/32 detail`. Look for the `labeled SR` tag and the `Local Label` field — this tells you which label source the routing table chose and what local label R2 assigned for this prefix.
+- Run `show mpls forwarding labels 16003 16003 detail` on R2. Confirm the entry shows `SR Pfx (idx 3)` — this is the SR forwarding entry.
+- Run `show mpls forwarding prefix 10.0.0.3/32 detail` on R2. Note: this shows the **LDP** forwarding entry (a dynamically-allocated local label from outside the SRGB range). Both SR and LDP entries exist simultaneously; the routing table selects SR by default.
+- Run `show mpls ldp bindings 10.0.0.3/32 detail` on R2 to see the LDP label bindings. The remote binding from R3 (ImpNull) and the local binding (dynamic label) will be visible — but neither is the active forwarding entry for IP-originated traffic.
 
-**Verification:** `show mpls forwarding prefix 10.0.0.3/32 detail` on R2 must show the SR label 16003 as the outgoing label. The LDP label for 10.0.0.3/32 must appear in `show mpls ldp bindings 10.0.0.3/32 detail` but must NOT be the active forwarding entry.
+**Verification:**
+- `show route ipv4 10.0.0.3/32 detail` on R2 must show `labeled SR` and `Local Label: 16003` — confirming SR is the active label source.
+- `show mpls forwarding labels 16003 16003 detail` on R2 must show `SR Pfx (idx 3)` with outgoing label `Pop` via Gi0/0/0/1.
+- `show mpls forwarding prefix 10.0.0.3/32 detail` showing a local label outside the SRGB (e.g. 24xxx) is **expected and correct** — that is the LDP entry, which coexists but is not used for IP-originated traffic.
 
 ---
 
@@ -298,22 +302,62 @@ Peer LDP Identifier: 10.0.0.3:0; Local LDP Identifier: 10.0.0.1:0
 
 ### Task 2: SR Preferred Over LDP
 
+On IOS-XR with both SR and LDP active, two separate MPLS forwarding entries exist for the same prefix: one keyed by the SR local label (in the SRGB range), and one keyed by the LDP prefix. The routing table selects SR by default.
+
+**Step 1 — Confirm SR wins in the routing table:**
+
+```
+R2# show route ipv4 10.0.0.3/32 detail
+
+Routing entry for 10.0.0.3/32
+  Known via "isis CORE", distance 115, metric 10, labeled SR, type level-2
+  ...
+  Routing Descriptor Blocks
+    10.1.23.3, from 10.0.0.3, via GigabitEthernet0/0/0/1, Protected
+      Route metric is 10
+      Label: 0x3 (3)       ! ← outgoing label 3 = Implicit-null (PHP from R3 via SR)
+  ...
+  Local Label: 0x3e83 (16003)  ! ← R2's SR local label — inside the SRGB (16000-23999)
+```
+
+> `labeled SR` and `Local Label: 16003` confirm SR is the active label source for this prefix.
+
+**Step 2 — View the SR forwarding entry:**
+
+```
+R2# show mpls forwarding labels 16003 16003 detail
+
+Local  Outgoing    Prefix             Outgoing     Next Hop
+Label  Label       or ID              Interface
+------ ----------- ------------------ ------------ ---------------
+16003  Pop         SR Pfx (idx 3)     Gi0/0/0/1    10.1.23.3       ! ← SR entry; Pop = PHP (R3 is adjacent)
+       16003       SR Pfx (idx 3)     Gi0/0/0/0    10.1.12.1   (!) ! ← TI-LFA backup via R1
+```
+
+**Step 3 — View the LDP forwarding entry (coexists, not used for IP traffic):**
+
 ```
 R2# show mpls forwarding prefix 10.0.0.3/32 detail
 
-Local  Outgoing    Prefix          Outgoing     Next Hop
-Label  Label       or ID           Interface
------- ----------- --------------- ------------ ---------------
-16003  Pop         SR Pfx (idx 3)  Gi0/0/0/1    10.1.23.3   ! ← Active: SR label (Pop at penultimate R2)
-                                                              ! ← NOT the LDP label
-
-R2# show mpls ldp bindings 10.0.0.3/32 detail
-  lib entry: 10.0.0.3/32, rev 24
-    Remote binding: label: 100003     ! ← LDP binding exists but is NOT in FIB
-      Peer LDP Ident: 10.0.0.3:0
+Local  Outgoing    Prefix             Outgoing     Next Hop
+Label  Label       or ID              Interface
+------ ----------- ------------------ ------------ ---------------
+24008  Pop         10.0.0.3/32        Gi0/0/0/1    10.1.23.3       ! ← LDP entry; local label is dynamic (outside SRGB)
+       24010       10.0.0.3/32        Gi0/0/0/0    10.1.12.1   (!) ! ← LDP backup via R1
 ```
 
-> The SR label wins because R3 advertised a native prefix-SID (index 3) via IS-IS. IOS-XR always prefers a native SR prefix-SID over an LDP binding for that same prefix, without any `sr-prefer` configuration.
+> `show mpls forwarding prefix` always shows the **LDP entry** on IOS-XR — the local label (24xxx) is dynamically allocated outside the SRGB. This entry coexists with the SR entry but is not used for IP-originated traffic. SR wins by default because R3 advertised a native prefix-SID (index 3) via IS-IS.
+
+```
+R2# show mpls ldp bindings 10.0.0.3/32 detail
+10.0.0.3/32, rev 36
+        Local binding: label: 24008          ! ← R2's LDP local label (dynamic, not 16003)
+        Remote bindings:
+            Peer                Label
+            -----------------   ---------
+            10.0.0.1:0          24010        ! ← R1's LDP label for 10.0.0.3/32
+            10.0.0.3:0          ImpNull      ! ← R3 signals PHP via LDP
+```
 
 ### Task 3: Mapping Server Local Table
 
