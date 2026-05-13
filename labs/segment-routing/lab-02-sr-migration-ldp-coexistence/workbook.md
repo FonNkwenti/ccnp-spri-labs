@@ -225,9 +225,9 @@ The following is **pre-loaded** via `setup_lab.py`:
 
 - On R2, examine the MPLS forwarding table for R3's loopback (10.0.0.3/32). Identify both the outgoing SR label and the LDP-assigned label for the same prefix. Confirm which label the FIB has programmed.
 - On R2, examine the full LDP binding table and identify the LDP label R3 distributed for its loopback. Note the label value — it will differ from SR label 16003.
-- Compare `show mpls forwarding 10.0.0.3/32 detail` against `show mpls ldp bindings 10.0.0.3/32 detail` on R2. Document which label source wins and why no additional configuration was needed.
+- Compare `show mpls forwarding prefix 10.0.0.3/32 detail` against `show mpls ldp bindings 10.0.0.3/32 detail` on R2. Document which label source wins and why no additional configuration was needed.
 
-**Verification:** `show mpls forwarding 10.0.0.3/32 detail` on R2 must show the SR label 16003 as the outgoing label. The LDP label for 10.0.0.3/32 must appear in `show mpls ldp bindings 10.0.0.3/32 detail` but must NOT be the active forwarding entry.
+**Verification:** `show mpls forwarding prefix 10.0.0.3/32 detail` on R2 must show the SR label 16003 as the outgoing label. The LDP label for 10.0.0.3/32 must appear in `show mpls ldp bindings 10.0.0.3/32 detail` but must NOT be the active forwarding entry.
 
 ---
 
@@ -246,28 +246,28 @@ The following is **pre-loaded** via `setup_lab.py`:
 - On R2, R3, and R4, confirm that each router received R1's SID/Label Binding TLV via IS-IS LSP flooding.
 - On R2, verify that the FIB has installed a forwarding entry for 192.0.2.0/24 using the SR label 16050 as the outgoing label toward R1 (the mapping server origin).
 
-**Verification:** `show isis segment-routing prefix-sid-map active-policy` on R2 must show the 192.0.2.0/24 to 16050 mapping received from R1. `show mpls forwarding 192.0.2.0/24` on R2 must show an MPLS forwarding entry with the SR label for the next hop toward R1.
+**Verification:** `show isis segment-routing prefix-sid-map active-policy` on R2 must show the 192.0.2.0/24 to 16050 mapping received from R1. `show mpls forwarding prefix 192.0.2.0/24` on R2 must show an MPLS forwarding entry with the SR label for the next hop toward R1.
 
 ---
 
 ### Task 5: Configure and Verify SR-Prefer
 
 - Configure the IS-IS SR-prefer knob on all four routers.
-- On R2, create a test scenario: observe whether `show mpls forwarding 192.0.2.0/24 detail` changes after applying `sr-prefer` (compared to before). Explain why the behavior may or may not change if an LDP binding for 192.0.2.0/24 is absent.
+- On R2, create a test scenario: observe whether `show mpls forwarding prefix 192.0.2.0/24 detail` changes after applying `sr-prefer` (compared to before). Explain why the behavior may or may not change if an LDP binding for 192.0.2.0/24 is absent.
 - Document the exact condition under which `sr-prefer` matters: when a prefix has BOTH an LDP binding (from a legacy PE) and an SR SID (from the mapping server), and you want SR to win.
 
-**Verification:** `show running-config router isis CORE` on each router must show `segment-routing mpls sr-prefer` under `address-family ipv4 unicast`. `show mpls forwarding 192.0.2.0/24 detail` on R2 must show an SR-sourced label (not LDP) if both label sources are present.
+**Verification:** `show running-config router isis CORE` on each router must show `segment-routing mpls sr-prefer` under `address-family ipv4 unicast`. `show mpls forwarding prefix 192.0.2.0/24 detail` on R2 must show an SR-sourced label (not LDP) if both label sources are present.
 
 ---
 
 ### Task 6: Anti-Pattern — Disable and Re-enable SR on R4
 
 - On R4, remove SR from the IS-IS address-family (remove the `segment-routing mpls` stanza). Observe the effect on R1's view of R4's loopback.
-- From R1, check `show mpls forwarding 10.0.0.4/32 detail` — confirm R1 is now using an LDP label to reach R4 (SR label 16004 is gone from the FIB).
+- From R1, check `show mpls forwarding prefix 10.0.0.4/32 detail` — confirm R1 is now using an LDP label to reach R4 (SR label 16004 is gone from the FIB).
 - Re-enable SR on R4 (`segment-routing mpls` under IS-IS af) and verify that R1's FIB returns to SR label 16004 for R4's loopback.
 - This exercise models the post-migration cleanup scenario where a node is momentarily reverted and then corrected.
 
-**Verification:** After SR is disabled on R4, `show isis database detail R4` on R2 must show no SR sub-TLV in R4's LSP. After re-enabling, `show mpls forwarding 10.0.0.4/32 detail` on R1 must show outgoing label 16004 (SR), not an LDP label.
+**Verification:** After SR is disabled on R4, `show isis database detail R4` on R2 must show no SR sub-TLV in R4's LSP. After re-enabling, `show mpls forwarding prefix 10.0.0.4/32 detail` on R1 must show outgoing label 16004 (SR), not an LDP label.
 
 ---
 
@@ -299,7 +299,7 @@ Peer LDP Identifier: 10.0.0.3:0; Local LDP Identifier: 10.0.0.1:0
 ### Task 2: SR Preferred Over LDP
 
 ```
-R2# show mpls forwarding 10.0.0.3/32 detail
+R2# show mpls forwarding prefix 10.0.0.3/32 detail
 
 Local  Outgoing    Prefix          Outgoing     Next Hop
 Label  Label       or ID           Interface
@@ -352,7 +352,7 @@ Prefix                  SID Index    Router     Flags
 ### Task 6: SR Disabled on R4 — LDP Fallback
 
 ```
-R1# show mpls forwarding 10.0.0.4/32 detail
+R1# show mpls forwarding prefix 10.0.0.4/32 detail
 
 ! After SR disabled on R4:
 Local  Outgoing    Prefix       Outgoing     Next Hop
@@ -547,7 +547,7 @@ show mpls forwarding labels 16001 16004
 
 ```bash
 ! On R2 — confirm SR label is active for R3's loopback
-R2# show mpls forwarding 10.0.0.3/32 detail
+R2# show mpls forwarding prefix 10.0.0.3/32 detail
 ! Look for: Outgoing label = 16003 (SR) or Pop (penultimate R2), source = SR Pfx
 
 ! On R2 — confirm LDP binding exists but is NOT the active FIB entry
@@ -612,7 +612,7 @@ R2# show isis segment-routing prefix-sid-map active-policy
 ! 192.0.2.0/24 should appear with SID 50 (label 16050), attributed to R1 (M flag = mapping server)
 
 ! On R2 — confirm the MPLS FIB has an entry for the mapped prefix
-R2# show mpls forwarding 192.0.2.0/24
+R2# show mpls forwarding prefix 192.0.2.0/24
 ! An MPLS forwarding entry must be present; next-hop will be toward R1 via L1 (Gi0/0/0/0)
 ! or via L5/L4 depending on IGP path — outgoing label encodes the SR path to the mapping server origin
 ```
@@ -641,7 +641,7 @@ commit
 
 ```bash
 show running-config router isis CORE
-show mpls forwarding 192.0.2.0/24 detail
+show mpls forwarding prefix 192.0.2.0/24 detail
 ```
 </details>
 
@@ -673,7 +673,7 @@ R2# show isis database detail R4
 ! SR-Algorithm and prefix-SID sub-TLVs should be absent from R4.00-00
 
 ! On R1 — confirm R1 is now using an LDP label to reach R4's loopback
-R1# show mpls forwarding 10.0.0.4/32 detail
+R1# show mpls forwarding prefix 10.0.0.4/32 detail
 ! Outgoing label will be an LDP-assigned label (NOT 16004); label source = LDP
 ```
 </details>
@@ -691,7 +691,7 @@ router isis CORE
 commit
 ! Verify:
 ! On R1:
-show mpls forwarding 10.0.0.4/32 detail
+show mpls forwarding prefix 10.0.0.4/32 detail
 ! Outgoing label must return to Pop or 16004 (SR Pfx idx 4); label source = SR Pfx
 ```
 </details>
@@ -724,7 +724,7 @@ The operations team updated the SRGB configuration on R3 during a change window.
 
 **Inject:** `python3 scripts/fault-injection/inject_scenario_01.py --host <eve-ng-ip>`
 
-**Success criteria:** `show segment-routing mapping-server prefix-sid-map ipv4 summary` on R3 shows the 192.0.2.0/24 mapping entry with label 16050 installed (no conflict). `show mpls forwarding 192.0.2.0/24` on R3 shows an MPLS forwarding entry.
+**Success criteria:** `show segment-routing mapping-server prefix-sid-map ipv4 summary` on R3 shows the 192.0.2.0/24 mapping entry with label 16050 installed (no conflict). `show mpls forwarding prefix 192.0.2.0/24` on R3 shows an MPLS forwarding entry.
 
 <details>
 <summary>Click to view Diagnosis Steps</summary>
@@ -773,14 +773,14 @@ A traffic-engineering audit shows that traffic destined to the legacy customer p
 
 **Inject:** `python3 scripts/fault-injection/inject_scenario_02.py --host <eve-ng-ip>`
 
-**Success criteria:** `show mpls forwarding 192.0.2.0/24 detail` on R2 shows the SR mapping-server label (not an LDP label) as the outgoing label.
+**Success criteria:** `show mpls forwarding prefix 192.0.2.0/24 detail` on R2 shows the SR mapping-server label (not an LDP label) as the outgoing label.
 
 <details>
 <summary>Click to view Diagnosis Steps</summary>
 
 ```
 ! Step 1: Check what label R2 is actually using for 192.0.2.0/24
-R2# show mpls forwarding 192.0.2.0/24 detail
+R2# show mpls forwarding prefix 192.0.2.0/24 detail
 ! Note the label source: is it SR (from mapping server) or LDP?
 
 ! Step 2: Verify the mapping server entry is present
@@ -812,7 +812,7 @@ router isis CORE
 !
 commit
 ! Verify:
-show mpls forwarding 192.0.2.0/24 detail
+show mpls forwarding prefix 192.0.2.0/24 detail
 ! Outgoing label should now be 16050 (SR mapping-server), not an LDP label
 ```
 </details>
