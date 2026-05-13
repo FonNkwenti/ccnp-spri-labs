@@ -103,7 +103,7 @@ router isis CORE
 |-------|-------------|
 | TI-LFA configuration | Enabling and verifying per-prefix TI-LFA on all core interfaces |
 | P/PQ-node analysis | Identifying repair nodes from the post-convergence SPF graph |
-| Repair label stack reading | Interpreting `show isis fast-reroute` label stacks |
+| Repair label stack reading | Interpreting repair label stacks from `show mpls forwarding` and `show route` (not from `show isis fast-reroute`) |
 | BFD integration | Configuring BFD for sub-50ms failure detection with TI-LFA |
 | FRR coverage analysis | Comparing TI-LFA vs. classic LFA coverage gaps |
 | Topology impact | Understanding how the L5 diagonal affects FRR path diversity |
@@ -250,48 +250,68 @@ The following is **pre-loaded** via `setup_lab.py` (from `initial-configs/`):
 - Both the base per-prefix FRR knob and the TI-LFA extension knob must be configured per-interface under the IS-IS IPv4 unicast address-family.
 - Interfaces: R1 (3 core interfaces), R2 (2), R3 (3), R4 (2).
 
-**Verification:** `show isis fast-reroute summary` on any router must show TI-LFA enabled on all core interfaces with protected prefixes > 0.
+**Verification:**
+- `show isis fast-reroute summary` on any router — must show `Unprotected: 0` across all priority columns, and `Total All paths protected` = 8 (or the count of reachable prefixes on that router). Critical/High columns show 0.00% because no prefixes carry those priority tags by default — this is expected.
+- `show run router isis` on each router — confirm `fast-reroute per-prefix` and `fast-reroute per-prefix ti-lfa` appear under every core interface's IPv4 address-family (and are absent from Loopback0).
+
+> **What `show isis fast-reroute summary` does NOT show:** per-interface TI-LFA status. Coverage can be 100% globally even if one interface lacks TI-LFA (as long as other interfaces provide backup coverage). Always cross-check with `show run router isis`.
 
 ---
 
 ### Task 2: Inspect the TI-LFA Backup Topology
 
-- On R2, display the full per-prefix FRR topology table for IPv4 unicast. For each destination prefix, identify: primary next-hop, backup next-hop, and the repair label stack.
-- Confirm that every destination has a backup path (0 prefixes without backup).
-- Identify which destination has the shortest repair label stack (R2 is directly adjacent, so PHP applies) and which has the longest.
+- On R2, display the full per-prefix FRR topology table. For each destination prefix, identify the primary next-hop, backup next-hop, and the backup path metric (TM).
+- Confirm that every reachable prefix shows a non-empty FRR backup entry (no prefix is unprotected).
+- Identify which prefixes have `P: Yes` vs. `P: No` and explain why: ECMP mutual-backup prefixes show `P: Yes` (the backup NH is also a primary path); single-path prefixes show `P: No`.
+- Now find the repair label stacks: use `show mpls forwarding prefix <p>/32 detail` for each loopback. Compare the backup (`(!)`) entries — all repair stacks in this topology are one label because the PQ-node is always adjacent to R2.
 
-**Verification:** `show isis fast-reroute detail` on R2 — every prefix must show a non-empty FRR backup entry.
+**Verification:**
+- `show isis fast-reroute detail` on R2 — every reachable prefix must show a non-empty `FRR backup via` line.
+- `show mpls forwarding` on R2 — the `(!)` backup entries must show repair labels (16001, 16003, 16004) for the three remote loopbacks.
+- Connected link subnets show `RIB backup` entries with FRR lines; these are valid even without explicit MPLS backup entries because the subnet is locally attached.
 
 ---
 
 ### Task 3: Analyze the Repair Path for R3's Loopback
 
 - From R2's perspective, identify the primary and backup next-hop for destination 10.0.0.3/32 (R3's loopback).
-- Determine which router is the PQ-node for the L2 (R2↔R3) failure scenario and explain why.
-- Confirm the repair label stack and explain what each label in the stack does.
+- Interpret the backup flags (P, TM, NP, D, SRLG) for this prefix — explain why NP is No for a destination that *is* the primary next-hop router.
+- Determine which router is the PQ-node for the L2 (R2↔R3) failure scenario and explain why the stack is only one label (R1 is adjacent to R2 on L1).
+- Confirm the repair label stack (use `show mpls forwarding prefix 10.0.0.3/32 detail` — `show isis fast-reroute` shows the path but not the label) and explain what each label does.
 
-**Verification:** `show isis fast-reroute detail 10.0.0.3/32` on R2 — must show primary via Gi0/0/0/1 (L2) and FRR backup via Gi0/0/0/0 (L1→R1) with repair label 16003.
+**Verification:**
+- `show isis fast-reroute detail 10.0.0.3/32` on R2 — must show primary via Gi0/0/0/1 (L2), FRR backup via Gi0/0/0/0 (L1→R1), flags: `P: No, TM: 20, NP: No, D: No, SRLG: Yes`.
+- `show mpls forwarding prefix 10.0.0.3/32 detail` on R2 — must show backup entry `(!) 16003` via Gi0/0/0/0 (repair label = 16003).
+- `show route ipv4 10.0.0.3/32 detail` on R2 — must show backup path with `Label: 16003` via 10.1.12.1.
 
 ---
 
 ### Task 4: Enable BFD for Sub-50ms Failure Detection
 
 - Configure BFD on all core IS-IS interfaces (R1, R2, R3, R4) with a 50ms hello interval and a multiplier of 3. This gives a 150ms failure detection time.
-- Integrate BFD with IS-IS fast-detect so that a BFD session failure triggers the TI-LFA repair immediately rather than waiting for the IS-IS hello holddown.
-- Demonstrate sub-50ms failover: start a sustained ping from R2 loopback (10.0.0.2) sourced to R3 loopback (10.0.0.3), then administratively shut L2 (R3's Gi0/0/0/0). Count the number of dropped packets — with TI-LFA and BFD, at most one or two packets should be lost.
+- On IOS-XR, configuring `bfd minimum-interval` and `bfd multiplier` under the IS-IS interface is all that's needed — IS-IS automatically binds BFD to the adjacency. No separate `isis bfd` or `bfd fast-detect` command exists.
+- Without BFD, TI-LFA repair paths are pre-installed but the activation trigger is the IS-IS hello holddown (default ~30 seconds). BFD cuts this to 150ms.
 
-**Verification:** `show bfd session` on R2 must show active BFD sessions toward both R1 (via L1) and R3 (via L2) with negotiated interval 50ms.
+> **Platform reality check:** On classic XRv 6.3.1 (the image actually running), BFD sessions do NOT form — this is a software-forwarding limitation. The BFD configuration commands are still exam-correct. Verify you configured them via `show run router isis`, then confirm TI-LFA protection via `show isis adjacency detail` (Adjacency SID shows `(protected)` with a backup label stack — this works on all XR platforms). The "sub-50ms failover demo" (ping + shut L2) will still work because TI-LFA repair paths are pre-installed regardless of BFD — the failover just takes IS-IS holddown time (~30s) instead of 150ms.
+
+**Verification:**
+- `show run router isis` on R2 — confirm `bfd minimum-interval 50` and `bfd multiplier 3` appear under every core IS-IS interface.
+- `show isis adjacency detail` on R2 — each adjacency must show `Adjacency SID: <n> (protected)` with a `Backup label stack` and `Backup nexthop` populated.
+- `show bfd session` — expected empty on classic XRv 6.3.1; on XRv9k/hardware would show sessions Up with 50ms interval.
 
 ---
 
 ### Task 5: Compare TI-LFA vs. Classic LFA Coverage
 
-- On R2's Gi0/0/0/0 (L1), temporarily remove the TI-LFA extension (keep the base per-prefix FRR but remove the TI-LFA knob).
-- Run `show isis fast-reroute summary` and `show isis fast-reroute detail`. Note: because L5 (the R1↔R3 diagonal) gives every prefix a classic loop-free alternate in this topology, coverage stays at 100% even without TI-LFA. This is by design — L5 is what makes TI-LFA's repair paths one-label rather than two.
-- The observable difference is in `show isis fast-reroute detail` flag changes: with TI-LFA, some entries show NP/D attributes indicating node-protecting and downstream-disjoint paths; classic LFA does not guarantee these stronger protection properties.
-- Restore TI-LFA and verify `show isis fast-reroute detail` returns to full TI-LFA flag coverage.
+- On R2's Gi0/0/0/0 (L1), temporarily remove only the TI-LFA extension — keep the base per-prefix FRR knob but disable the TI-LFA label-stack repair. (You've already seen the command pattern for removing a sub-command under an IS-IS interface address-family.)
+- Run `show isis fast-reroute summary` — coverage stays 100% because L5 (R1↔R3 diagonal) gives every prefix a classic loop-free alternate.
+- Run `show isis fast-reroute detail 10.0.0.4/32` — in this topology, the NP/D/SRLG flags **also stay the same** (all `Yes`). The ECMP mutual-backup paths via L5 happen to be node-protecting and downstream-disjoint even under classic LFA because the topology is highly redundant.
+- **The conceptual difference:** TI-LFA *guarantees* NP/D properties by running a post-convergence SPF; classic LFA only *happens* to find them in favorable topologies. In a simple ring without L5, classic LFA would show `NP: No, D: No` while TI-LFA would still compute a label-stack repair. This lab's topology is too redundant to demonstrate the gap — the learning is understanding *why*.
+- Restore TI-LFA on Gi0/0/0/0.
 
-**Verification:** `show isis fast-reroute summary` shows 100% in both states (expected). `show isis fast-reroute detail` is the differentiator — compare backup path flags before and after restoring TI-LFA.
+**Verification:**
+- `show isis fast-reroute summary` — 100% coverage in both states (expected).
+- `show isis fast-reroute detail 10.0.0.4/32` — flags unchanged (NP: Yes, D: Yes in both states). This is correct for this topology — the conceptual difference between TI-LFA and classic LFA is about guarantees, not always visible output.
 
 ---
 
@@ -319,6 +339,8 @@ Prefixes reachable in L2
 
 ### Task 2 — Per-Prefix FRR Topology
 
+#### Step 1: Check every prefix has a backup
+
 ```
 RP/0/0/CPU0:R2# show isis fast-reroute detail
 Wed May 13 07:48:15.210 UTC
@@ -332,19 +354,48 @@ L2 10.0.0.1/32 [10/115] medium priority
      via 10.1.12.1, GigabitEthernet0/0/0/0, R1, SRGB Base: 16000, Weight: 0
        FRR backup via 10.1.23.3, GigabitEthernet0/0/0/1, R3, SRGB Base: 16000, Weight: 0, Metric: 20
        P: No, TM: 20, LC: No, NP: No, D: No, SRLG: Yes
-L2 10.0.0.3/32 [10/115] medium priority           ! ← backup via R1 (Gi0/0/0/0)
+L2 10.0.0.3/32 [10/115] medium priority
      via 10.1.23.3, GigabitEthernet0/0/0/1, R3, SRGB Base: 16000, Weight: 0
        FRR backup via 10.1.12.1, GigabitEthernet0/0/0/0, R1, SRGB Base: 16000, Weight: 0, Metric: 20
        P: No, TM: 20, LC: No, NP: No, D: No, SRLG: Yes
-L2 10.0.0.4/32 [20/115] medium priority           ! ← two equal-cost paths, each backs up the other
-     via 10.1.23.3, GigabitEthernet0/0/0/1, R3, ...
-       FRR backup via 10.1.12.1, GigabitEthernet0/0/0/0, R1, ...
-     via 10.1.12.1, GigabitEthernet0/0/0/0, R1, ...
-       FRR backup via 10.1.23.3, GigabitEthernet0/0/0/1, R3, ...
+L2 10.0.0.4/32 [20/115] medium priority           ! ← two equal-cost paths — mutual backup
+     via 10.1.23.3, GigabitEthernet0/0/0/1, R3, SRGB Base: 16000, Weight: 0
+       FRR backup via 10.1.12.1, GigabitEthernet0/0/0/0, R1, SRGB Base: 16000, Weight: 0, Metric: 20
+       P: Yes, TM: 20, LC: No, NP: Yes, D: Yes, SRLG: Yes
+     via 10.1.12.1, GigabitEthernet0/0/0/0, R1, SRGB Base: 16000, Weight: 0
+       FRR backup via 10.1.23.3, GigabitEthernet0/0/0/1, R3, SRGB Base: 16000, Weight: 0, Metric: 20
+       P: Yes, TM: 20, LC: No, NP: Yes, D: Yes, SRLG: Yes
 ! ... link subnets follow, all showing FRR backup entries ...
 ```
 
+> **Key observation — P: Yes vs. P: No:** 10.0.0.4/32 shows `P: Yes` because both backup NHs are also primary ECMP paths (mutual backup). 10.0.0.1/32 and 10.0.0.3/32 show `P: No` because each has only one primary path — the backup NH is purely a repair entry.
+
+#### Step 2: Find the repair label stacks
+
+`show isis fast-reroute` does not display MPLS labels. Use `show mpls forwarding` to see them:
+
+```
+RP/0/0/CPU0:R2# show mpls forwarding
+Local  Outgoing  Prefix           Outgoing Interface   Next Hop        Bytes
+Label  Label     or ID                              FRR
+------ --------- ---------------- ------------------- --------------- ---------
+16001  Pop       10.0.0.1/32      Gi0/0/0/0           10.1.12.1       0    ← primary (PHP)
+       (!) 16001                  Gi0/0/0/1           10.1.23.3       0    ← backup via R3, repair = 16001
+16003  Pop       10.0.0.3/32      Gi0/0/0/1           10.1.23.3       0    ← primary (PHP)
+       (!) 16003                  Gi0/0/0/0           10.1.12.1       0    ← backup via R1, repair = 16003
+16004  16004     10.0.0.4/32      Gi0/0/0/1           10.1.23.3       0    ← primary ECMP #1
+       (!) 16004                  Gi0/0/0/0           10.1.12.1       0    ← backup via R1, repair = 16004
+       16004                      Gi0/0/0/0           10.1.12.1       0    ← primary ECMP #2
+       (!) Pop                    Gi0/0/0/1           10.1.23.3       0    ← backup via R3, repair = implicit-null
+```
+
+All repair stacks are one label because the PQ-node for each protected link is always an adjacent router. Connected link subnets have `RIB backup` entries in `show isis fast-reroute detail` but no MPLS backup entries — that's normal; the subnet is locally attached.
+
 ### Task 3 — Repair Label Stack for 10.0.0.3/32
+
+`show isis fast-reroute` shows the backup path (next-hop and interface) but **not the repair label**. Use `show mpls forwarding` and `show route` to see the label stack.
+
+#### Step 1: Identify the backup path
 
 ```
 RP/0/0/CPU0:R2# show isis fast-reroute detail 10.0.0.3/32
@@ -354,34 +405,101 @@ L2 10.0.0.3/32 [10/115] medium priority
      via 10.1.23.3, GigabitEthernet0/0/0/1, R3, SRGB Base: 16000, Weight: 0
        FRR backup via 10.1.12.1, GigabitEthernet0/0/0/0, R1, SRGB Base: 16000, Weight: 0, Metric: 20
        P: No, TM: 20, LC: No, NP: No, D: No, SRLG: Yes
-
-RP/0/0/CPU0:R2# show mpls forwarding prefix 10.0.0.3/32 detail
-! Primary:  Pop  via Gi0/0/0/1 (R3 via L2)   Label Stack: { Imp-Null }  (PHP)
-! Backup:   16003 via Gi0/0/0/0 (R1 via L1)  Label Stack: { 16003 }     ! ← repair label
-! (!) marks the FRR pure backup entry
-
-RP/0/0/CPU0:R2# show route ipv4 10.0.0.3/32 detail
-  10.1.12.1, via GigabitEthernet0/0/0/0, Backup (Local-LFA)
-    Label: 16003                                   ! ← R1 forwards 16003 to R3 via L5
-  10.1.23.3, via GigabitEthernet0/0/0/1, Protected ! ← primary via L2
-
-Explanation:
-  R1 is the PQ-node and is R2's immediate neighbor (adjacent on L1).
-  Because R1 is the next-hop, no outer steering label (16001) is needed.
-  R2 imposes only label 16003 on the backup path via Gi0/0/0/0.
-  R1 receives label 16003 and routes it to R3 via L5 (post-convergence path).
-  R3 pops 16003 (implicit-null / PHP), delivers native IP.
-  Repair label stack = { 16003 }  (one label; R1 is adjacent PQ-node)
 ```
 
-### Task 4 — BFD Sessions
+**Flag interpretation for 10.0.0.3/32:**
+
+| Flag | Value | Why |
+|------|-------|-----|
+| **P** (Primary path) | No | The backup via R1 is not a primary forwarding path — only R2→R3 (L2) is the primary |
+| **TM** (Total Metric) | 20 | R2→R1 (metric 10) + R1→R3 via L5 (metric 10) = 20. Higher than primary metric (10), but valid |
+| **NP** (Node Protecting) | No | R3 **is** the destination — if R3 dies, 10.0.0.3/32 is unreachable from anywhere. No backup can protect against the destination's own death |
+| **D** (Downstream) | No | R1 is not downstream (closer to R3 in the post-convergence graph) because R1→R3 via L5 has metric 10, same as R2→R3 via L2 |
+| **SRLG** (SRLG disjoint) | Yes | Backup path uses different link (L1 + L5) than primary (L2) — no shared fate group (SRLG not configured, defaults to disjoint) |
+| **LC** (Line Card disjoint) | No | All XRv interfaces share one virtual line card |
+
+#### Step 2: Find the repair label
+
+```
+RP/0/0/CPU0:R2# show mpls forwarding prefix 10.0.0.3/32 detail
+Local  Outgoing  Prefix       Outgoing Interface   Next Hop        Bytes
+Label  Label     or ID                          FRR
+------ --------- ------------ ------------------- --------------- ---------
+16003  Pop       10.0.0.3/32  Gi0/0/0/1           10.1.23.3       0    ← primary (PHP — R3 pops via implicit-null)
+       (!) 16003              Gi0/0/0/0           10.1.12.1       0    ← backup via R1, repair label = 16003
+```
+
+- `(!)` marks a pure FRR backup entry (not a primary forwarding path).
+- Primary: R2 sends unlabeled (PHP pop via implicit-null) to R3 on L2.
+- Backup: R2 imposes label 16003 and sends via R1 on L1.
+
+#### Step 3: Confirm in the RIB
+
+```
+RP/0/0/CPU0:R2# show route ipv4 10.0.0.3/32 detail
+  10.1.12.1, via GigabitEthernet0/0/0/0, Backup (Local-LFA)
+    Label: 16003                                   ! ← repair label confirmed
+  10.1.23.3, via GigabitEthernet0/0/0/1, Protected ! ← primary via L2
+```
+
+#### Step 4: Explain the PQ-node and why the stack is one label
+
+```
+   Protected link: L2 (R2 ─── R3)
+   PLR: R2
+
+   Post-convergence path:  R2 → R1 (via L1) → R3 (via L5)
+
+   R1 is a P-node:  reachable from R2 via L1, not through L2.
+   R1 is a Q-node:  can reach R3 via L5, not through L2.
+   Therefore R1 is the PQ-node.
+```
+
+**Why only one label (16003)?** R1 is R2's **immediate neighbor** (adjacent on L1). Because R1 is the next-hop router for the backup path, R2 does not need an outer steering label (16001) to reach R1 — the adjacency itself steers the packet. R2 only needs to tell R1 what to do with the packet after receiving it: send it to R3 (label 16003 — R3's prefix SID).
+
+**If R1 were non-adjacent** (e.g., if L5 didn't exist and the repair went R2→R1→R4→R3), the stack would be `{16001, 16003}` — outer label to steer to R1, inner label for R3.
+
+```
+Repair label stack = { 16003 }   (one label; R1 is adjacent PQ-node)
+```
+
+### Task 4 — BFD Configuration (Exam-Correct)
 
 > **Platform note:** On classic XRv 6.3.1 (the image actually running in this EVE-NG lab),
 > BFD sessions for IS-IS do not form even when correctly configured. This is a software
 > forwarding limitation of the classic XRv platform — BFD sub-50ms hardware timers require
-> XRv9k or physical hardware. The BFD configuration commands are still correct and exam-relevant;
-> verify TI-LFA protection via `show isis adjacency detail` instead, which shows Adjacency SID
-> protection status independently of BFD.
+> XRv9k or physical hardware. The BFD configuration commands are still correct and exam-relevant.
+>
+> **On IOS-XR, there is no separate `isis bfd` or `bfd fast-detect` command.** Configuring
+> `bfd minimum-interval` and `bfd multiplier` under the IS-IS interface automatically binds
+> BFD to the IS-IS adjacency. These two lines are all you need.
+
+#### Verify the configuration is present
+
+```
+RP/0/0/CPU0:R2# show run router isis
+router isis CORE
+ !
+ interface GigabitEthernet0/0/0/0
+  bfd minimum-interval 50          ! ← must be present on every core interface
+  bfd multiplier 3                 ! ← must be present on every core interface
+  address-family ipv4 unicast
+   fast-reroute per-prefix
+   fast-reroute per-prefix ti-lfa
+  !
+ !
+ interface GigabitEthernet0/0/0/1
+  bfd minimum-interval 50
+  bfd multiplier 3
+  address-family ipv4 unicast
+   fast-reroute per-prefix
+   fast-reroute per-prefix ti-lfa
+  !
+ !
+!
+```
+
+#### Verify TI-LFA protection is active (works on all XR platforms)
 
 ```
 RP/0/0/CPU0:R2# show bfd session
@@ -407,33 +525,79 @@ R3  Gi0/0/0/1  *PtoP*  Up  29  00:28:27 Yes None None
    Backup nexthop:        10.1.12.1
 ```
 
-### Task 5 — Coverage Drop Without ti-lfa
+### Task 5 — Classic LFA vs. TI-LFA: Conceptual Comparison
 
-> **Note:** In this topology, the L5 diagonal (R1↔R3) means every prefix already has a
-> classic loop-free alternate neighbor, so `show isis fast-reroute summary` stays at 100%
-> coverage even after removing TI-LFA from Gi0/0/0/0. The coverage-drop effect requires
-> a topology without complete LFA coverage (e.g., a simple ring without L5). The value of
-> this task is observing that backup paths still exist under classic LFA, then confirming
-> TI-LFA restores the extended repair capabilities (node-protecting, arbitrary label stack).
+> **Why nothing visibly changes in this topology:** The L5 diagonal (R1↔R3) provides every
+> prefix with a classic loop-free alternate. Additionally, the ECMP paths through the square
+> ring mean even classic LFA discovers backup paths that happen to be node-protecting (NP: Yes)
+> and downstream-disjoint (D: Yes). TI-LFA *guarantees* these properties via post-convergence
+> SPF; classic LFA only *happens* to find them in favorable topologies.
+>
+> In a simple ring without L5, classic LFA would leave some prefixes unprotected or show
+> `NP: No, D: No` — that's where TI-LFA's label-stack repair becomes essential. This lab's
+> topology is deliberately redundant to keep repair stacks short (one label), but that same
+> redundancy masks the coverage/flag differences.
+
+#### Baseline (with TI-LFA) and After Removal — output is identical
+
+```
+RP/0/0/CPU0:R2# show isis fast-reroute detail 10.0.0.4/32
+
+L2 10.0.0.4/32 [20/115] medium priority
+     via 10.1.23.3, GigabitEthernet0/0/0/1, R3
+       FRR backup via 10.1.12.1, GigabitEthernet0/0/0/0, R1, Metric: 20
+       P: Yes, TM: 20, LC: No, NP: Yes, D: Yes, SRLG: Yes
+     via 10.1.12.1, GigabitEthernet0/0/0/0, R1
+       FRR backup via 10.1.23.3, GigabitEthernet0/0/0/1, R3, Metric: 20
+       P: Yes, TM: 20, LC: No, NP: Yes, D: Yes, SRLG: Yes
+```
+
+```
+! After removing fast-reroute per-prefix ti-lfa from Gi0/0/0/0 and committing:
+! Output is IDENTICAL — NP: Yes, D: Yes remains on both backup lines.
+```
 
 ```
 RP/0/0/CPU0:R2# show isis fast-reroute summary
-! (after removing fast-reroute per-prefix ti-lfa from Gi0/0/0/0 — classic LFA only)
+! Summary is also identical — 100% coverage in both states.
 
 IS-IS CORE IPv4 Unicast FRR summary
 
                           Critical   High       Medium     Low        Total
                           Priority   Priority   Priority   Priority
 Prefixes reachable in L2
-  All paths protected     0          0          3          5          8    ! ← still 100%; L5 provides classic LFA
+  All paths protected     0          0          3          5          8
   Some paths protected    0          0          0          0          0
   Unprotected             0          0          0          0          0
   Protection coverage     0.00%      0.00%      100.00%    100.00%    100.00%
+```
 
-! Re-enable TI-LFA, then verify summary is identical (coverage was never lost):
-! The key difference is in 'show isis fast-reroute detail' — TI-LFA provides
-! node-protecting (NP: Yes) and downstream-disjoint (D: Yes) backup paths
-! that classic LFA cannot guarantee.
+#### What you're learning (not what you're seeing)
+
+| Property | Classic LFA (RFC 5286) | TI-LFA |
+|----------|----------------------|--------|
+| Coverage guarantee | Topology-dependent; may leave prefixes unprotected | 100% for any single link/node failure |
+| NP (node-protecting) | Not guaranteed | Computed via post-convergence SPF |
+| D (downstream-disjoint) | Not guaranteed | Computed via post-convergence SPF |
+| Repair path encoding | Direct next-hop only (no label stack) | Arbitrary SR label stack |
+| What you see in this lab | 100% coverage, NP: Yes, D: Yes (lucky topology) | 100% coverage, NP: Yes, D: Yes |
+
+> **The real differentiator would be visible if L5 were removed.** In a simple 4-router ring,
+> classic LFA would leave some prefixes unprotected or show weaker flags. TI-LFA would still
+> compute label-stack repairs (e.g., `{16001, 16003}` for R2→R3 via R1→R4). This is the
+> exam-relevant concept.
+
+#### Restore TI-LFA
+
+```
+router isis CORE
+ interface GigabitEthernet0/0/0/0
+  address-family ipv4 unicast
+   fast-reroute per-prefix ti-lfa
+  !
+ !
+!
+commit
 ```
 
 ---
@@ -465,7 +629,7 @@ router isis CORE
 
 | Command | What to Look For |
 |---------|-----------------|
-| `show isis fast-reroute summary` | TI-LFA enabled on all interfaces; 100% coverage |
+| `show isis fast-reroute summary` | Global FRR coverage: `Unprotected: 0`, 100% coverage (does NOT show per-interface TI-LFA status — use `show run router isis` for that) |
 | `show isis fast-reroute detail` | Every prefix has a non-empty FRR backup entry |
 | `show isis fast-reroute detail <prefix>` | Primary NH and FRR backup NH for a specific prefix |
 | `show mpls forwarding prefix <prefix> detail` | Repair label stack under the `(!)` backup entry |
@@ -476,6 +640,19 @@ router isis CORE
 | `show mpls forwarding` | FRR next-hop column shows backup NH installed |
 
 > **Exam tip (IOS-XR):** `show isis fast-reroute detail` and `show isis fast-reroute summary` are the primary diagnostic commands for TI-LFA. The former gives per-prefix backup detail; the latter gives coverage percentages by priority. The `topology` subcommand does not exist on IOS-XR — use `detail` instead. On classic XRv 6.3.1, use `show isis adjacency detail` to confirm TI-LFA protection (BFD sessions won't form on that platform).
+
+### Backup Path Flags (from `show isis fast-reroute detail`)
+
+| Flag | Name | Meaning |
+|------|------|--------|
+| **P** | Primary path | Is the backup NH also a primary forwarding path? `Yes` = ECMP mutual-backup scenario |
+| **TM** | Total Metric via backup | Cost from PLR to destination via the backup path (always ≥ primary metric) |
+| **LC** | Line Card disjoint | Backup exits a different physical line card than primary? (XRv = single virtual LC, always No) |
+| **NP** | Node Protecting | Does backup survive if the primary *next-hop router* dies (not just the link)? Always No for destinations that *are* the primary NH |
+| **D** | Downstream | Is backup NH strictly closer to the destination in the post-convergence SPF graph? |
+| **SRLG** | SRLG disjoint | Does backup use a different Shared Risk Link Group than the primary? Defaults to Yes when SRLG is unconfigured |
+
+> **Finding the repair label stack:** `show isis fast-reroute detail` shows the backup *path* (next-hop + interface) but **not** the MPLS labels. Use `show mpls forwarding prefix <p>/32 detail` (look for `(!)` entries) or `show route ipv4 <p>/32 detail` (look for `Backup (Local-LFA)` with `Label:`) to see the repair label stack.
 
 ### BFD Quick Reference
 
@@ -644,7 +821,7 @@ show bfd session
 ```
 </details>
 
-### Task 5: Temporarily Remove TI-LFA and Restore
+### Task 5: Compare TI-LFA vs. Classic LFA (Conceptual)
 
 <details>
 <summary>Click to view Remove TI-LFA (R2 Gi0/0/0/0)</summary>
@@ -658,10 +835,14 @@ router isis CORE
  !
 !
 commit
-! Coverage stays 100% (L5 provides classic LFA for all prefixes in this topology).
-! Compare flag differences instead:
+! Coverage stays 100% — L5 + ECMP gives classic LFA full coverage in this topology.
+! Flags also stay the same — NP: Yes, D: Yes even under classic LFA.
 show isis fast-reroute summary
-show isis fast-reroute detail
+show isis fast-reroute detail 10.0.0.4/32
+
+! Conceptual learning: TI-LFA guarantees NP/D properties via post-convergence SPF.
+! Classic LFA only discovers them if the topology is favorable (as it is here with L5).
+! In a simple ring without L5, classic LFA would leave gaps — TI-LFA fills them.
 
 ! Restore TI-LFA:
 router isis CORE
@@ -672,8 +853,6 @@ router isis CORE
  !
 !
 commit
-show isis fast-reroute summary
-show isis fast-reroute detail
 ```
 </details>
 
@@ -705,7 +884,7 @@ The operations team has just completed a maintenance window on R2. After the win
 
 **Inject:** `python3 scripts/fault-injection/inject_scenario_01.py --host <eve-ng-ip>`
 
-**Success criteria:** `show isis fast-reroute summary` on R2 shows 100% TI-LFA coverage on both Gi0/0/0/0 (L1) and Gi0/0/0/1 (L2); `show isis fast-reroute ipv4 10.0.0.1/32` shows a non-empty Repair entry.
+**Success criteria:** `show isis fast-reroute summary` on R2 shows 100% protection coverage; `show isis fast-reroute detail 10.0.0.1/32` shows a non-empty FRR backup entry.
 
 <details>
 <summary>Click to view Diagnosis Steps</summary>
@@ -713,15 +892,16 @@ The operations team has just completed a maintenance window on R2. After the win
 ```
 ! Step 1: Confirm coverage gap
 R2# show isis fast-reroute summary
-! Look for Gi0/0/0/0 showing TI-LFA: Disabled or < 100% coverage
+! Coverage drops to ~62% — some medium/low priority prefixes show Unprotected
 
 ! Step 2: Check specific prefix
 R2# show isis fast-reroute detail 10.0.0.1/32
-! No FRR backup entry visible
+! Shows "No FRR backup" — 10.0.0.1/32 via Gi0/0/0/0 has no repair path
 
 ! Step 3: Inspect running config for Gi0/0/0/0
-R2# show running-config router isis CORE
-! Look for missing fast-reroute per-prefix ti-lfa under Gi0/0/0/0 address-family
+R2# show running-config router isis CORE interface GigabitEthernet0/0/0/0
+! Both fast-reroute per-prefix and fast-reroute per-prefix ti-lfa are missing
+! under the address-family ipv4 unicast block
 ```
 </details>
 
@@ -729,10 +909,13 @@ R2# show running-config router isis CORE
 <summary>Click to view Fix</summary>
 
 ```
-! The fault: fast-reroute per-prefix ti-lfa was removed from R2's Gi0/0/0/0 af.
+! The fault: both fast-reroute per-prefix and fast-reroute per-prefix ti-lfa
+! were removed from R2's Gi0/0/0/0 address-family. Without fast-reroute per-prefix,
+! no FRR backup is computed for prefixes reachable via Gi0/0/0/0 (L1).
 router isis CORE
  interface GigabitEthernet0/0/0/0
   address-family ipv4 unicast
+   fast-reroute per-prefix
    fast-reroute per-prefix ti-lfa
   !
  !
@@ -740,7 +923,9 @@ router isis CORE
 commit
 ! Verify:
 show isis fast-reroute summary
+! Protection coverage must return to 100%
 show isis fast-reroute detail 10.0.0.1/32
+! FRR backup via 10.1.23.3 Gi0/0/0/1 (R3) must be present
 ```
 </details>
 
@@ -799,37 +984,42 @@ show bfd session
 
 ---
 
-### Ticket 3 — TI-LFA Coverage Drops After Topology Change
+### Ticket 3 — TI-LFA Repair Paths Change After Topology Change
 
-Following a fiber relocation project, `show isis fast-reroute summary` on R2 suddenly shows that some prefixes no longer have a backup path via their expected interface. The FRR table has changed significantly.
+Following a fiber relocation project, `show isis fast-reroute detail` on R2 shows that repair paths for several prefixes now require a two-label stack (P-node label + prefix label) where they previously needed only a single prefix label. The NOC also reports that R1 has lost an IS-IS adjacency.
 
 **Inject:** `python3 scripts/fault-injection/inject_scenario_03.py --host <eve-ng-ip>`
 
-**Success criteria:** After fix, `show isis fast-reroute summary` on all routers returns to 100% TI-LFA coverage on all interfaces; `show isis adjacency` shows 5 adjacencies domain-wide.
+**Success criteria:** After fix, `show isis adjacency` on R1 shows 3 adjacencies (R2, R3, R4); `show isis fast-reroute detail 10.0.0.1/32` on R2 shows a single-label repair path (prefix label only, no P-node label).
 
 <details>
 <summary>Click to view Diagnosis Steps</summary>
 
 ```
-! Step 1: Observe coverage change
-R2# show isis fast-reroute summary
-! One or more interfaces show < 100% coverage or "No backup" for some prefixes
-
-! Step 2: Count IS-IS adjacencies
+! Step 1: Check IS-IS adjacency count on R1
 R1# show isis adjacency
-! Fewer than 5 adjacencies — one adjacency is missing
+! Shows only 2 adjacencies (R2 and R4) — R3 via Gi0/0/0/2 (L5) is missing
 
-! Step 3: Find the missing adjacency
+! Step 2: Observe repair path complexity change
+R2# show isis fast-reroute detail 10.0.0.1/32
+! Backup path now shows: P node: R4.00 [10.0.0.4], Label: 16004
+!                        Prefix label: 16001
+! Two labels are needed because R3 is no longer adjacent to R1 —
+! the repair traffic must go R2→R3→R4→R1 (P-node is R4, not R1 directly)
+
+! Step 3: Find the missing adjacency interface
 R1# show isis interface GigabitEthernet0/0/0/2
-! L5 (Gi0/0/0/2) is admin down or IS-IS is not active on it
+! L5 (Gi0/0/0/2) is admin down — IS-IS not active on it
 
 ! Step 4: Confirm physical state
 R1# show interfaces GigabitEthernet0/0/0/2
-! Line protocol down — interface has been shut
+! Line protocol down — interface has been shut administratively
 
-! Explanation: L5 is the key diagonal used as the repair path for L2/L3
-! failures. Without L5, the PQ-node for some repair paths must be R4
-! instead of R1, requiring longer or unavailable label stacks.
+! Explanation: L5 is the diagonal shortcut. When L5 is up, R3 is directly
+! adjacent to R1 and acts as a single-hop PQ-node for R2's repair paths —
+! requiring only one label. Without L5, the closest PQ-node reachable by
+! R2 without using L1 is R4, so the repair stack grows to two labels.
+! Coverage remains 100% (TI-LFA guarantees it) but path efficiency degrades.
 ```
 </details>
 
@@ -842,12 +1032,12 @@ interface GigabitEthernet0/0/0/2
  no shutdown
 !
 commit
-! Verify L5 adjacency restored:
+! Verify L5 adjacency restored on R1:
 show isis adjacency
-! 5 adjacencies must be present
-! Verify TI-LFA coverage restored:
-show isis fast-reroute summary
-! 100% on all interfaces
+! R1 must show 3 adjacencies: R2 (Gi0/0/0/0), R4 (Gi0/0/0/1), R3 (Gi0/0/0/2)
+! Verify repair paths return to single-label:
+show isis fast-reroute detail 10.0.0.1/32
+! Backup path must show only Prefix label — no P-node label line
 ```
 </details>
 
@@ -857,20 +1047,22 @@ show isis fast-reroute summary
 
 ### Core Implementation
 
-- [ ] TI-LFA enabled on all core IS-IS interfaces on R1, R2, R3, R4
-- [ ] `show isis fast-reroute summary` shows 100% TI-LFA coverage on all interfaces on all routers
-- [ ] `show isis fast-reroute detail` on R2 shows a non-empty FRR backup entry for every prefix
-- [ ] `show isis fast-reroute detail 10.0.0.3/32` on R2 shows FRR backup via Gi0/0/0/0 (R1); `show mpls forwarding prefix 10.0.0.3/32 detail` shows backup label stack `{ 16003 }`
-- [ ] BFD sessions configured (`bfd minimum-interval 50` + `bfd multiplier 3`) on all core IS-IS interfaces
-- [ ] BFD config verified in `show run router isis CORE` (sessions Up only on XRv9k/hardware; empty on classic XRv 6.3.1)
-- [ ] `show isis adjacency detail` on R2 shows Adjacency SIDs as `(protected)` with backup label stacks
-- [ ] Classic LFA vs. TI-LFA compared: coverage stays 100% in both states (L5 ensures classic LFA works); flag differences in `show isis fast-reroute detail` observed (NP/D attributes)
+- [ ] TI-LFA enabled on all core IS-IS interfaces on R1, R2, R3, R4 (`show run router isis` confirms `fast-reroute per-prefix` + `fast-reroute per-prefix ti-lfa` on every core interface; absent from Loopback0)
+- [ ] `show isis fast-reroute summary` on every router shows `Unprotected: 0` and `Total All paths protected` > 0 (100% coverage; 0.00% on Critical/High is expected)
+- [ ] `show isis fast-reroute detail` on R2 shows a non-empty `FRR backup via` line for every reachable prefix; 10.0.0.4/32 shows `P: Yes` (ECMP mutual backup), 10.0.0.1/32 and 10.0.0.3/32 show `P: No` (single primary path)
+- [ ] `show mpls forwarding` on R2 shows `(!)` backup entries with repair labels for remote loopbacks: 16001, 16003, 16004 (all single-label stacks — PQ-node is always adjacent)
+- [ ] `show isis fast-reroute detail 10.0.0.3/32` on R2 shows FRR backup via Gi0/0/0/0 (R1) with flags `P: No, TM: 20, NP: No, D: No, SRLG: Yes`; `show mpls forwarding prefix 10.0.0.3/32 detail` shows backup entry `(!) 16003`; `show route ipv4 10.0.0.3/32 detail` shows `Backup (Local-LFA)` with `Label: 16003`
+- [ ] BFD config present (`bfd minimum-interval 50` + `bfd multiplier 3`) on all core IS-IS interfaces — verified via `show run router isis` (no separate `isis bfd` or `bfd fast-detect` command needed)
+- [ ] `show isis adjacency detail` on R2 shows Adjacency SIDs as `(protected)` with backup label stacks and backup nexthop populated (primary verification on XRv 6.3.1 where BFD sessions don't form)
+- [ ] `show bfd session` on R2 — expected empty on classic XRv 6.3.1; on XRv9k/hardware would show sessions Up with 50ms interval
+- [ ] Classic LFA vs. TI-LFA compared: `show isis fast-reroute detail 10.0.0.4/32` before/after removing `ti-lfa` from Gi0/0/0/0 — flags and coverage stay identical in this topology (L5 + ECMP gives classic LFA the same NP/D properties). The conceptual difference (TI-LFA guarantees vs. classic LFA discovers) is the exam-relevant learning.
+- [ ] TI-LFA restored after comparison (`fast-reroute per-prefix ti-lfa` re-added under Gi0/0/0/0 af)
 
 ### Troubleshooting
 
-- [ ] Ticket 1: TI-LFA coverage gap (missing `ti-lfa` on Gi0/0/0/0) identified and fixed
-- [ ] Ticket 2: Slow failover (missing BFD timers on interface) identified and fixed
-- [ ] Ticket 3: Coverage drop (L5 diagonal shut) identified and fixed
+- [ ] Ticket 1: FRR coverage gap (both `fast-reroute per-prefix` and `ti-lfa` missing from Gi0/0/0/0) identified and fixed; `show isis fast-reroute detail 10.0.0.1/32` confirmed showing "No FRR backup" before fix
+- [ ] Ticket 2: Slow failover (missing BFD timers on Gi0/0/0/1) identified and fixed; understood that BFD sessions don't form on XRv 6.3.1 but config must still be present
+- [ ] Ticket 3: Adjacency loss + repair path complexity increase (L5 diagonal shut) identified and fixed; R1 adjacency confirmed returning from 2 to 3 after fix
 - [ ] `apply_solution.py` run after each ticket to restore lab to known-good state
 
 ---

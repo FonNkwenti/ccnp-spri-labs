@@ -25,9 +25,8 @@ DEVICE_NAME = "R2"
 FAULT_COMMANDS = [
     "router isis CORE",
     " interface GigabitEthernet0/0/0/1",
-    "  address-family ipv4 unicast",
-    "   no bfd fast-detect",
-    "  exit",
+    "  no bfd minimum-interval",
+    "  no bfd multiplier",
     " exit",
     "exit",
     "commit",
@@ -36,7 +35,7 @@ FAULT_COMMANDS = [
 # Pre-flight: scope to R2's Gi0/0/0/1 IS-IS configuration.
 PREFLIGHT_CMD = "show running-config router isis CORE interface GigabitEthernet0/0/0/1"
 # If this string is absent -> fault already injected or not in solution state.
-PREFLIGHT_SOLUTION_MARKER = "bfd fast-detect"
+PREFLIGHT_SOLUTION_MARKER = "bfd minimum-interval"
 # No dedicated fault marker needed -- absence of the solution marker is the signal.
 PREFLIGHT_FAULT_MARKER = None
 

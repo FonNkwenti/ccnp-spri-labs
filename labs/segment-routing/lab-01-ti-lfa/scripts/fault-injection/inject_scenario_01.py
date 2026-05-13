@@ -27,6 +27,7 @@ FAULT_COMMANDS = [
     " interface GigabitEthernet0/0/0/0",
     "  address-family ipv4 unicast",
     "   no fast-reroute per-prefix ti-lfa",
+    "   no fast-reroute per-prefix",
     "  exit",
     " exit",
     "exit",
