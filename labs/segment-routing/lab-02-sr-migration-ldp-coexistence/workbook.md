@@ -531,7 +531,7 @@ show mpls forwarding <prefix>/<len> detail
 | LDP neighbor not forming on an interface | LDP not enabled on that interface; check `show mpls ldp discovery` |
 | LDP label in FIB instead of SR for native SR prefix | SR not enabled under IS-IS af on one peer; `segment-routing mpls` missing |
 | Mapping server entry not in peers' active policy | `segment-routing prefix-sid-map advertise-local` missing under IS-IS af on mapping server |
-| Mapping server label conflict on a peer | Peer's SRGB too small for the advertised SID index; check `show segment-routing local-block` |
+| Mapping server label conflict on a peer | Peer's SRGB too small for the advertised SID index; check `show running-config segment-routing` for the `global-block` range |
 | SR label for mapped prefix not in FIB | `sr-prefer` not configured when LDP binding for same prefix exists |
 
 ---
@@ -817,8 +817,8 @@ R3# show isis segment-routing prefix-sid-map active-policy
 ! Look for 192.0.2.0/24 — is the entry present or missing/conflicted?
 
 ! Step 2: Check the SRGB on R3
-R3# show segment-routing local-block
-! Shows allocated SRGB start/end labels — is 16050 within the range?
+R3# show running-config segment-routing
+! Look at global-block start/end — is 16050 (base + index 50) within the range?
 
 ! Step 3: Check SRGB configuration directly
 R3# show running-config segment-routing
