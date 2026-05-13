@@ -410,7 +410,7 @@ segment-routing
 | `show ospf database opaque-area` | Opaque Type 7 LSAs — one per node advertising its loopback SID |
 | `show ospf database opaque-area detail` | Prefix-SID sub-TLV with correct SRGB Relative Index |
 | `show mpls forwarding labels 16001 16004` | SR swap/pop entries for all four loopback SIDs |
-| `show segment-routing mpls connected-prefix-sid-map ipv4` | Active prefix-SID map from local OSPF SR database |
+| `show ospf segment-routing` | SR state and prefix-SID bindings from local OSPF SR database |
 | `traceroute mpls ipv4 10.0.0.3/32 source Loopback0` | Complete hop-by-hop SR path to R3; PHP at penultimate |
 
 ### Common OSPF SR Failure Causes
@@ -633,7 +633,7 @@ router ospf 1
 ```bash
 show ospf database opaque-area
 show mpls forwarding labels 16001 16004
-show segment-routing mpls connected-prefix-sid-map ipv4
+show ospf segment-routing
 traceroute mpls ipv4 10.0.0.3/32 source Loopback0
 ```
 </details>
