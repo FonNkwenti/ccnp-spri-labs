@@ -841,9 +841,11 @@ segment-routing
  global-block 16000 23999
 !
 commit
-! Verify:
-show segment-routing mapping-server prefix-sid-map ipv4
-! 192.0.2.0/24 should now appear with label 16050 (no conflict flag)
+! Verify on R3 (the peer that had the SRGB conflict):
+R3# show isis segment-routing prefix-sid-map active-policy
+! 192.0.2.0/24 should now appear with SID index 50 — no conflict flag
+R3# show mpls forwarding prefix 192.0.2.0/24
+! Outgoing label should be 16050 (SRGB base 16000 + index 50)
 ```
 </details>
 
