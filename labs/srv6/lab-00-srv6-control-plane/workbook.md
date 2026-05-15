@@ -22,7 +22,30 @@
 
 Segment Routing over IPv6 (SRv6) replaces MPLS labels with 128-bit IPv6 addresses called Segment Identifiers (SIDs). Where SR-MPLS uses a label stack, SRv6 uses an IPv6 routing header (SRH) that carries an ordered list of SIDs. The control plane — the topic of this lab — is responsible for allocating SIDs and advertising them into the IGP so every node knows how to reach every other node's SID block.
 
+### The Problem This Lab Solves
+
+SRv6 shifts the forwarding identifier from a 32-bit MPLS label to a 128-bit IPv6 address, but that shift adds a new operational gap: without a mechanism to distribute per-node SID blocks across the domain, no router can build a forwarding path to a remote SID. In SR-MPLS, the SRGB plus an index is enough — every node already speaks MPLS. In SRv6, the SID **is** the IPv6 address, so the control plane must advertise actual IPv6 prefixes that represent each node's allocatable SID space. A router that can't see another router's locator can never send it SRv6-encapsulated traffic — the data plane has no destination to target.
+
+**IS-IS SRv6 Locator TLV advertisement closes this gap by distributing per-node /48 locator prefixes so every router populates its local SID table with the domain's End SIDs.**
+
+| Piece | Role in the overall goal |
+|-------|--------------------------|
+| SRv6 vs SR-MPLS model | Establishes the data-plane abstraction the control plane serves — without understanding why SIDs replace labels, locator advertisement has no context |
+| SRv6 Locator | The per-node namespace that must be distributed — each router claims a /48 block, and IS-IS tells every other router where it lives |
+| IS-IS SRv6 Extensions | The protocol machinery that moves locator information between routers — Locator TLVs are the delivery vehicle |
+| IOS-XR SRv6 Configuration | Where the engineer connects the three control-plane toggles — global SRv6 block, encapsulation source, and IS-IS activation |
+
+**Analogy — postal sorting center network.**
+- **SRv6 vs SR-MPLS:** Old system uses internal barcode labels (MPLS); new system routes by the destination street address directly (SRv6) — same delivery, different identifier.
+- **SRv6 Locator:** Each sorting center's ZIP code prefix — everything addressed to a prefix in that block is routed to that center.
+- **IS-IS SRv6 Extensions:** The inter-office bulletin board that tells every center the current list of ZIP codes and which truck routes reach them.
+- **IOS-XR SRv6 Configuration:** The control panel at each sorting center that an operator configures to join the bulletin system — three switches that must all be on.
+
+Every subsection below is one of these pieces, starting with the conceptual shift from the old model to the new.
+
 ### SRv6 vs SR-MPLS
+
+*The sorting-center foundation — before the control plane can distribute SIDs, we first understand why SRv6 replaces MPLS labels with IPv6 addresses as forwarding identifiers.*
 
 | Property | SR-MPLS | SRv6 |
 |----------|---------|------|
@@ -38,6 +61,8 @@ The fundamental difference: SRv6 uses IPv6 addresses themselves as SIDs. This co
 
 ### The SRv6 Locator
 
+*The ZIP-code prefix from the analogy — the locator is the per-node namespace that IS-IS advertises so every router knows where each SID block lives.*
+
 An SRv6 **locator** is an IPv6 prefix that represents a node's SID space. It serves two roles:
 1. **Routing:** The locator is advertised into the IGP. Any packet whose destination falls inside the locator prefix is forwarded toward the owning node.
 2. **SID allocation:** The SID manager carves function-specific sub-prefixes out of the locator. A `/48` locator (the typical deployment) gives 16 bits of function space — enough for up to 65,535 distinct behaviors.
@@ -52,6 +77,8 @@ The SID manager automatically allocates sub-ranges within each locator:
 - Additional `/64` blocks for End.X (per-adjacency) SIDs as interfaces are configured
 
 ### IS-IS SRv6 Extensions
+
+*The inter-office bulletin board from the analogy — IS-IS Locator TLVs are the delivery mechanism that carries every router's locator prefix to every other router in the domain.*
 
 IS-IS carries SRv6 information through a new TLV hierarchy:
 
@@ -73,6 +100,8 @@ IS-IS Reachability TLV (135 for IPv4, 236 for IPv6)
 In lab-00, we enable only the control plane: locator advertisement and End SID allocation. No End.X, no SRH forwarding — that's lab-01's data-plane domain.
 
 ### IOS-XR SRv6 Configuration Structure
+
+*The control panel from the analogy — this section maps the three independent toggles an operator must configure to bring a node into the SRv6 control plane.*
 
 SRv6 configuration on IOS-XR has three locations that must all be present:
 
@@ -184,14 +213,14 @@ Three distinct paths exist PE1↔PE2: direct diagonal P1→P3 (L5, 2 hops), via-
 
 ### Device Inventory
 
-| Device | Role | Platform | Image |
-|--------|------|----------|-------|
-| P1 | P core (hub, ring + diagonal) | xrv9k | IOS-XRv 9000 7.1.1 |
-| P2 | P core (apex, ring only) | xrv9k | IOS-XRv 9000 7.1.1 |
-| P3 | P core (hub, ring + diagonal) | xrv9k | IOS-XRv 9000 7.1.1 |
-| P4 | P core (apex, ring only) | xrv9k | IOS-XRv 9000 7.1.1 |
-| PE1 | SP edge (iBGP later) | xrv9k | IOS-XRv 9000 7.1.1 |
-| PE2 | SP edge (iBGP later) | xrv9k | IOS-XRv 9000 7.1.1 |
+| Device | Role | Platform | Image | RAM |
+|--------|------|----------|-------|-----|
+| P1 | P core (hub, ring + diagonal) | xrv9k | IOS-XRv 9000 7.1.1 | 16384 MB |
+| P2 | P core (apex, ring only) | xrv9k | IOS-XRv 9000 7.1.1 | 16384 MB |
+| P3 | P core (hub, ring + diagonal) | xrv9k | IOS-XRv 9000 7.1.1 | 16384 MB |
+| P4 | P core (apex, ring only) | xrv9k | IOS-XRv 9000 7.1.1 | 16384 MB |
+| PE1 | SP edge (iBGP later) | xrv9k | IOS-XRv 9000 7.1.1 | 16384 MB |
+| PE2 | SP edge (iBGP later) | xrv9k | IOS-XRv 9000 7.1.1 | 16384 MB |
 
 ### Loopback Address Table
 
@@ -307,7 +336,7 @@ python3 setup_lab.py --host <eve-ng-ip>
 
 - From P1, ping every other router's Loopback0 IPv6 address (e.g. `ping fc00:0:3::1`). All must succeed — IS-IS has converged the dual-stack underlay.
 - From P2, run `show segment-routing srv6 sid` and confirm that all six locators are present. If a locator is missing, that node has not advertised its Locator TLV — the fault is on the originating node.
-- Simulate a common misconfiguration: on any router, exit `segment-routing srv6` and inspect the effect on local and remote SID tables. Then restore it.
+- > **Tip:** To understand what happens when the SRv6 block is removed, work through Ticket 4 in Section 9 — it simulates this exact fault and walks you through the diagnosis.
 
 **Verification:**
 - `ping fc00:0:12::1 source fc00:0:1::1` from P1 succeeds (5/5).
@@ -471,6 +500,21 @@ segment-routing
 | `locator <NAME> prefix <prefix>` | Defines per-node /48 SID allocation pool |
 
 ### IS-IS SRv6 Activation
+
+```
+router isis CORE
+ address-family ipv4 unicast
+  segment-routing srv6
+   locator <NAME>
+  !
+ !
+ address-family ipv6 unicast
+  segment-routing srv6
+   locator <NAME>
+  !
+ !
+!
+```
 
 | Command | Purpose |
 |---------|---------|
@@ -659,9 +703,11 @@ python3 scripts/fault-injection/inject_scenario_01.py --host <eve-ng-ip>   # Tic
 python3 scripts/fault-injection/apply_solution.py --host <eve-ng-ip>       # restore between tickets
 ```
 
+> **Ticket 4 is a manual fault** — no inject script. Follow the reproduction steps in the ticket to induce the fault, diagnose, and fix.
+
 ---
 
-### Ticket 1 — P2's Locator Missing From Every SID Table
+### Ticket 1 — One SRv6 End SID Missing From All SID Tables
 
 A network engineer reports that pre-deployment checks show only five SRv6 End SIDs on every router instead of six. IPv6 ping to P2's Loopback0 (`fc00:0:2::1`) works from all nodes, and all IS-IS adjacencies are Up — the IGP underlay is healthy. The SRv6 SID that is missing is always `fc00:0:2:1::`. The team confirmed that P2 has `segment-routing srv6` configured with its locator.
 
@@ -723,7 +769,7 @@ P2's End SID appears as `Owner: isis-CORE`.
 
 ---
 
-### Ticket 2 — P4 Reports Only One IS-IS Neighbor
+### Ticket 2 — One Router Reports Fewer IS-IS Neighbors Than Expected
 
 The operations team noticed an alert: P4's IS-IS neighbor count dropped from 2 to 1 overnight. P4 is still reachable — IPv6 ping to `fc00:0:4::1` succeeds from all routers, and P4's SRv6 End SID `fc00:0:4:1::` is present in every SID table. But the alert dashboard shows a topology change, and the team is concerned about redundancy if the remaining path also fails.
 
@@ -777,7 +823,7 @@ P4 shows 2 neighbors (P1, P3); P3 shows 4 neighbors (P1, P2, P4, PE2).
 
 ---
 
-### Ticket 3 — PE2's SRv6 Locator Shows Status Down
+### Ticket 3 — One Node's SRv6 Locator Shows Status Down
 
 A network engineer is testing the SRv6 control plane and notices that PE2's locator `PE2_LOC` is listed as `Status: Down` in `show segment-routing srv6 locator`. The other five routers all report `Status: Active`. PE2 was configured at the same time as PE1, and the team says both received identical configuration. The other routers cannot see PE2's End SID — `fc00:0:12:1::` is absent from every SID table.
 
@@ -840,6 +886,65 @@ show segment-routing srv6 sid | include "fc00:0:12:1"   ! now visible
 
 ---
 
+### Ticket 4 — All Remote SIDs Disappear After Configuration Change
+
+After a maintenance window, an engineer notices that a router's SRv6 SID table contains only its own local End SID — all five remote SIDs are gone. IS-IS adjacencies are all Up and IPv6 routing works, but the SRv6 control plane has collapsed on this node. The engineer recalls making a configuration change but isn't sure what caused the impact.
+
+**Inject:** Manual — see diagnosis steps for how to reproduce. (No inject script; this ticket teaches the effect of removing the top-level SRv6 block.)
+
+**Success criteria:** `show segment-routing srv6 sid` on the affected router shows all 6 End SIDs again.
+
+<details>
+<summary>Click to view Diagnosis Steps</summary>
+
+1. Reproduce: on any router, remove the top-level `segment-routing srv6` block (`no segment-routing srv6`) and commit.
+
+2. Observe the effect:
+   - `show segment-routing srv6 sid` — only the local SID remains (`Owner: sid-mgr`); all five remote SIDs are gone. A `no segment-routing srv6` at the top level tears down the entire SRv6 subsystem, including the SID manager's ability to track remote SIDs learned via IS-IS.
+   - `show segment-routing srv6 locator` — returns empty (the locator definition is gone).
+   - `show isis segment-routing srv6` — the IS-IS Locator TLV is no longer originated, so the remote SID table is also empty.
+
+3. Note what still works: IS-IS adjacencies, IPv4/IPv6 routes, and ping — the IGP underlay is untouched. Only the SRv6 overlay dissolves.
+
+</details>
+
+<details>
+<summary>Click to view Fix</summary>
+
+Re-add the top-level `segment-routing srv6` block with the locator and encapsulation source-address, then re-activate under both IS-IS address-families. After commit, the SID manager re-initialises and IS-IS re-originates the Locator TLV — remote SIDs re-populate on all routers within one IS-IS LSP flood interval.
+
+```
+segment-routing
+ srv6
+  encapsulation
+   source-address fc00:0:X::1
+  !
+  locators
+   locator <NAME>
+    prefix fc00:0:X::/48
+   !
+  !
+ !
+!
+
+router isis CORE
+ address-family ipv4 unicast
+  segment-routing srv6
+   locator <NAME>
+  !
+ !
+ address-family ipv6 unicast
+  segment-routing srv6
+   locator <NAME>
+  !
+ !
+!
+commit
+```
+</details>
+
+---
+
 ## 10. Lab Completion Checklist
 
 ### Core Implementation
@@ -862,6 +967,7 @@ show segment-routing srv6 sid | include "fc00:0:12:1"   ! now visible
 - [ ] Ticket 1 resolved: all 6 SIDs appear after re-adding `segment-routing srv6 locator P2_LOC` under both IS-IS AFs on P2
 - [ ] Ticket 2 resolved: P4's L3 adjacency reappears after re-attaching both `address-family` blocks under P4 Gi0/0/0/0
 - [ ] Ticket 3 resolved: PE2's locator Active after correcting prefix from /64 to /48
+- [ ] Ticket 4 resolved: all 6 remote SIDs re-populate after restoring the `segment-routing srv6` block
 
 ---
 
