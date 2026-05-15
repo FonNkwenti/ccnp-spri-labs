@@ -19,6 +19,114 @@ New entries at the top. Review at the start of each session.
 
 -->
 
+## 2026-05-15 — Affinity-constrained SR-TE paths use adjacency-SIDs, not prefix-SIDs
+
+**Correction:** Workbook Task 4 expected `SID[0]: 16003` (prefix-SID). Actual output shows
+`SID[0]: 24000 [Adjacency-SID]`. User mistook it for an LDP label.
+
+**Rule:** When a CSPF constraint forces a path that diverges from the IGP shortest path, CSPF
+uses adjacency-SIDs — not prefix-SIDs. A prefix-SID routes via IGP shortest path, which
+would defeat the constraint. Verify Task 4 by checking metric (30 = L5) and absence of 16004
+(R4), not by checking whether the SID is a prefix-SID.
+
+**Why:** Adjacency-SIDs pin traffic to a specific physical link. Prefix-SIDs defer to IGP
+routing, which does not respect SR-TE affinity constraints.
+
+**Touched:** `lab-03-sr-te-3node/workbook.md` Task 4 verification, Section 6 Task 4 output,
+`.agent/skills/LESSONS_LEARNED.md`.
+
+---
+
+## 2026-05-15 — SR-TE initial-configs must include `distribute link-state` in IS-IS
+
+**Correction:** SR-TE policies showed `Operational: down` with `Source node not found in topology`
+because `distribute link-state` was missing from IS-IS config in lab-03 initial-configs.
+
+**Rule:** Every XR node in an SR-TE lab must have `distribute link-state` under
+`router isis <PROCESS> address-family ipv4 unicast`. Add this alongside `segment-routing mpls`
+in every initial-config generation pass. Without it the SR-TE CSPF topology stays empty.
+
+**Why:** IOS-XR's SR-TE CSPF topology database is populated separately from the RSVP-TE
+topology. `show mpls traffic-eng topology` being full does NOT mean SR-TE CSPF is working.
+
+**Touched:** `lab-03-sr-te-3node/initial-configs/R{1,3,4}.cfg`,
+`lab-03-sr-te-policies-and-steering/initial-configs/R{1,2,3,4}.cfg`,
+`.agent/skills/LESSONS_LEARNED.md`.
+
+---
+
+## 2026-05-15 — IOS-XR 24.x SR-TE CSPF optimizes label stack: do not expect `[16004, 16003]` for dynamic IGP policies
+
+**Correction:** Workbook verification expected `SID[0]: 16004, SID[1]: 16003` for a dynamic IGP
+SR-TE policy. Actual output on XRv 9000 24.3.1 shows only `SID[0]: 16003`.
+
+**Rule:** When verifying dynamic SR-TE policies, check `Path Accumulated Metric` to confirm the
+correct path — NOT the number of SIDs in the stack. IOS-XR drops intermediate node SIDs when
+the CSPF path matches the IGP shortest path. Only explicit segment-lists (Tasks 3, 7) will
+reliably show multi-SID stacks.
+
+**Why:** IOS-XR CSPF optimization: a single destination prefix-SID is sufficient when the
+IGP already routes along the intended path.
+
+**Touched:** `lab-03-sr-te-3node/workbook.md` Task 2 verification section.
+
+---
+
+## 2026-05-14 — lab-04-pce-srlg-tree-sid exceeds 64 GB laptop capacity; no viable variant exists
+
+**Correction:** Asked whether classic XRv or fewer nodes could allow lab-04 to run on
+the 64 GB Dell Latitude 5540.
+
+**Rule:** Lab-04 (PCE, SRLG, Tree SID) is a **hard hardware boundary** for this laptop.
+No substitution or reduction produces a runnable lab:
+
+1. **Classic XRv cannot substitute for the PCE.** `xrv-k9-demo-6.3.1` fails on all three
+   PCE functions: BGP-LS table caps corrupt the topology database; SRLG-aware CSPF requires
+   post-6.3.1 features; Tree SID P2MP computation is not present in 6.3.1.
+
+2. **4 XRv9k is the technology minimum** (PCE + R1 + R3 + R4). Removing R4 leaves only
+   one path R1→R3, making SRLG path diversity impossible and Tree SID degenerate. 4 nodes
+   = 64 GB — fills the entire physical host with nothing left for EVE-NG OS or hypervisor.
+
+3. **No variant should be created for lab-04.** There is no topology reduction that
+   satisfies 4.3.c + 4.3.d + 4.3.e simultaneously within 48 GB. Mark it as a hardware
+   boundary in spec.md and treat it as study-only on this machine.
+
+**Why:** Tree SID (4.3.e) forces all PCCs (root + leaves) to be IOS-XR. This rules out
+CSR1000v. Combined with the PCE requiring full PCEP/BGP-LS feature set, the minimum
+platform is 4× XRv9k, which this laptop cannot host.
+
+**Touched:** `labs/segment-routing/spec.md` — hardware boundary warning added to lab-04
+row in the progression table; `tasks/lessons.md`.
+
+---
+
+## 2026-05-14 — Classic XRv (xrv 6.3.1 demo) cannot substitute XRv 9000 in SR-TE labs
+
+**Correction:** Asked whether `xrv-k9-demo-6.3.1` could replace XRv 9000 nodes in
+`segment-routing/lab-03-sr-te-policies-and-steering` (partially or completely).
+
+**Rule:** Classic XRv (`xrv`, demo image 6.3.1) must **never** be used in any SR-TE lab.
+Two hard blockers:
+
+1. **ODN not supported at 6.3.1.** `on-demand color` (On-Demand Next-Hop) was introduced in
+   IOS-XR 6.3.2. Version 6.3.1 does not have the CLI. Task 6 (color-based automated steering)
+   is a core exam objective — it cannot be skipped.
+2. **Demo image limitations.** The installed image is a demo/limited build with routing-table
+   caps that can silently drop IS-IS TE TLVs once the table fills, making affinity constraint
+   behavior unpredictable and Ticket 2 unreproducible.
+
+All SP core nodes (R1–R4) in segment-routing labs must use `xrv9k` (IOS-XRv 9000, 24.3.1).
+CE devices remain IOSv as specified. This applies to all future SR-TE labs in this topic.
+
+**Why:** RAM is not a constraint — four XRv 9000 nodes at 4 GB each = 16 GB, well within the
+48 GB EVE-NG VM allocation on the 64 GB host. There is no resource justification to accept a
+demo-limited image that breaks a core exam objective.
+
+**Touched:** `tasks/lessons.md`
+
+---
+
 ## 2026-05-12 — IOSv 15.9(3)M6: IS-IS GR, IS-IS NSR, and BGP NSR commands absent; BFD fall-over bypasses GR test
 
 **Correction:** fast-convergence/lab-01 was built assuming `nsf ietf`, `nsr` (under

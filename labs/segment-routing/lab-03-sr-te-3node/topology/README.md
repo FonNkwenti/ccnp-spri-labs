@@ -1,12 +1,14 @@
-# Topology — Lab 03: SR-TE Policies, Constraints, and Automated Steering
+# Topology — Lab 03 (3-Node Variant): SR-TE Policies, Constraints, and Automated Steering
 
-Six-node SP topology: four IOS-XRv 9000 core routers in a ring+diagonal mesh (R1, R2, R3, R4) plus two IOSv customer edge routers (CE1, CE2). Seven links total — five core links (L1–L5) and two PE-CE access links (L7, L8).
+Five-node SP topology: three IOS-XRv 9000 core routers (R1, R3, R4) plus two IOSv customer edge routers (CE1, CE2). Five links total — three core links (L3, L4, L5) and two PE-CE access links (L7, L8).
+
+This is a resource-constrained variant of the standard lab-03 with R2 removed. All 7 tasks and every 4.3.a/4.3.b exam objective are preserved.
 
 ## EVE-NG Import Instructions
 
 1. Open EVE-NG in your browser and navigate to the `ccnp-spri/segment-routing/` folder.
 2. Click **File > Import** and select the `.unl` file for this lab.
-3. The topology loads automatically. Verify all 6 nodes appear in the canvas.
+3. The topology loads automatically. Verify all 5 nodes appear in the canvas.
 4. Right-click the lab canvas and select **Start all nodes**.
 5. Wait approximately 3–5 minutes for all IOS-XRv nodes to boot fully (IOSv boots faster).
 
@@ -15,7 +17,6 @@ Six-node SP topology: four IOS-XRv 9000 core routers in a ring+diagonal mesh (R1
 | Device | EVE-NG Template | RAM (MB) | Image |
 |--------|----------------|----------|-------|
 | R1 | Cisco XRv9K | 16384 | xrv9k-fullk9-x.vrr.vga-24.3.1 |
-| R2 | Cisco XRv9K | 16384 | xrv9k-fullk9-x.vrr.vga-24.3.1 |
 | R3 | Cisco XRv9K | 16384 | xrv9k-fullk9-x.vrr.vga-24.3.1 |
 | R4 | Cisco XRv9K | 16384 | xrv9k-fullk9-x.vrr.vga-24.3.1 |
 | CE1 | Cisco IOSv | 512 | vios-adventerprisek9-m.SPA.156-2.T |

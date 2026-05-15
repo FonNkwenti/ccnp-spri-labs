@@ -22,7 +22,29 @@
 
 This lab introduces a centralized SR-TE control plane. Lab-03 used local CSPF on each headend; lab-04 hands path computation to a dedicated PCE controller. The PCE learns the full IGP topology via BGP-LS from R2, accepts PCEP delegations from R1, R3, and R4, computes SRLG-disjoint primary+backup pairs, and orchestrates a P2MP Tree SID rooted at R1.
 
-### BGP-LS - Topology Distribution to the Controller
+### The Problem This Lab Solves
+
+Lab-03's per-headend CSPF works but it is myopic — each headend sees only its local TED and makes path decisions in isolation. When two headends need link-disjoint paths that avoid the same fiber conduit, or when an operator wants to orchestrate a P2MP multicast tree spanning four routers, local CSPF cannot coordinate. **A centralized PCE with a global topology view solves both — it computes coordinated SR-TE label stacks for every headend from the same database, making SRLG-disjoint path pairs and P2MP Tree SIDs possible.**
+
+| Piece | Role in the overall goal |
+|-------|---------------------------|
+| **BGP-LS** | The radar feed — distributes the full IS-IS topology (nodes, links, TE metrics, SRLG) to the PCE as BGP NLRIs. Without it, the PCE is blind. |
+| **PCEP** | The request/response protocol — headends (PCCs) ask the PCE for label stacks; the PCE replies with computed SID lists. Delegation means the PCE owns re-optimization. |
+| **SRLG** | The risk model — tags links that share physical fate (same fiber, same card). CSPF treats links in the same SRLG as non-disjoint even when IP-topology disjoint. |
+| **Tree SID** | The collective outcome — the PCE computes a P2MP Steiner tree spanning a root and leaf set, then pushes per-PCC SID instructions so the root encapsulates and branches replicate. |
+
+**Analogy — air traffic control.** Picture a busy regional airspace with four airports (R1-R4) and a control tower (PCE):
+
+- The *radar feed* showing every aircraft and runway is **BGP-LS** — the tower sees the whole picture without flying itself.
+- The *flight-plan request* a pilot radios in is a **PCEP** delegation — the tower computes the route and clears it; the pilot doesn't re-plan mid-flight.
+- The *no-fly zone or closed runway* shared by two approach paths is an **SRLG** — the tower won't route two aircraft through the same hazard even if the flight paths are geometrically different.
+- A *formation flight* where the tower coordinates lead + wing aircraft along a shared corridor is the **Tree SID** — a central plan with per-aircraft instructions.
+
+Every subsection below is one of these pieces. Section 5 (Lab Challenge) is wiring them together end-to-end.
+
+### BGP-LS — Topology Distribution to the Controller
+
+*The radar feed from the analogy — how the PCE learns the full IS-IS topology without participating in the IGP.*
 
 BGP-LS (RFC 7752) is a BGP address family (`link-state link-state`) that carries IGP topology - nodes, links, prefixes, and TE attributes - as BGP NLRI. R2 originates the IS-IS topology into BGP-LS and peers iBGP-LS with the PCE at 10.0.0.99. The PCE never joins IS-IS; it consumes the topology purely as a BGP-LS receiver. This isolation is intentional: a controller fault never destabilizes the forwarding plane.
 
@@ -39,7 +61,9 @@ router bgp 65100
 !
 ```
 
-### PCEP - Path Computation Delegation
+### PCEP — Path Computation Delegation
+
+*The flight-plan request from the analogy — how headends (PCCs) ask the PCE for label stacks and delegate re-optimization to the controller.*
 
 PCEP (RFC 5440 + SR extensions RFC 8664) is the protocol PCCs (R1, R3, R4) use to ask the PCE for SR-TE label stacks. The PCC declares a candidate-path as `dynamic pcep`; on policy activation the PCC sends a Path Computation Request to the PCE; the PCE runs CSPF over its BGP-LS topology and returns a SID list; the PCC installs the stack. Delegation is per-policy - other policies on the same PCC can still use local CSPF.
 
@@ -53,7 +77,9 @@ segment-routing
 !
 ```
 
-### SRLG - Shared Risk Link Groups
+### SRLG — Shared Risk Link Groups
+
+*The risk model from the analogy — how operators tag links that share physical fate so the PCE never routes two paths through the same shared hazard.*
 
 SRLG groups links that share a physical risk (a duct, a fiber bundle, a card slot). Two links in the same SRLG cannot be considered link-disjoint by CSPF even if their IP topology is disjoint. Each interface lists one or more SRLG group names; IS-IS distributes the groups via TE sub-TLV; BGP-LS forwards them to the PCE. A `disjoint-path` constraint with `type srlg` (or `type link-or-srlg`) forces CSPF to compute a path pair sharing no SRLG group.
 
@@ -65,7 +91,9 @@ srlg
 !
 ```
 
-### Tree SID - P2MP via Centralized Computation
+### Tree SID — P2MP via Centralized Computation
+
+*The formation flight from the analogy — how the PCE computes a P2MP Steiner tree spanning root and leaves, then pushes per-PCC SID instructions.*
 
 Tree SID is SR-MPLS Point-to-Multipoint with PCE-driven branch computation. The PCE holds a `p2mp policy` defining a root, a leaf set, and a color. The PCE computes the optimal Steiner tree, allocates P2MP segment identifiers, and pushes per-PCC instructions: the root encapsulates with the tree-SID label, intermediate nodes replicate per branch, leaves decapsulate. **Behavioural caveat (xrv9k 24.3.1):** the control plane (`show segment-routing traffic-eng p2mp policy`) works in QEMU; ASIC-level packet replication does not. Production ASR 9000 hardware would replicate at branch points.
 
@@ -132,15 +160,19 @@ PCE is reachable through R2 only. R2 carries `10.0.0.99/32` as a redistributed s
 
 ### Device Inventory
 
-| Device | Role | Platform | Image |
-|--------|------|----------|-------|
-| R1 | SP edge / SR ingress, Tree SID root, PCC | IOS-XRv 9000 | xrv9k-fullk9-x.vrr.vga-24.3.1 |
-| R2 | SP core / BGP-LS producer to PCE | IOS-XRv 9000 | xrv9k-fullk9-x.vrr.vga-24.3.1 |
-| R3 | SP edge / SR egress, Tree SID leaf, PCC | IOS-XRv 9000 | xrv9k-fullk9-x.vrr.vga-24.3.1 |
-| R4 | SP core / Tree SID leaf, PCC | IOS-XRv 9000 | xrv9k-fullk9-x.vrr.vga-24.3.1 |
-| PCE | SR PCE controller / BGP-LS receiver | IOS-XRv 9000 | xrv9k-fullk9-x.vrr.vga-24.3.1 |
-| CE1 | Customer edge AS 65101 | IOSv | vios-adventerprisek9-m.SPA.156-2.T |
-| CE2 | Customer edge AS 65102 | IOSv | vios-adventerprisek9-m.SPA.156-2.T |
+| Device | Role | Platform | Image | RAM |
+|--------|------|----------|-------|-----|
+| R1 | SP edge / SR ingress, Tree SID root, PCC | IOS-XRv 9000 | xrv9k-fullk9-x.vrr.vga-24.3.1 | 16 GB |
+| R2 | SP core / BGP-LS producer to PCE | IOS-XRv 9000 | xrv9k-fullk9-x.vrr.vga-24.3.1 | 16 GB |
+| R3 | SP edge / SR egress, Tree SID leaf, PCC | IOS-XRv 9000 | xrv9k-fullk9-x.vrr.vga-24.3.1 | 16 GB |
+| R4 | SP core / Tree SID leaf, PCC | IOS-XRv 9000 | xrv9k-fullk9-x.vrr.vga-24.3.1 | 16 GB |
+| PCE | SR PCE controller / BGP-LS receiver | IOS-XRv 9000 | xrv9k-fullk9-x.vrr.vga-24.3.1 | 16 GB |
+| CE1 | Customer edge AS 65101 | IOSv | vios-adventerprisek9-m.SPA.156-2.T | 512 MB |
+| CE2 | Customer edge AS 65102 | IOSv | vios-adventerprisek9-m.SPA.156-2.T | 512 MB |
+
+> **⚠️ Platform requirement:** This lab **requires IOS-XRv 9000** (`xrv9k-fullk9-x.vrr.vga-24.3.1`,
+> 16 GB RAM). **Classic IOS-XRv 6.3.1 does NOT support** SR-TE policies, PCEP,
+> BGP-LS, SRLG, or Tree SID. There is no Classic XRv workaround for this lab.
 
 ### Loopback Addresses
 

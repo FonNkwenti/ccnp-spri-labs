@@ -452,6 +452,11 @@ protected.
 > All TI-LFA and SR features work correctly. BFD sub-50ms sessions do not form on this
 > virtual platform — use `show isis adjacency detail` to verify TI-LFA protection instead.
 > Commands have been verified against the actual running platform.
+>
+> **Platform flexibility:** Labs 00, 01, 02, and 05 can run on Classic IOS-XRv 6.3.1
+> (`xrv-k9-demo-6.3.1`, 4 GB RAM) as a lighter alternative to IOS-XRv 9000
+> (16 GB RAM). **Labs 03 and 04 require IOS-XRv 9000** — Classic XRv does not
+> support SR-TE policies, PCE, Tree SID, or SRLG.
 
 ### Loopback Addresses
 

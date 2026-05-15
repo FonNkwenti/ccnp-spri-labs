@@ -121,10 +121,10 @@ Same interface naming as IOL L3 (`Ethernet0/0` through `Ethernet1/3`), but ports
 | GigabitEthernet0/0/0/2 | GigE | |
 | GigabitEthernet0/0/0/3 | GigE | |
 
-- **RAM:** 4096–16384 MB (boot requires 4 GB minimum)
+- **RAM:** 16384 MB minimum (verified 2026-05-14 on xrv9k 24.3.1 — earlier entries of 4096 MB were wrong)
 - **IOS-XR Version:** 24.3.1 (upgraded 2026-05-12; previously 7.1.1)
 - **EVE-NG node type:** `xrv9k`
-- **Warning:** Long boot time (~10 min). Use only when IOS-XR features are required.
+- **Warning:** Long boot time (~10 min). Use only when IOS-XR features are required. On a 64 GB host with VMware Workstation (48 GB VM), maximum 3 XRv 9000 nodes fit safely — plan topologies accordingly.
 - **SR-TE syntax (verified 2026-05-12 on 24.3.1):**
   - Segment-list entries use `index N mpls label XXXXX` — **NOT** `index N address ipv4 X.X.X.X`
   - `bfd fast-detect` does **not** exist inside IS-IS interface address-family; BFD is activated by `bfd minimum-interval` + `bfd multiplier` at the interface level only
@@ -292,7 +292,7 @@ When automating with `setup_lab.py`, pass `--host <eve-ng-ip>` and the script wi
    | IOSvL2 | 768 MB | 15 |
    | IOL L3/L2 | 256 MB | 40 |
    | CSR1000v | 3072 MB | 8 |
-   | XRv 9000 | 4096 MB | 6 |
+   | XRv 9000 | 16384 MB | 3 |
    | NX-OSv 9000 | 4096 MB | 6 |
 7. **Image permissions:** After uploading any image to EVE-NG, always run:
    ```bash

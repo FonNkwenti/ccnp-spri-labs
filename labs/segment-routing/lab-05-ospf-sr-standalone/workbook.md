@@ -22,7 +22,29 @@
 
 Blueprint bullet 4.2.a lists three IGPs: BGP (via BGP-LS in lab-04), IS-IS (labs 00-04), and OSPF. This lab closes the OSPF gap. Starting from a clean interfaces-only baseline, you'll bring up OSPFv2 area 0 on the same four-router core used throughout this topic, enable SR under OSPF, assign prefix SIDs using the same indices as lab-00 (index 1-4 → labels 16001-16004), and verify that `traceroute mpls` output mirrors the IS-IS version exactly. The data plane doesn't care whether the SID came from IS-IS or OSPF — the label forwarding logic is identical.
 
+### The Problem This Lab Solves
+
+CCNP SPRI blueprint bullet 4.2.a says "implement SR routing protocol extensions" — plural. Labs 00-04 cover IS-IS SR in depth, but OSPF SR is tested on the exam and must be configured end-to-end at least once. The exam draws explicit distinctions: IS-IS uses TLV 135 sub-TLVs inside LSPs; OSPF uses RFC 7684 Opaque type-7 LSAs flooded within an area. **Running OSPF SR on the same four-router core with the same SRGB and the same prefix SID indices proves that the MPLS forwarding plane is IGP-agnostic — `traceroute mpls` output is byte-for-byte identical regardless of which protocol distributed the labels.**
+
+| Piece | Role in the overall goal |
+|-------|---------------------------|
+| **OSPF Opaque LSAs (type 7)** | The alternate distribution channel — carries the same prefix SID information as IS-IS TLV 135, but in RFC 7684 Extended Prefix LSAs flooded at area scope |
+| **SRGB and prefix SID arithmetic** | The universal label language — every router computes the same absolute label (SRGB_base + index) from the same inputs, identical to IS-IS SR computation |
+| **Point-to-point network type** | The clean config baseline — eliminates DR/BDR election overhead on core links so adjacency formation mirrors IS-IS point-to-point behaviour |
+| **OSPF vs. IS-IS comparison** | The proof — you inspect Opaque LSA sub-TLVs side-by-side with lab-00's IS-IS LSP output and confirm the data plane outcome is identical |
+
+**Analogy — two dispatch systems, same shipping labels.** A trucking company runs two dispatch systems in parallel on separate test networks:
+
+- Dispatcher-A (**IS-IS**) prints labels by embedding destination codes inside a "TLV-135 envelope" that every depot receives simultaneously.
+- Dispatcher-B (**OSPF**) prints labels by embedding the same destination codes inside an "Opaque type-7 envelope" that floods within a single warehouse zone (area 0).
+
+The drivers (the **MPLS data plane**) don't care which dispatcher handed them the label. They read the destination code, compute the route, and deliver the package. The proof that both dispatch systems work is the `traceroute mpls` output — if the hop-by-hop path is identical, the label distribution mechanism is irrelevant to the forwarding outcome.
+
+Every subsection below is one of these pieces. Section 5 (Lab Challenge) is wiring them together end-to-end.
+
 ### OSPF Segment Routing Extensions
+
+*The alternate distribution channel from the analogy — how OSPF carries the same SID information as IS-IS, but inside RFC 7684 Opaque LSAs instead of TLV 135 sub-TLVs.*
 
 SR-MPLS requires that every router in the domain know every other router's prefix SID. In IS-IS, this information travels inside IS-IS LSP sub-TLVs (Extended IP Reachability TLV 135, with a Prefix-SID sub-sub-TLV). OSPF uses a different mechanism: **RFC 7684 Opaque LSAs** extended by **RFC 8665** for SR.
 
@@ -48,6 +70,8 @@ which shows sub-TLV 135 with embedded SID sub-sub-TLVs. Same payload, different 
 
 ### SRGB and Prefix SID Index Arithmetic
 
+*The universal label language from the analogy — how every router independently computes the same absolute label from SRGB + index, identically to IS-IS SR.*
+
 The **Segment Routing Global Block (SRGB)** is a contiguous label range reserved on every node in the SR domain. IOS-XR default is 16000-23999 (8000 labels). The SRGB is configured globally and distributed by the IGP to every other router.
 
 Prefix SID allocation works by index, not by absolute label:
@@ -58,6 +82,8 @@ Prefix SID allocation works by index, not by absolute label:
 This is fundamentally different from LDP: LDP assigns labels locally per-FEC and exchanges them per-session. SR advertises a global index and every router independently computes the label from that index and its own known SRGB.
 
 ### OSPFv2 Point-to-Point Network Type for SP Links
+
+*The clean config baseline from the analogy — eliminating DR/BDR overhead so OSPF adjacency formation mirrors IS-IS point-to-point behaviour.*
 
 In SP deployments, core links are almost always configured as point-to-point under OSPF (`network point-to-point` under the OSPF interface config). This:
 - Eliminates DR/BDR election (pointless overhead on a two-router link)
@@ -73,6 +99,8 @@ router ospf 1
 ```
 
 ### The "Pick One IGP" Production Rule
+
+*The proof from the analogy — this lab validates OSPF SR capability, not dual-IGP deployment, which would cause administrative distance conflicts and label churn in production.*
 
 This lab exists to prove a capability, not to recommend a deployment pattern. In production, SR networks run **either IS-IS or OSPF** as their IGP — never both simultaneously on the same interfaces. Running dual IGPs causes:
 - Administrative distance fights when both IGPs install routes for the same prefix
@@ -152,15 +180,21 @@ Gi0/0/0/2: 10.1.13.3/24 (L5 diagonal to R1)
 
 ### Device Inventory
 
-| Device | Role | Platform | Image |
-|--------|------|----------|-------|
-| R1 | SP Edge / SR Ingress | IOS-XRv 9000 | xrv9k-fullk9-x.vrr.vga-24.3.1 |
-| R2 | SP Core | IOS-XRv 9000 | xrv9k-fullk9-x.vrr.vga-24.3.1 |
-| R3 | SP Edge / SR Egress | IOS-XRv 9000 | xrv9k-fullk9-x.vrr.vga-24.3.1 |
-| R4 | SP Core | IOS-XRv 9000 | xrv9k-fullk9-x.vrr.vga-24.3.1 |
+| Device | Role | Platform | Image | RAM |
+|--------|------|----------|-------|-----|
+| R1 | SP Edge / SR Ingress | IOS-XRv 9000 | xrv9k-fullk9-x.vrr.vga-24.3.1 | 16 GB |
+| R2 | SP Core | IOS-XRv 9000 | xrv9k-fullk9-x.vrr.vga-24.3.1 | 16 GB |
+| R3 | SP Edge / SR Egress | IOS-XRv 9000 | xrv9k-fullk9-x.vrr.vga-24.3.1 | 16 GB |
+| R4 | SP Core | IOS-XRv 9000 | xrv9k-fullk9-x.vrr.vga-24.3.1 | 16 GB |
 
 > **Boot note:** IOS-XRv 9000 nodes take 8-12 minutes to fully boot. Wait for the
 > `RP/0/0/CPU0:<hostname>#` prompt on all nodes before running `setup_lab.py`.
+>
+> **Platform flexibility:** Labs 00, 01, 02, and 05 can run on Classic IOS-XRv 6.3.1
+> (`xrv-k9-demo-6.3.1`, 4 GB RAM) as a lighter alternative to IOS-XRv 9000
+> (16 GB RAM). All OSPF SR features (prefix SIDs, SRGB, TI-LFA) work correctly on
+> Classic XRv. **Labs 03 and 04 require IOS-XRv 9000** — Classic XRv does not
+> support SR-TE policies, PCE, Tree SID, or SRLG.
 
 ### Loopback Addresses
 

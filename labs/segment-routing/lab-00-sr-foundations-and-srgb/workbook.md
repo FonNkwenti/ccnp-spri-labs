@@ -160,12 +160,18 @@ Five links → five IS-IS L2 adjacencies expected when the core is fully converg
 |-----------|-------|
 | Platform | Cisco IOS-XRv 9000, version 24.3.1 |
 | Hypervisor | EVE-NG Pro |
-| RAM per node | 12 GB |
+| RAM per node | 16 GB |
 | Boot time per node | 8–12 minutes (must wait for `RP/0/0/CPU0:<host>#` prompt) |
 | Total nodes | 4 (R1, R2, R3, R4) |
 | Console driver | `cisco_xr_telnet` (Netmiko) |
 
 > **Boot warning:** Do not run `setup_lab.py` until every router has reached the `RP/0/0/CPU0:<hostname>#` exec prompt. IOS-XRv does not accept config commands during the management-plane boot phase.
+>
+> **Platform flexibility:** Labs 00, 01, 02, and 05 can run on Classic IOS-XRv 6.3.1
+> (`xrv-k9-demo-6.3.1`, 4 GB RAM) as a lighter alternative to IOS-XRv 9000
+> (16 GB RAM). All SR-MPLS, TI-LFA, LDP coexistence, and OSPF SR features work
+> correctly on Classic XRv. **Labs 03 and 04 require IOS-XRv 9000** — Classic XRv
+> does not support SR-TE policies, PCE, Tree SID, or SRLG.
 
 ---
 

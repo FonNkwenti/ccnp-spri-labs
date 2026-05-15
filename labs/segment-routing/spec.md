@@ -93,7 +93,7 @@ lab-04+), L7 R1↔CE1 (eBGP, lab-03+), L8 R3↔CE2 (eBGP, lab-03+).
 | 01 | lab-01-ti-lfa | Topology-Independent Loop-Free Alternate (TI-LFA) | Intermediate | 75m | progressive | 4.2.c | R1, R2, R3, R4 |
 | 02 | lab-02-sr-migration-ldp-coexistence | SR Migration — LDP Coexistence, Mapping Server, SR-Prefer | Intermediate | 90m | progressive | 4.2.d | R1, R2, R3, R4 |
 | 03 | lab-03-sr-te-policies-and-steering | SR-TE Policies, Constraints, and Automated Steering | Intermediate | 105m | progressive | 4.3.a, 4.3.b | R1, R2, R3, R4, CE1, CE2 |
-| 04 | lab-04-pce-srlg-tree-sid | PCE Path Computation, SRLG, and Tree SID | Advanced | 105m | progressive | 4.3.c, 4.3.d, 4.3.e | R1, R2, R3, R4, CE1, CE2, PCE |
+| 04 | lab-04-pce-srlg-tree-sid | PCE Path Computation, SRLG, and Tree SID | Advanced | 105m | progressive | 4.3.c, 4.3.d, 4.3.e | R1, R2, R3, R4, CE1, CE2, PCE — ⚠️ requires >64 GB RAM, cannot run on 64 GB laptop |
 | 05 | lab-05-ospf-sr-standalone | OSPF Segment Routing Extensions (standalone) | Intermediate | 60m | standalone | 4.2.a (OSPF) | R1, R2, R3, R4 |
 | 06 | lab-06-capstone-config | SR Full Mastery — Capstone I | Advanced | 120m | capstone_i | all | all |
 | 07 | lab-07-capstone-troubleshooting | SR Comprehensive Troubleshooting — Capstone II | Advanced | 120m | capstone_ii | all | all |
@@ -191,3 +191,134 @@ every bullet again end-to-end.
   when SR-TE "automated steering" requires real customer prefixes
   tagged with color communities. Deferring CE boot saves 1 GB RAM on
   early labs and shortens the boot phase.
+
+---
+
+## Variants
+
+### lab-03-sr-te-3node — SR-TE Policies and Steering (3-Node Variant)
+
+**Reason:** XRv 9000 (24.3.1) requires 16 GB RAM per node. The standard
+lab-03 topology (4× XRv 9000 + 2× IOSv) needs 66 GB of guest RAM — more
+than a 48 GB EVE-NG VM on a 64 GB Windows host can provide. This variant
+removes R2, reducing XRv 9000 nodes to 3 (48 GB total) and fitting inside
+the VM. All 7 tasks and every 4.3.a/4.3.b exam objective are preserved.
+
+**Folder:** `labs/segment-routing/lab-03-sr-te-3node/`
+
+**Base lab:** `lab-03-sr-te-policies-and-steering` — same tasks, same
+blueprint bullets, same initial config pattern. This is a resource variant,
+not a content variant.
+
+#### Device Inventory
+
+| Device | Role | Platform | RAM |
+|--------|------|----------|-----|
+| R1 | SP Edge / Ingress PE | IOS-XRv 9000 | 16 GB |
+| R3 | SP Edge / Egress PE | IOS-XRv 9000 | 16 GB |
+| R4 | SP Core (waypoint + affinity node) | IOS-XRv 9000 | 16 GB |
+| CE1 | Customer Edge AS 65101 | IOSv | 512 MB |
+| CE2 | Customer Edge AS 65102 | IOSv | 512 MB |
+| **Total** | | | **~49 GB** |
+
+#### Topology
+
+R2 is removed. L1 (R1↔R2) and L2 (R2↔R3) are removed. L3, L4, L5, L7,
+and L8 are unchanged from the original.
+
+```
+                   ┌──────────────────────┐
+                   │        CE1           │
+                   │     (AS 65101)       │
+                   │  Lo0: 10.0.0.11/32   │
+                   └────────┬─────────────┘
+                      Gi0/0 │ 10.1.11.11/24
+                  Gi0/0/0/3 │ 10.1.11.1/24
+          ┌────────────────────────────────────┐
+          │                R1                  │
+          │       (SP Edge / Ingress PE)        │
+          │       Lo0: 10.0.0.1/32  SID: 16001 │
+          └────────────┬──────────┬────────────┘
+             Gi0/0/0/1 │ L4       │ Gi0/0/0/2
+             10.1.14.1 │          │ 10.1.13.1
+          10.1.14.0/24 │          │ L5 (diagonal) 10.1.13.0/24
+                       │          │ 10.1.13.3 Gi0/0/0/2
+              10.1.14.4│ Gi0/0/0/1│
+          ┌────────────┴────┐     │
+          │      R4         │     │
+          │   (SP Core)     │     │
+          │ Lo0:10.0.0.4/32 │     │
+          │   SID: 16004    │     │
+          └────────┬────────┘     │
+         Gi0/0/0/0 │ 10.1.34.4   │
+              L3   │              │
+        10.1.34.0/24│             │
+         10.1.34.3  │ Gi0/0/0/1  │
+          ┌─────────┴────────────-┘────────────┐
+          │                R3                   │
+          │       (SP Edge / Egress PE)          │
+          │       Lo0: 10.0.0.3/32  SID: 16003  │
+          └─────────────────┬───────────────────┘
+                   Gi0/0/0/3│ 10.1.33.3/24
+                       Gi0/0│ 10.1.33.12/24
+                   ┌────────┴────────┐
+                   │      CE2        │
+                   │   (AS 65102)    │
+                   │ Lo0:10.0.0.12/32│
+                   └─────────────────┘
+```
+
+#### Link Table
+
+| Link | Device A | Interface | IP | Device B | Interface | IP |
+|------|----------|-----------|-----|----------|-----------|-----|
+| L3 | R3 | Gi0/0/0/1 | 10.1.34.3/24 | R4 | Gi0/0/0/0 | 10.1.34.4/24 |
+| L4 | R1 | Gi0/0/0/1 | 10.1.14.1/24 | R4 | Gi0/0/0/1 | 10.1.14.4/24 |
+| L5 | R1 | Gi0/0/0/2 | 10.1.13.1/24 | R3 | Gi0/0/0/2 | 10.1.13.3/24 |
+| L7 | R1 | Gi0/0/0/3 | 10.1.11.1/24 | CE1 | Gi0/0 | 10.1.11.11/24 |
+| L8 | R3 | Gi0/0/0/3 | 10.1.33.3/24 | CE2 | Gi0/0 | 10.1.33.12/24 |
+
+#### Prefix SIDs
+
+| Device | Loopback | Prefix SID |
+|--------|----------|------------|
+| R1 | 10.0.0.1/32 | 16001 |
+| R3 | 10.0.0.3/32 | 16003 |
+| R4 | 10.0.0.4/32 | 16004 |
+
+#### IS-IS Metric Design
+
+L5 (R1↔R3 diagonal) must carry a **higher IS-IS metric than L3+L4** so
+that the IGP shortest path from R1 to R3 goes via R4, not direct. This
+makes Task 4 meaningful — the affinity constraint visibly overrides the
+IGP choice. Assign L5 IS-IS metric = 30 on both endpoints; L3 and L4
+IS-IS metric = 10. Result: R1→R4→R3 = IGP metric 20 (preferred),
+R1→R3 direct = IGP metric 30 (constraint fallback).
+
+#### Task Adaptations vs Original lab-03
+
+| Task | Original | 3-node change |
+|------|----------|--------------|
+| 1 — BGP | R1↔CE1 eBGP, R3↔CE2 eBGP, R1↔R3 iBGP | Unchanged |
+| 2 — Dynamic COLOR_10 | CSPF with IGP metric | Unchanged; CSPF resolves to L5 direct or R1→R4→R3 |
+| 3 — Explicit EXPLICIT_R4_R3 | SID list [16004, 16003] | Unchanged; R4 still exists as waypoint |
+| 4 — Affinity COLOR_20 | RED on L3 (both ends), BLUE on L2 (both ends); exclude-any RED → avoids R4 path, takes R1→R2→R3 | **Drop BLUE entirely (no R2/L2)**. RED on L3 both endpoints only. Exclude-any RED → CSPF avoids L3, only valid path is L5 direct (R1→R3). SID list = [16003] single label. |
+| 5 — TE metric COLOR_30 | TE metric 1000 on R1 Gi0/0/0/0 (L1→R2) | **Apply TE metric 1000 to R1 Gi0/0/0/1 (L4→R4)**. COLOR_30 TE-metric CSPF: L4+L3 TE cost=1000+10=1010; L5 TE cost=30. CSPF selects L5. COLOR_10 IGP-metric CSPF: L4+L3=20, L5=30 → selects R4 path. Contrast preserved. |
+| 6 — ODN automated steering | on-demand color 10 template | Unchanged |
+| 7 — Dual-preference resilience | Shut L4 to break explicit path | Unchanged; shutting L4 (R1 Gi0/0/0/1) still kills the R1→R4 hop |
+
+#### What is lost vs original
+
+- The BLUE affinity task (tagging L2 R2↔R3) is removed. The affinity
+  concept is still demonstrated via RED on L3 — students still learn
+  the full affinity-map + interface affinity + exclude-any constraint
+  workflow. BLUE is a second application of the same pattern and its
+  absence does not affect blueprint coverage.
+- R2's role as a transit waypoint (labels 16002) is absent. No
+  segment-list in this variant uses 16002.
+
+#### Chaining note
+
+This variant is standalone — it does not feed lab-04, which requires the
+full 4-node core. If the student proceeds to lab-04, they must use a
+different EVE-NG host or bare-metal setup with sufficient RAM.

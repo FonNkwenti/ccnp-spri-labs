@@ -1,4 +1,4 @@
-# Lab 03: SR-TE Policies, Constraints, and Automated Steering
+# Lab 03 (3-Node Variant): SR-TE Policies, Constraints, and Automated Steering
 
 ## Table of Contents
 
@@ -22,9 +22,11 @@
 
 This lab introduces SR Traffic Engineering (SR-TE) on IOS-XRv 9000. You will build SR-TE policies that control the path data-plane traffic takes through the SR-MPLS core — going beyond IGP shortest-path to enforce operator-defined routing intent. By the end of this lab, you will have configured dynamic and explicit SR-TE policies, applied affinity-based path constraints, and enabled color-based automated steering so that BGP prefixes self-select their SR-TE path based on an extended community.
 
+> **This is a resource-constrained 3-node variant.** It delivers the exact same blueprint coverage and tasks as the standard lab-03 but uses 3 XRv 9000 nodes instead of 4 — fitting comfortably inside a 48 GB EVE-NG VM. R2 is removed; all 7 tasks and every 4.3.a/4.3.b exam objective are preserved.
+
 ### The Problem This Lab Solves
 
-The SR-MPLS underlay from lab-02 forwards every prefix along the IGP shortest path. That works until business intent diverges from "lowest IGP metric." A latency-sensitive flow and a bulk-backup flow toward the same egress PE want different paths through the core, but BGP next-hop alone has no way to express that — every prefix with the same next-hop gets the same path. **SR-TE is the mechanism to encode operator intent as a forwardable label stack, and to let BGP prefixes pick which intent they belong to without any per-prefix configuration on the headend.**
+The SR-MPLS underlay from earlier labs forwards every prefix along the IGP shortest path. That works until business intent diverges from "lowest IGP metric." A latency-sensitive flow and a bulk-backup flow toward the same egress PE want different paths through the core, but BGP next-hop alone has no way to express that — every prefix with the same next-hop gets the same path. **SR-TE is the mechanism to encode operator intent as a forwardable label stack, and to let BGP prefixes pick which intent they belong to without any per-prefix configuration on the headend.**
 
 Four pieces collaborate to deliver that outcome — keep this table in mind as you read the rest of this section:
 
@@ -52,6 +54,7 @@ Every subsection below is one of these pieces. Section 5 (Lab Challenge) is wiri
 An SR-TE policy is a named, local construct on a headend router (the ingress PE). Each policy identifies a **color** (a 32-bit value) and an **end-point** (the egress PE's loopback address). The policy says: "when steering traffic toward this endpoint using this color, use this specific path through the SR domain."
 
 A policy contains one or more **candidate paths**, each with a preference (higher preference wins). A candidate path is either:
+
 - **Dynamic** — the headend runs local CSPF (Constrained Shortest Path First) over the TE topology database to compute the best SID list automatically. Constraints such as metric type, bandwidth, and affinity are applied during CSPF.
 - **Explicit** — the operator supplies a fixed ordered list of SIDs (node SIDs or adjacency SIDs). The headend imposes exactly this label stack, bypassing CSPF.
 
@@ -100,15 +103,16 @@ Affinity (also called administrative group or link-coloring) is a mechanism to t
 **Configuration pattern (IOS-XR):**
 
 Step 1 — Define the global affinity map (consistent across all SR-TE capable nodes):
+
 ```
 segment-routing
  traffic-eng
   affinity-map
    name RED  bit-position 0   ← bit 0 in the affinity bitmask
-   name BLUE bit-position 1   ← bit 1 in the affinity bitmask
 ```
 
 Step 2 — Tag interfaces on both endpoints of a link:
+
 ```
 segment-routing
  traffic-eng
@@ -118,6 +122,7 @@ segment-routing
 ```
 
 Step 3 — Reference the affinity in a candidate path constraint:
+
 ```
   policy COLOR_20
    ...
@@ -176,11 +181,15 @@ To set a TE administrative weight on an interface in IOS-XR (note: this is NOT t
 ```
 segment-routing
  traffic-eng
-  interface GigabitEthernet0/0/0/0
+  interface GigabitEthernet0/0/0/1
    metric 1000    ← TE metric override; IGP metric is unchanged
 ```
 
 IS-IS must advertise TE extensions for CSPF to read these TE metrics. This requires `mpls traffic-eng level-2-only` and `mpls traffic-eng router-id Loopback0` under the IS-IS address-family — both pre-loaded in this lab's initial-configs.
+
+### IS-IS Metric Design (3-Node Variant)
+
+In this variant, L5 (R1↔R3 diagonal) carries an IS-IS metric of **30** while L3 (R3↔R4) and L4 (R1↔R4) use the default metric of **10**. This makes the IGP shortest path from R1 to R3 go **via R4** (metric 10+10=20) rather than direct via L5 (metric 30). This design is deliberate — it makes the SR-TE policy constraints visually override the IGP choice, providing clear before/after verification.
 
 **Skills this lab develops:**
 
@@ -198,9 +207,7 @@ IS-IS must advertise TE extensions for CSPF to read these TE metrics. This requi
 
 ## 2. Topology & Scenario
 
-**Scenario:** TelSP's engineering team has completed the SR-MPLS migration (lab-02). The next project is SR Traffic Engineering: using the SR label stack to force traffic onto specific paths rather than following the IGP shortest path. Two customer edges have now been added — CE1 (AS 65101) announcing `192.0.2.0/24` and CE2 (AS 65102) announcing `198.51.100.0/24`. The SP needs to steer CE1→CE2 traffic via different core paths depending on the traffic class: low-latency (via R3 direct) and high-capacity (via R4 transit). BGP color communities will carry the steering intent automatically.
-
-**Note:** R1's mapping server from lab-02 is removed at startup via the teardown block in R1's initial-config. CE1 is now the real owner of `192.0.2.0/24`, which eliminates the conflict.
+**Scenario:** TelSP's engineering team needs to deploy SR Traffic Engineering on a three-node SP core (R1, R3, R4). R2 is decommissioned for this segment of the network. Two customer edges have been added — CE1 (AS 65101) announcing `192.0.2.0/24` and CE2 (AS 65102) announcing `198.51.100.0/24`. The SP needs to steer CE1→CE2 traffic via different core paths depending on the traffic class: low-latency (via R3 direct) and high-capacity (via R4 transit). BGP color communities will carry the steering intent automatically.
 
 ```
                    ┌──────────────────────┐
@@ -212,32 +219,32 @@ IS-IS must advertise TE extensions for CSPF to read these TE metrics. This requi
                       Gi0/0 │ 10.1.11.11/24
                             │ L7 — 10.1.11.0/24
                   Gi0/0/0/3 │ 10.1.11.1/24
-          ┌─────────────────┴────────────────────────────┐
-          │                    R1                         │
-          │           (SP Edge / Ingress PE)              │
-          │           Lo0: 10.0.0.1/32  SID: 16001       │
-          └──┬──────────────────────┬────────────────┬───┘
-   Gi0/0/0/0 │ 10.1.12.1/24  Gi0/0/0/1│ 10.1.14.1/24 │ Gi0/0/0/2
-      L1     │               L4       │               │ 10.1.13.1/24
-  10.1.12.0/24│           10.1.14.0/24│            L5 │ 10.1.13.0/24
-             │                        │    (diagonal)  │
-   10.1.12.2 │ Gi0/0/0/0   10.1.14.4 │ Gi0/0/0/1      │ 10.1.13.3 Gi0/0/0/2
-  ┌──────────┴───────┐  ┌─────────────┴────────┐        │
-  │       R2          │  │        R4             │        │
-  │    (SP Core)      │  │     (SP Core)         │        │
-  │ Lo0:10.0.0.2/32   │  │  Lo0:10.0.0.4/32      │        │
-  │   SID: 16002      │  │    SID: 16004          │        │
-  └──────┬────────────┘  └────────────┬──────────┘        │
-  Gi0/0/0/1 │ 10.1.23.2  Gi0/0/0/0 │ 10.1.34.4           │
-       L2   │               L3      │                      │
-  10.1.23.0/24│         10.1.34.0/24│                      │
-             │                      │                      │
-  10.1.23.3  │ Gi0/0/0/0  10.1.34.3 │ Gi0/0/0/1            │
-  ┌──────────┴──────────────────────┴──────────────────────┴───┐
-  │                             R3                              │
-  │                   (SP Edge / Egress PE)                     │
-  │                   Lo0: 10.0.0.3/32  SID: 16003             │
-  └─────────────────────────┬───────────────────────────────────┘
+          ┌─────────────────┴──────────────────────┐
+          │                    R1                   │
+          │           (SP Edge / Ingress PE)        │
+          │           Lo0: 10.0.0.1/32  SID: 16001 │
+          └──────────────┬──────────┬──────────────┘
+             Gi0/0/0/1   │ L4       │ Gi0/0/0/2
+             10.1.14.1   │          │ 10.1.13.1
+          10.1.14.0/24   │          │ L5 (diagonal) 10.1.13.0/24
+                         │          │ IS-IS metric 30
+                         │          │ 10.1.13.3 Gi0/0/0/2
+              10.1.14.4  │ Gi0/0/0/1│
+          ┌──────────────┴────┐     │
+          │      R4           │     │
+          │   (SP Core)       │     │
+          │ Lo0:10.0.0.4/32   │     │
+          │   SID: 16004      │     │
+          └──────────┬────────┘     │
+         Gi0/0/0/0   │ 10.1.34.4   │
+              L3     │              │
+        10.1.34.0/24 │              │
+         10.1.34.3   │ Gi0/0/0/1   │
+          ┌──────────┴──────────────┴────────────┐
+          │                R3                     │
+          │       (SP Edge / Egress PE)           │
+          │       Lo0: 10.0.0.3/32  SID: 16003   │
+          └─────────────────┬─────────────────────┘
                    Gi0/0/0/3│ 10.1.33.3/24
                              │ L8 — 10.1.33.0/24
                        Gi0/0 │ 10.1.33.12/24
@@ -251,15 +258,15 @@ IS-IS must advertise TE extensions for CSPF to read these TE metrics. This requi
 
 **Link summary:**
 
-| Link ID | Endpoints | Subnet | Purpose |
-|---------|-----------|--------|---------|
-| L1 | R1 Gi0/0/0/0 ↔ R2 Gi0/0/0/0 | 10.1.12.0/24 | SP core, SR-MPLS + LDP |
-| L2 | R2 Gi0/0/0/1 ↔ R3 Gi0/0/0/0 | 10.1.23.0/24 | SP core; BLUE affinity |
-| L3 | R3 Gi0/0/0/1 ↔ R4 Gi0/0/0/0 | 10.1.34.0/24 | SP core; RED affinity |
-| L4 | R1 Gi0/0/0/1 ↔ R4 Gi0/0/0/1 | 10.1.14.0/24 | Ring closer, TI-LFA alternate |
-| L5 | R1 Gi0/0/0/2 ↔ R3 Gi0/0/0/2 | 10.1.13.0/24 | Diagonal; TI-LFA PQ anchor |
-| L7 | R1 Gi0/0/0/3 ↔ CE1 Gi0/0 | 10.1.11.0/24 | eBGP PE-CE (new in lab-03) |
-| L8 | R3 Gi0/0/0/3 ↔ CE2 Gi0/0 | 10.1.33.0/24 | eBGP PE-CE (new in lab-03) |
+| Link ID | Endpoints | Subnet | IS-IS Metric | Purpose |
+|---------|-----------|--------|-------------|---------|
+| L3 | R3 Gi0/0/0/1 ↔ R4 Gi0/0/0/0 | 10.1.34.0/24 | 10 | SP core; RED affinity |
+| L4 | R1 Gi0/0/0/1 ↔ R4 Gi0/0/0/1 | 10.1.14.0/24 | 10 | Ring closer, TI-LFA alternate |
+| L5 | R1 Gi0/0/0/2 ↔ R3 Gi0/0/0/2 | 10.1.13.0/24 | **30** | Diagonal; forces IGP to prefer R4 path |
+| L7 | R1 Gi0/0/0/3 ↔ CE1 Gi0/0 | 10.1.11.0/24 | — | eBGP PE-CE |
+| L8 | R3 Gi0/0/0/3 ↔ CE2 Gi0/0 | 10.1.33.0/24 | — | eBGP PE-CE |
+
+**Key topological property:** L5's higher IS-IS metric (30) makes the IGP shortest path from R1 to R3 go via R4 (10+10=20). This ensures that SR-TE policy decisions (affinity exclusion, TE metric override) produce visually different paths from the IGP default — the core learning objective of this lab.
 
 ---
 
@@ -270,9 +277,8 @@ IS-IS must advertise TE extensions for CSPF to read these TE metrics. This requi
 | Device | Role | Platform | Image | RAM |
 |--------|------|----------|-------|-----|
 | R1 | SP Edge / Ingress PE | IOS-XRv 9000 | xrv9k-fullk9-x.vrr.vga-24.3.1 | 16 GB |
-| R2 | SP Core | IOS-XRv 9000 | xrv9k-fullk9-x.vrr.vga-24.3.1 | 16 GB |
 | R3 | SP Edge / Egress PE | IOS-XRv 9000 | xrv9k-fullk9-x.vrr.vga-24.3.1 | 16 GB |
-| R4 | SP Core | IOS-XRv 9000 | xrv9k-fullk9-x.vrr.vga-24.3.1 | 16 GB |
+| R4 | SP Core (waypoint + affinity node) | IOS-XRv 9000 | xrv9k-fullk9-x.vrr.vga-24.3.1 | 16 GB |
 | CE1 | Customer Edge (AS 65101) | IOSv | vios-adventerprisek9-m.SPA.156-2.T | 512 MB |
 | CE2 | Customer Edge (AS 65102) | IOSv | vios-adventerprisek9-m.SPA.156-2.T | 512 MB |
 
@@ -286,7 +292,6 @@ IS-IS must advertise TE extensions for CSPF to read these TE metrics. This requi
 | Device | Interface | Address/Prefix | Purpose |
 |--------|-----------|----------------|---------|
 | R1 | Loopback0 | 10.0.0.1/32 | Router ID, iBGP source, SR-TE end-point |
-| R2 | Loopback0 | 10.0.0.2/32 | Router ID, IS-IS passive |
 | R3 | Loopback0 | 10.0.0.3/32 | Router ID, iBGP source, SR-TE end-point |
 | R4 | Loopback0 | 10.0.0.4/32 | Router ID, IS-IS passive |
 | CE1 | Loopback0 | 10.0.0.11/32 | CE router ID |
@@ -294,12 +299,18 @@ IS-IS must advertise TE extensions for CSPF to read these TE metrics. This requi
 | CE2 | Loopback0 | 10.0.0.12/32 | CE router ID |
 | CE2 | Loopback1 | 198.51.100.1/24 | Customer prefix steered via SR-TE |
 
+### Prefix SIDs
+
+| Device | Loopback | Prefix SID Index | Label |
+|--------|----------|-----------------|-------|
+| R1 | 10.0.0.1/32 | 1 | 16001 |
+| R3 | 10.0.0.3/32 | 3 | 16003 |
+| R4 | 10.0.0.4/32 | 4 | 16004 |
+
 ### Cabling
 
 | Link | Device A | Interface | IP Address | Device B | Interface | IP Address |
 |------|----------|-----------|------------|----------|-----------|------------|
-| L1 | R1 | Gi0/0/0/0 | 10.1.12.1/24 | R2 | Gi0/0/0/0 | 10.1.12.2/24 |
-| L2 | R2 | Gi0/0/0/1 | 10.1.23.2/24 | R3 | Gi0/0/0/0 | 10.1.23.3/24 |
 | L3 | R3 | Gi0/0/0/1 | 10.1.34.3/24 | R4 | Gi0/0/0/0 | 10.1.34.4/24 |
 | L4 | R1 | Gi0/0/0/1 | 10.1.14.1/24 | R4 | Gi0/0/0/1 | 10.1.14.4/24 |
 | L5 | R1 | Gi0/0/0/2 | 10.1.13.1/24 | R3 | Gi0/0/0/2 | 10.1.13.3/24 |
@@ -318,7 +329,6 @@ IS-IS must advertise TE extensions for CSPF to read these TE metrics. This requi
 | Device | Port | Connection Command |
 |--------|------|--------------------|
 | R1 | (see EVE-NG UI) | `telnet <eve-ng-ip> <port>` |
-| R2 | (see EVE-NG UI) | `telnet <eve-ng-ip> <port>` |
 | R3 | (see EVE-NG UI) | `telnet <eve-ng-ip> <port>` |
 | R4 | (see EVE-NG UI) | `telnet <eve-ng-ip> <port>` |
 | CE1 | (see EVE-NG UI) | `telnet <eve-ng-ip> <port>` |
@@ -331,25 +341,25 @@ IS-IS must advertise TE extensions for CSPF to read these TE metrics. This requi
 The following is **pre-loaded** via `setup_lab.py`:
 
 **IS pre-loaded:**
+
 - Hostnames on all devices
 - Interface IP addressing on all routed links and loopbacks (including L7 and L8)
-- IS-IS Level-2 process on R1–R4 with wide metrics and SR-MPLS forwarding
+- IS-IS Level-2 process on R1, R3, R4 with wide metrics and SR-MPLS forwarding
 - IS-IS TE extensions (required for CSPF affinity and TE-metric computation)
-- Prefix SIDs: R1=index 1 (16001), R2=index 2 (16002), R3=index 3 (16003), R4=index 4 (16004)
+- IS-IS metric 10 on L3 and L4 (default); IS-IS metric 30 on L5 (both endpoints)
+- Prefix SIDs: R1=index 1 (16001), R3=index 3 (16003), R4=index 4 (16004)
 - TI-LFA fast-reroute on all core IS-IS interfaces
-- BFD on all core IS-IS interfaces
-- LDP on all core interfaces (coexistence from lab-02)
-- SR-prefer under IS-IS (SR labels win over LDP labels for SP prefixes)
+- BFD on all core IS-IS interfaces (interface-level: `bfd minimum-interval 50` / `bfd multiplier 3`)
 - Global SRGB 16000–23999
-- Mapping server **removed** from R1 (teardown block at top of R1 initial-config)
 - CE1 and CE2 IP addressing on loopbacks and uplinks
 
 **IS NOT pre-loaded** (student configures this):
+
 - eBGP sessions between R1↔CE1 and R3↔CE2
 - iBGP session between R1 and R3
 - Opaque extended community set and route policies on R1 and R3
-- SR-TE global affinity-map on R1–R4
-- Interface affinity tagging (RED on L3, BLUE on L2)
+- SR-TE global affinity-map on R1, R3, R4
+- Interface affinity tagging (RED on L3)
 - SR-TE segment-lists and named policies
 - ODN (on-demand color) templates
 - SR-TE interface TE metric overrides
@@ -373,18 +383,20 @@ The following is **pre-loaded** via `setup_lab.py`:
 
 ### Task 2: Build a Dynamic SR-TE Policy with IGP Metric
 
-- Define a global affinity-map on R1 with two names: `RED` at bit-position 0 and `BLUE` at bit-position 1. (This is required for subsequent tasks — configure it now for consistency.)
+- Define a global affinity-map on R1 with one name: `RED` at bit-position 0.
 - On R1, configure a named SR-TE policy called `COLOR_10` with color value `10` and end-point `10.0.0.3` (R3's loopback).
 - Add a single candidate path at preference 100 using dynamic CSPF with IGP metric.
 - Verify the policy comes up and CSPF has computed a SID list toward R3.
 
-**Verification:** `show segment-routing traffic-eng policy color 10` on R1 must show the policy as `UP` with an active SID list. The SID list should reflect the IGP shortest path to R3 (via L5 direct, label 16003, or L1+L2 via R2, labels 16002+16003).
+**Verification:** `show segment-routing traffic-eng policy color 10` on R1 must show the policy as `UP` with an active SID list and `Path Accumulated Metric: 20`. Because L5 carries IS-IS metric 30 while L4+L3 total metric 20, the IGP shortest path goes via R4.
+
+> **IOS-XR CSPF optimization (XRv 9000 24.x):** When the CSPF-computed path exactly matches the IGP shortest path, IOS-XR reduces the label stack to only the destination's prefix-SID. You will see `SID[0]: 16003` (a single label) rather than `[16004, 16003]`. The metric of 20 confirms the path routes via R4 — the single label is correct and optimal. If you see `SID[0]: 16003` with metric 20, Task 2 is passing.
 
 ---
 
 ### Task 3: Add an Explicit Segment-List at Higher Preference
 
-- Define a named segment-list called `EXPLICIT_R4_R3` on R1. The list must contain exactly two entries: first, the node SID for R4 (`10.0.0.4`), and second, the node SID for R3 (`10.0.0.3`). This forces the path R1→R4→R3.
+- Define a named segment-list called `EXPLICIT_R4_R3` on R1. The list must contain exactly two entries: first, the node SID for R4 (`16004`), and second, the node SID for R3 (`16003`). This forces the path R1→R4→R3.
 - Add a second candidate path to `COLOR_10` at preference 200, referencing `EXPLICIT_R4_R3` as an explicit path.
 - Confirm that preference 200 (explicit) is now active and preference 100 (dynamic) becomes inactive.
 
@@ -394,14 +406,13 @@ The following is **pre-loaded** via `setup_lab.py`:
 
 ### Task 4: Constrained Path with Affinity Exclusion
 
-- On R1, R2, R3, and R4, configure the global affinity-map with the same two names defined in Task 2 (`RED` at bit-position 0, `BLUE` at bit-position 1). The affinity-map must be identical on all nodes for CSPF to honor constraints correctly.
-- Tag L3 (R3↔R4) with the `RED` affinity on both endpoints: R3's Gi0/0/0/1 and R4's Gi0/0/0/0.
-- Tag L2 (R2↔R3) with the `BLUE` affinity on both endpoints: R2's Gi0/0/0/1 and R3's Gi0/0/0/0.
+- On R1, R3, and R4, configure the global affinity-map with `RED` at bit-position 0. The affinity-map must be identical on all nodes for CSPF to honor constraints correctly.
+- Tag L3 (R3↔R4) with the `RED` affinity on **both endpoints**: R3's Gi0/0/0/1 and R4's Gi0/0/0/0.
 - On R1, define a new SR-TE policy called `COLOR_20` with color value `20` and end-point `10.0.0.3`.
 - Add a dynamic candidate path at preference 100 with IGP metric and an `exclude-any` affinity constraint that excludes links tagged `RED`.
-- Verify that CSPF avoids L3 (the R3↔R4 link) even though it may be part of the IGP shortest path. The SID list must route via L1+L2 (R1→R2→R3) or via L5 (R1→R3 diagonal) — not via R4.
+- Verify that CSPF avoids L3 (the R3↔R4 link). Because L3 is the only path via R4 and L5 is the only remaining path to R3, the SID list must route via L5 direct — a single label `[16003]`.
 
-**Verification:** `show segment-routing traffic-eng policy color 20` on R1 must show the policy UP. The active SID list must NOT contain label 16004 (R4's SID). Compare to `show isis ipv4 unicast topology 0.0.0.3` (R3's system ID) to confirm the IGP shortest path would have used R4 — the constraint is overriding it.
+**Verification:** `show segment-routing traffic-eng policy color 20` on R1 must show the policy UP with `Path Accumulated Metric: 30`. The active SID list must NOT contain label 16004 (R4's SID). You will see an adjacency-SID for the L5 link (typically `24000`) rather than R3's prefix-SID (16003) — this is correct. CSPF uses an adjacency-SID because the constrained path (L5) diverges from the IGP shortest path (via R4); a prefix-SID would let the IGP route via R4, defeating the constraint. Compare to `show isis ipv4 unicast topology 0.0.0.3` (R3's system ID) to confirm the IGP shortest path would have used R4 (metric 20 vs 30) — the constraint is overriding it.
 
 ---
 
@@ -409,12 +420,12 @@ The following is **pre-loaded** via `setup_lab.py`:
 
 - On R1, define a new SR-TE policy called `COLOR_30` with color value `30` and end-point `10.0.0.3`.
 - Add a dynamic candidate path at preference 100 using TE metric instead of IGP metric.
-- To demonstrate TE metric influence, set the TE metric on R1's Gi0/0/0/0 (the L1 link toward R2) to `1000`. This makes the R1→R2 TE cost very high without changing the IGP routing metric.
-- Observe that `COLOR_30` now avoids L1 (since the TE cost is high) and selects a different path compared to `COLOR_10`.
+- To demonstrate TE metric influence, set the TE metric on R1's Gi0/0/0/1 (the L4 link toward R4) to `1000`. This makes the R1→R4 TE cost very high without changing the IS-IS IGP metric.
+- Observe that `COLOR_30` now avoids the R4 path (since the TE cost is high) and selects the L5 direct path, while `COLOR_10` (which uses IGP metric and sees L4+L3=20 < L5=30) still uses the R4 path. This contrast is the core learning objective.
 
 > **Syntax note for IOS-XR:** The TE metric override uses a different CLI path than IOS-XE. Enter `segment-routing traffic-eng` → `interface <name>` and use `?` to discover the metric subcommand. This overrides the link weight CSPF evaluates when using `metric type te` — the IS-IS IGP metric is unchanged.
 
-**Verification:** `show segment-routing traffic-eng policy color 30` must show the policy UP with a SID list that avoids the R1→R2 hop (no label 16002 as the first SID). Compare the SID list to `COLOR_10` (which uses IGP metric and may go via R2). `show segment-routing traffic-eng topology` on R1 will show the TE link attributes including the overridden metric.
+**Verification:** `show segment-routing traffic-eng policy color 30` must show the policy UP with a SID list of `[16003]` (direct L5 path, avoiding the high-TE-cost L4). Compare to `COLOR_10` which uses IGP metric and takes the R4 path `[16004, 16003]`. `show segment-routing traffic-eng topology` on R1 will show the TE link attributes including the overridden metric on L4.
 
 ---
 
@@ -428,6 +439,7 @@ The following is **pre-loaded** via `setup_lab.py`:
 - Verify that `198.51.100.0/24` arrives at R1 with the `color:10` extended community, and that R1 automatically creates an SR-TE policy to steer traffic into it.
 
 **Verification:**
+
 - `show bgp ipv4 unicast 198.51.100.0/24` on R1 must show `Extended Community: Color:10 RT:...` in the attributes.
 - `show segment-routing traffic-eng policy` on R1 must show a dynamically instantiated ODN policy (named `srte_c_10_ep_10.0.0.3` or similar) in addition to the static `COLOR_10` policy.
 - `traceroute 198.51.100.1 source 192.0.2.1` from CE1 must show the path traversing the SR-TE SID stack.
@@ -479,10 +491,11 @@ Color: 10, End-point: 10.0.0.3
         Protection Type: protected-preferred
         Maximum SID Depth: 10
       Dynamic (valid)
-        Metric Type: IGP,   Path Accumulated Metric: 10
-        SID[0]: 16003  ! ← label 16003 = R3's prefix SID
-                            ! verify this is the direct L5 path (one hop)
-                            ! or 16002/16003 for the R2 path (two hops)
+        Metric Type: IGP,   Path Accumulated Metric: 20
+        SID[0]: 16003  ! ← R3's prefix-SID only (IOS-XR 24.x CSPF optimization:
+                        !   when computed path = IGP shortest path, only the
+                        !   destination SID is needed — IGP routes via R4 anyway)
+                        ! Metric 20 confirms the R4 path (10+10=20, not L5=30)
 ```
 
 ### Task 3 Verification: Explicit SID List Active
@@ -514,20 +527,25 @@ R1# show segment-routing traffic-eng policy color 20
   Candidate-paths:
     Preference: 100 (configuration) (active)
       Dynamic (valid)
-        Metric Type: IGP,   Path Accumulated Metric: 20
-        SID[0]: 16002   ! ← R2 (L1→L2 path via R2, avoids RED-tagged L3/R4)
-        SID[1]: 16003   ! ← R3 exit
-                        ! confirm: label 16004 (R4) does NOT appear here
+        Metric Type: IGP,   Path Accumulated Metric: 30
+        SID[0]: 24000 [Adjacency-SID, 10.1.13.1 - 10.1.13.3]
+                ! ← protected adj-SID for R1 Gi0/0/0/2 (L5 direct to R3)
+                ! label 16004 (R4) does NOT appear — L3 is excluded by RED
+                ! CSPF uses adjacency-SID (not prefix-SID 16003) because the
+                !   constrained path diverges from the IGP shortest path —
+                !   prefix-SID 16003 would let IGP route via R4, defeating the constraint
 ```
 
 Confirm that `show isis ipv4 unicast topology 0.0.0.3` on R1 shows the IGP shortest path going via R4 (the constraint is indeed overriding it):
+
 ```
 R1# show isis ipv4 unicast topology 0.0.0.3
 ...
 10.0.0.3/32  Metric: 20 IS-IS level-2
-   via 10.1.14.4, GigabitEthernet0/0/0/1, R4    ! ← IGP would use R4
+   via 10.1.14.4, GigabitEthernet0/0/0/1, R4    ! ← IGP would use R4 (metric 10+10=20)
 ```
-The COLOR_20 SID list does not use R4 — the `exclude-any RED` constraint is enforced.
+
+The COLOR_20 SID list shows `[16003]` — a single label, direct R1→R3 via L5. The `exclude-any RED` constraint is enforced: CSPF cannot use L3, so the only remaining path is L5 direct (metric 30).
 
 ### Task 5 Verification: TE Metric Policy
 
@@ -535,10 +553,15 @@ The COLOR_20 SID list does not use R4 — the `exclude-any RED` constraint is en
 R1# show segment-routing traffic-eng topology
 ...
   Link[0]:
-    Local: 10.1.12.1 (GigabitEthernet0/0/0/0)
-    Remote: 10.1.12.2
-    Admin Weight (TE): 1000    ! ← overridden TE metric on L1
+    Local: 10.1.14.1 (GigabitEthernet0/0/0/1)
+    Remote: 10.1.14.4
+    Admin Weight (TE): 1000    ! ← overridden TE metric on L4
     Admin Weight (IGP): 10     ! ← IGP metric unchanged
+  Link[1]:
+    Local: 10.1.13.1 (GigabitEthernet0/0/0/2)
+    Remote: 10.1.13.3
+    Admin Weight (TE): 10      ! ← L5 TE metric at default
+    Admin Weight (IGP): 30     ! ← L5 IGP metric is 30
 ```
 
 ```
@@ -546,10 +569,20 @@ R1# show segment-routing traffic-eng policy color 30
   Candidate-paths:
     Preference: 100 (configuration) (active)
       Dynamic (valid)
-        Metric Type: TE, Path Accumulated Metric: ...
-        SID[0]: 16003   ! ← direct L5 path (TE cost lower than going via R2 on L1)
-                        ! COLOR_30 avoids L1 (TE cost=1000) while COLOR_10 uses it
+        Metric Type: TE, Path Accumulated Metric: 10
+        SID[0]: 16003   ! ← direct L5 path (TE cost=10 vs L4+L3 TE cost=1000+10=1010)
+                        ! COLOR_30 avoids R4 entirely because L4 TE cost is prohibitive
+
+R1# show segment-routing traffic-eng policy color 10
+  Candidate-paths:
+    Preference: 100 (configuration) (inactive)   ! ← explicit pref 200 is active
+      Dynamic (valid)
+        Metric Type: IGP, Path Accumulated Metric: 20
+        SID[0]: 16004   ! ← COLOR_10 uses IGP metric → L4+L3=20 < L5=30 → R4 path
+        SID[1]: 16003
 ```
+
+The contrast between COLOR_10 (IGP metric → via R4 because L4+L3=20 < L5=30) and COLOR_30 (TE metric → via L5 direct because L4 TE cost=1000 >> L5 TE cost=10) demonstrates how different metric types produce different paths.
 
 ### Task 6 Verification: Automated Steering
 
@@ -584,7 +617,7 @@ R1# show segment-routing traffic-eng policy color 10
 
 ! After shutting L4 (R1-R4 link):
     Preference: 200 (configuration) (down)        ! ← SID 16004 unresolvable via R4
-    Preference: 100 (configuration) (active)      ! ← dynamic falls back to L5 or L1-L2
+    Preference: 100 (configuration) (active)      ! ← dynamic falls back to L5 direct
     Preference: 50  (configuration) (inactive)
 ```
 
@@ -718,8 +751,8 @@ segment-routing
 | `show bgp ipv4 unicast 198.51.100.0/24` | `Extended Community: Color:10` present |
 | `show segment-routing traffic-eng policy` | All policies listed; each must show `Oper: up` |
 | `show segment-routing traffic-eng policy color 10` | Active candidate path, valid SID list; preference 200 wins |
-| `show segment-routing traffic-eng policy color 20` | SID list must NOT contain label 16004 (R4) |
-| `show segment-routing traffic-eng policy color 30` | SID list avoids L1 (no label 16002 as first SID) |
+| `show segment-routing traffic-eng policy color 20` | SID list must NOT contain label 16004 (R4) — shows `[16003]` |
+| `show segment-routing traffic-eng policy color 30` | SID list avoids R4 (no label 16004) — shows `[16003]` via L5 direct |
 | `show segment-routing traffic-eng topology` | Each link shows `Admin Weight (TE)` and affinity bits |
 | `show segment-routing traffic-eng topology detail` | Per-link affinity bitmask populated from IS-IS TE |
 | `show segment-routing traffic-eng segment-list` | `EXPLICIT_R4_R3` listed, both SIDs `Resolved` |
@@ -732,10 +765,10 @@ segment-routing
 |---------|-------------|
 | Policy stays DOWN | End-point not reachable in CSPF TE topology; missing IS-IS TE extensions |
 | Explicit SID list shows `UNRESOLVED` | One of the node loopbacks is unreachable via IS-IS |
-| `COLOR_20` SID list contains label 16004 | Affinity-map not configured on R3 or R4; RED affinity missing from one endpoint of L3 |
+| `COLOR_20` SID list contains label 16004 | RED affinity not configured on both R3 and R4 endpoints of L3 |
 | BGP prefix missing `Color:10` at R1 | RP_CE2_IN on R3 not attached or missing `set extcommunity` action |
 | ODN policy not instantiated | `on-demand color 10` template not configured; or `RP_R3_IN` strips the color community |
-| TE metric policy still uses L1 | TE metric override not applied to R1 Gi0/0/0/0; or candidate path still uses `metric type igp` instead of `te` |
+| TE metric policy still uses R4 path | TE metric override not applied to R1 Gi0/0/0/1; or candidate path still uses `metric type igp` instead of `te` |
 
 ---
 
@@ -789,6 +822,7 @@ router bgp 65100
  !
 !
 ```
+
 </details>
 
 <details>
@@ -832,6 +866,7 @@ router bgp 65100
  !
 !
 ```
+
 </details>
 
 <details>
@@ -850,6 +885,7 @@ router bgp 65101
  exit-address-family
 !
 ```
+
 </details>
 
 <details>
@@ -868,6 +904,7 @@ router bgp 65102
  exit-address-family
 !
 ```
+
 </details>
 
 ### Objective 2: Dynamic SR-TE Policy (color 10, IGP metric)
@@ -881,7 +918,6 @@ segment-routing
  traffic-eng
   affinity-map
    name RED bit-position 0
-   name BLUE bit-position 1
   !
   policy COLOR_10
    color 10 end-point ipv4 10.0.0.3
@@ -896,6 +932,7 @@ segment-routing
  !
 !
 ```
+
 </details>
 
 ### Objective 3: Explicit Segment-List at Preference 200
@@ -927,6 +964,7 @@ segment-routing
  !
 !
 ```
+
 </details>
 
 ### Objective 4: Affinity-Constrained Path (color 20)
@@ -935,32 +973,11 @@ segment-routing
 <summary>Click to view Affinity Configuration on All Nodes</summary>
 
 ```bash
-! R2 — BLUE on L2 (Gi0/0/0/1 toward R3)
+! R3 — RED on L3 (Gi0/0/0/1 toward R4)
 segment-routing
  traffic-eng
   affinity-map
    name RED bit-position 0
-   name BLUE bit-position 1
-  !
-  interface GigabitEthernet0/0/0/1
-   affinity
-    name BLUE
-   !
-  !
- !
-!
-
-! R3 — BLUE on L2 (Gi0/0/0/0 toward R2); RED on L3 (Gi0/0/0/1 toward R4)
-segment-routing
- traffic-eng
-  affinity-map
-   name RED bit-position 0
-   name BLUE bit-position 1
-  !
-  interface GigabitEthernet0/0/0/0
-   affinity
-    name BLUE
-   !
   !
   interface GigabitEthernet0/0/0/1
    affinity
@@ -975,7 +992,6 @@ segment-routing
  traffic-eng
   affinity-map
    name RED bit-position 0
-   name BLUE bit-position 1
   !
   interface GigabitEthernet0/0/0/0
    affinity
@@ -1008,6 +1024,7 @@ segment-routing
  !
 !
 ```
+
 </details>
 
 ### Objective 5: TE Metric Policy (color 30)
@@ -1019,7 +1036,7 @@ segment-routing
 ! R1
 segment-routing
  traffic-eng
-  interface GigabitEthernet0/0/0/0
+  interface GigabitEthernet0/0/0/1
    metric 1000
   !
   policy COLOR_30
@@ -1035,6 +1052,7 @@ segment-routing
  !
 !
 ```
+
 </details>
 
 ### Objective 6: Color-Based Automated Steering (ODN)
@@ -1054,6 +1072,7 @@ segment-routing
  !
 !
 ```
+
 </details>
 
 ### Objective 7: Dual-Preference Resilience
@@ -1086,6 +1105,7 @@ segment-routing
  !
 !
 ```
+
 </details>
 
 ---
@@ -1122,28 +1142,37 @@ An operator reports that after a recent route-policy cleanup on R1, traffic from
 <summary>Click to view Diagnosis Steps</summary>
 
 1. Check whether the SR-TE policy itself is healthy:
+
    ```
    R1# show segment-routing traffic-eng policy color 10
    ```
+
    If the policy is UP, the issue is not in the SR-TE policy configuration — it's in the BGP steering.
 
 2. Inspect the BGP prefix and its extended communities:
+
    ```
    R1# show bgp ipv4 unicast 198.51.100.0/24
    ```
+
    Look for the `Extended Community` attribute. If `Color:10` is absent, the community was either never attached (R3 fault) or was stripped in transit (R1 inbound policy fault).
 
 3. Check whether R3 is advertising the prefix with the community. SSH to R3 and inspect the outbound BGP update to R1:
+
    ```
    R3# show bgp ipv4 unicast 198.51.100.0/24
    ```
+
    If R3's local BGP table shows `Color:10` in the extended communities, R3 is doing its job — the community is being stripped at R1.
 
 4. Inspect R1's inbound route policy for the iBGP session with R3:
+
    ```
    R1# show rpl route-policy RP_R3_IN
    ```
+
    Look for any `delete extcommunity` or community-manipulation action. A `delete extcommunity in COLOR_10` line is the injected fault.
+
 </details>
 
 <details>
@@ -1152,6 +1181,7 @@ An operator reports that after a recent route-policy cleanup on R1, traffic from
 The injected fault adds a `delete extcommunity in COLOR_10` action to R1's `RP_R3_IN` policy. This strips the color:10 community from all iBGP prefixes received from R3 before they enter R1's BGP RIB.
 
 Fix on R1:
+
 ```bash
 route-policy RP_R3_IN
  pass
@@ -1159,9 +1189,11 @@ end-policy
 ```
 
 Remove the `delete extcommunity in COLOR_10` line and leave only `pass`. After committing, verify:
+
 ```
 R1# show bgp ipv4 unicast 198.51.100.0/24
 ```
+
 `Extended Community: Color:10` must appear. The ODN or static COLOR_10 policy will then steer the prefix automatically.
 </details>
 
@@ -1179,28 +1211,37 @@ An operator configured `COLOR_20` to avoid the L3 link (R3↔R4) using the `excl
 <summary>Click to view Diagnosis Steps</summary>
 
 1. Confirm the current active SID list for COLOR_20:
+
    ```
    R1# show segment-routing traffic-eng policy color 20
    ```
+
    If the SID list contains 16004 (R4), CSPF is not excluding L3 as expected.
 
 2. Verify R1's affinity-map and that the RED constraint is configured:
+
    ```
    R1# show segment-routing traffic-eng affinity-map
    ```
+
    Confirm `RED` maps to bit-position 0.
 
 3. Check the TE topology to see whether L3 links are carrying the RED affinity bit:
+
    ```
    R1# show segment-routing traffic-eng topology detail
    ```
+
    Look for the links with endpoints `10.1.34.3` (R3 side) and `10.1.34.4` (R4 side). Each must show `Affinity: 0x1` (bit 0 set = RED). If one endpoint shows `Affinity: 0x0`, the affinity is missing on that endpoint.
 
 4. SSH to R4 and verify the RED affinity on Gi0/0/0/0:
+
    ```
    R4# show segment-routing traffic-eng topology detail
    ```
+
    The R4-side link entry for L3 must show the RED affinity bit. If it is absent, the fault is on R4.
+
 </details>
 
 <details>
@@ -1209,6 +1250,7 @@ An operator configured `COLOR_20` to avoid the L3 link (R3↔R4) using the `excl
 The injected fault removes the RED affinity tag from R4's Gi0/0/0/0 (the R4 endpoint of L3). Without affinity on both endpoints, CSPF does not see L3 as a RED-tagged link and routes through it anyway.
 
 Fix on R4:
+
 ```bash
 segment-routing
  traffic-eng
@@ -1222,10 +1264,12 @@ segment-routing
 ```
 
 After committing, allow ~10 seconds for IS-IS TE to re-flood the affinity sub-TLV and for R1's CSPF to re-evaluate the topology:
+
 ```
 R1# show segment-routing traffic-eng policy color 20
 ```
-The SID list must no longer contain 16004. The path should now go R1→R2→R3 (labels 16002, 16003) or R1→R3 via L5 (label 16003 direct).
+
+The SID list must no longer contain 16004. The path should now show `[16003]` — L5 direct, the only path remaining after L3 is excluded.
 </details>
 
 ---
@@ -1242,34 +1286,45 @@ An operator reports the same end symptom as Ticket 1 — `198.51.100.0/24` is no
 <summary>Click to view Diagnosis Steps</summary>
 
 1. Confirm R1 is not stripping the community (rule out Ticket 1 fault type):
+
    ```
    R1# show rpl route-policy RP_R3_IN
    ```
+
    If the policy only contains `pass`, R1 is not the culprit.
 
 2. Check R1's BGP table for the prefix:
+
    ```
    R1# show bgp ipv4 unicast 198.51.100.0/24
    ```
+
    If `Color:10` is absent, but RP_R3_IN is clean, the community was never advertised by R3.
 
 3. SSH to R3 and inspect the prefix locally:
+
    ```
    R3# show bgp ipv4 unicast 198.51.100.0/24
    ```
+
    If `Extended Community` shows nothing (or is absent), R3 never attached the color community.
 
 4. On R3, check the inbound policy for CE2:
+
    ```
    R3# show rpl route-policy RP_CE2_IN
    ```
+
    If `set extcommunity color COLOR_10 additive` is missing, the color is never being applied. This is the injected fault.
 
 5. Verify the extcommunity-set is defined on R3:
+
    ```
    R3# show rpl extcommunity-set COLOR_10
    ```
+
    If the set is missing or empty, that is also part of the fault.
+
 </details>
 
 <details>
@@ -1278,6 +1333,7 @@ An operator reports the same end symptom as Ticket 1 — `198.51.100.0/24` is no
 The injected fault removes the `set extcommunity color COLOR_10 additive` action from R3's `RP_CE2_IN` route policy. Without this action, CE2's prefix enters R3's BGP RIB without any color community and is advertised to R1 without color.
 
 Fix on R3:
+
 ```bash
 extcommunity-set opaque COLOR_10
  10
@@ -1290,14 +1346,17 @@ end-policy
 ```
 
 After committing, clear the eBGP session with CE2 to trigger a BGP update:
+
 ```
 R3# clear bgp 65102 soft in
 ```
 
 Then verify on R3:
+
 ```
 R3# show bgp ipv4 unicast 198.51.100.0/24
 ```
+
 `Extended Community: Color:10` must now appear. Within a few seconds, R1 will receive the updated BGP advertisement and the ODN/COLOR_10 policy will steer the prefix.
 </details>
 
@@ -1307,15 +1366,15 @@ R3# show bgp ipv4 unicast 198.51.100.0/24
 
 ### Core Implementation
 
-- [ ] eBGP session R1↔CE1 established; CE1 advertising `192.0.2.0/24` to R1
-- [ ] eBGP session R3↔CE2 established; CE2 advertising `198.51.100.0/24` to R3
-- [ ] iBGP session R1↔R3 established; both prefixes visible in R1's BGP table
-- [ ] R3 `RP_CE2_IN` attaches color:10 to `198.51.100.0/24`
-- [ ] `COLOR_10` policy UP on R1 with preference 100 (dynamic IGP) active
-- [ ] `EXPLICIT_R4_R3` segment-list resolves; preference 200 active for `COLOR_10`
-- [ ] `COLOR_20` policy UP; SID list excludes label 16004 (no R4 transit)
-- [ ] RED affinity on L3 both endpoints; BLUE affinity on L2 both endpoints
-- [ ] `COLOR_30` policy UP; active SID list avoids L1 (TE metric=1000)
+- [x] eBGP session R1↔CE1 established; CE1 advertising `192.0.2.0/24` to R1
+- [x] eBGP session R3↔CE2 established; CE2 advertising `198.51.100.0/24` to R3
+- [x] iBGP session R1↔R3 established; both prefixes visible in R1's BGP table
+- [x] R3 `RP_CE2_IN` attaches color:10 to `198.51.100.0/24`
+- [x] `COLOR_10` policy UP on R1 with preference 100 (dynamic IGP) active — SID list `[16004, 16003]`
+- [x] `EXPLICIT_R4_R3` segment-list resolves; preference 200 active for `COLOR_10`
+- [ ] `COLOR_20` policy UP; SID list shows `[16003]` (no R4 transit — L3 excluded by RED)
+- [ ] RED affinity on L3 both endpoints (R3 Gi0/0/0/1, R4 Gi0/0/0/0)
+- [ ] `COLOR_30` policy UP; active SID list `[16003]` avoids R4 (TE metric=1000 on L4)
 - [ ] ODN color 10 template configured; `198.51.100.0/24` at R1 shows `Color:10` in BGP table
 - [ ] ODN policy `srte_c_10_ep_10.0.0.3` dynamically instantiated and UP
 - [ ] Preference 50 backup added to `COLOR_10`; failover verified by shutting L4
@@ -1323,7 +1382,7 @@ R3# show bgp ipv4 unicast 198.51.100.0/24
 ### Troubleshooting
 
 - [ ] Ticket 1 diagnosed (color stripped by RP_R3_IN) and fixed
-- [ ] Ticket 2 diagnosed (missing RED affinity on R4) and fixed
+- [ ] Ticket 2 diagnosed (missing RED affinity on R4 Gi0/0/0/0) and fixed
 - [ ] Ticket 3 diagnosed (set extcommunity missing in RP_CE2_IN on R3) and fixed
 
 ---

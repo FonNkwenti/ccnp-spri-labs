@@ -23,10 +23,10 @@ view of the intended physical layout.
 
 | Device | EVE-NG Template   | RAM   | Image                      |
 |--------|-------------------|-------|----------------------------|
-| R1     | Cisco IOS XRv 9K  | 3 GB  | xrv9k-fullk9-x.vrr.vga-24.3.1    |
-| R2     | Cisco IOS XRv 9K  | 3 GB  | xrv9k-fullk9-x.vrr.vga-24.3.1    |
-| R3     | Cisco IOS XRv 9K  | 3 GB  | xrv9k-fullk9-x.vrr.vga-24.3.1    |
-| R4     | Cisco IOS XRv 9K  | 3 GB  | xrv9k-fullk9-x.vrr.vga-24.3.1    |
+| R1     | Cisco IOS XRv (classic) | 3 GB | xrvr-os-mbi-6.3.1    |
+| R2     | Cisco IOS XRv (classic) | 3 GB | xrvr-os-mbi-6.3.1    |
+| R3     | Cisco IOS XRv (classic) | 3 GB | xrvr-os-mbi-6.3.1    |
+| R4     | Cisco IOS XRv (classic) | 3 GB | xrvr-os-mbi-6.3.1    |
 
 ## Starting the Lab
 

@@ -1,0 +1,49 @@
+# Auto-generated — do not edit manually. Use /tag-lab to stamp external agent runs.
+lab: lab-03-sr-te-3node
+chapter: segment-routing
+exam: "300-510"
+variant_of: lab-03-sr-te-policies-and-steering
+variant_reason: "Resource-constrained 3-node version fitting 48 GB EVE-NG VM"
+devices:
+  - name: R1
+    platform: xrv9k
+    role: SP Edge / Ingress PE / SR-TE Head-End
+  - name: R3
+    platform: xrv9k
+    role: SP Edge / Egress PE
+  - name: R4
+    platform: xrv9k
+    role: SP Core / Waypoint / Affinity Node
+  - name: CE1
+    platform: iosv
+    role: Customer Edge AS 65101
+  - name: CE2
+    platform: iosv
+    role: Customer Edge AS 65102
+created:
+  date: "2026-05-14"
+  agent: claude-opus-4-7
+  skill: lab-assembler
+  skill_version: "2026-04-30"
+  files:
+    - workbook.md
+    - topology/topology.drawio
+    - topology/README.md
+    - setup_lab.py
+    - README.md
+    - decisions.md
+    - initial-configs/R1.cfg
+    - initial-configs/R3.cfg
+    - initial-configs/R4.cfg
+    - initial-configs/CE1.cfg
+    - initial-configs/CE2.cfg
+    - solutions/R1.cfg
+    - solutions/R3.cfg
+    - solutions/R4.cfg
+    - solutions/CE1.cfg
+    - solutions/CE2.cfg
+    - scripts/fault-injection/inject_scenario_01.py
+    - scripts/fault-injection/inject_scenario_02.py
+    - scripts/fault-injection/inject_scenario_03.py
+    - scripts/fault-injection/apply_solution.py
+    - scripts/fault-injection/README.md

@@ -42,6 +42,7 @@ Not every router in a large SP network can be migrated to SR at the same time. L
 On IOS-XR, the mapping server configuration has two parts:
 
 **Part 1 — Define the prefix-to-SID mapping:**
+
 ```
 segment-routing
  mapping-server
@@ -53,6 +54,7 @@ segment-routing
 The syntax `<prefix> <start-index> range <count>` allocates `<count>` consecutive SID indices starting at `<start-index>` for prefixes within `<prefix>`. Here, 192.0.2.0/24 receives SID index 50 (absolute label = SRGB_base + 50 = 16000 + 50 = 16050). The range of 100 means the mapping server can cover /32 prefixes within that /24 block using indices 50-149.
 
 **Part 2 — Advertise via IS-IS:**
+
 ```
 router isis CORE
  address-family ipv4 unicast
@@ -157,6 +159,12 @@ Mapping Server (R1):
 | R3 | SP Edge | IOS-XRv 9000 | xrv9k-fullk9-x.vrr.vga-24.3.1 |
 | R4 | SP Core / Disjoint Path | IOS-XRv 9000 | xrv9k-fullk9-x.vrr.vga-24.3.1 |
 
+> **Platform flexibility:** Labs 00, 01, 02, and 05 can run on Classic IOS-XRv 6.3.1
+> (`xrv-k9-demo-6.3.1`, 4 GB RAM) as a lighter alternative to IOS-XRv 9000
+> (16 GB RAM). All SR-MPLS, LDP coexistence, mapping-server, and TI-LFA features
+> work correctly on Classic XRv. **Labs 03 and 04 require IOS-XRv 9000** — Classic
+> XRv does not support SR-TE policies, PCE, Tree SID, or SRLG.
+
 ### Loopback Addresses
 
 | Device | Interface | Address/Prefix | Purpose |
@@ -192,6 +200,7 @@ Mapping Server (R1):
 The following is **pre-loaded** via `setup_lab.py`:
 
 **IS pre-loaded:**
+
 - Hostnames
 - Interface IP addressing (all routed links and Loopback0)
 - IS-IS Level-2 process `CORE` with `metric-style wide` on all four routers
@@ -200,6 +209,7 @@ The following is **pre-loaded** via `setup_lab.py`:
 - BFD with 50ms interval and multiplier 3 on every IS-IS interface
 
 **IS NOT pre-loaded** (student configures this):
+
 - LDP process and interface enablement
 - SR mapping server for the 192.0.2.0/24 range
 - IS-IS advertisement of mapping server entries (SID/Label Binding TLVs)
@@ -229,6 +239,7 @@ The following is **pre-loaded** via `setup_lab.py`:
 - Run `show mpls ldp bindings 10.0.0.3/32 detail` on R2 to see the LDP label bindings. The remote binding from R3 (ImpNull) and the local binding (dynamic label) will be visible — but neither is the active forwarding entry for IP-originated traffic.
 
 **Verification:**
+
 - `show route ipv4 10.0.0.3/32 detail` on R2 must show `labeled SR` and `Local Label: 16003` — confirming SR is the active label source.
 - `show mpls forwarding labels 16003 16003 detail` on R2 must show `SR Pfx (idx 3)` with outgoing label `Pop` via Gi0/0/0/1.
 - `show mpls forwarding prefix 10.0.0.3/32 detail` showing a local label outside the SRGB (e.g. 24xxx) is **expected and correct** — that is the LDP entry, which coexists but is not used for IP-originated traffic.
@@ -255,6 +266,7 @@ The SR mapping server assigns SIDs to prefixes that ARE in the IS-IS topology bu
 - On R2, verify that the FIB has installed a forwarding entry for 192.0.2.0/24 using the SR label 16050 as the outgoing label toward R1 (the mapping server origin).
 
 **Verification:**
+
 - `show isis segment-routing prefix-sid-map active-policy` on R2 must show the 192.0.2.0/24 to SID index 50 mapping received from R1.
 - `show route ipv4 192.0.2.0/24 detail` on R2 must show `labeled SR(SRMS)` and `Local Label: 16050`.
 - `show mpls forwarding labels 16050 16050 detail` on R2 must show `SR Pfx (idx 50)` with outgoing label `16050` toward R1 (Gi0/0/0/0). Note: `show mpls forwarding prefix 192.0.2.0/24` shows the LDP entry (dynamic local label) — use the label-based command to see the SR entry.
@@ -558,6 +570,7 @@ mpls ldp
 !
 commit
 ```
+
 </details>
 
 <details>
@@ -574,6 +587,7 @@ mpls ldp
 !
 commit
 ```
+
 </details>
 
 <details>
@@ -592,6 +606,7 @@ mpls ldp
 !
 commit
 ```
+
 </details>
 
 <details>
@@ -608,6 +623,7 @@ mpls ldp
 !
 commit
 ```
+
 </details>
 
 <details>
@@ -618,6 +634,7 @@ show mpls ldp neighbor
 show mpls ldp bindings
 show mpls forwarding labels 16001 16004
 ```
+
 </details>
 
 ---
@@ -639,6 +656,7 @@ R2# show mpls ldp bindings 10.0.0.3/32 detail
 ! Summary: SR label wins because R3 has a native prefix-SID (index 3).
 ! No sr-prefer configuration is needed for native SR prefix-SIDs.
 ```
+
 </details>
 
 ---
@@ -666,6 +684,7 @@ router isis CORE
 !
 commit
 ```
+
 </details>
 
 <details>
@@ -675,6 +694,7 @@ commit
 show segment-routing mapping-server prefix-sid-map ipv4
 show isis database detail R1
 ```
+
 </details>
 
 ---
@@ -698,6 +718,7 @@ R2# show mpls forwarding prefix 192.0.2.0/24
 ! An MPLS forwarding entry must be present; next-hop will be toward R1 via L1 (Gi0/0/0/0)
 ! or via L5/L4 depending on IGP path — outgoing label encodes the SR path to the mapping server origin
 ```
+
 </details>
 
 ---
@@ -716,6 +737,7 @@ router isis CORE
 !
 commit
 ```
+
 </details>
 
 <details>
@@ -725,6 +747,7 @@ commit
 show running-config router isis CORE
 show mpls forwarding prefix 192.0.2.0/24 detail
 ```
+
 </details>
 
 ---
@@ -744,6 +767,7 @@ router isis CORE
 commit
 ! Observe: R4's prefix-SID sub-TLV disappears from IS-IS LSP; peers fall back to LDP label
 ```
+
 </details>
 
 <details>
@@ -758,6 +782,7 @@ R2# show isis database detail R4
 R1# show mpls forwarding prefix 10.0.0.4/32 detail
 ! Outgoing label will be an LDP-assigned label (NOT 16004); label source = LDP
 ```
+
 </details>
 
 <details>
@@ -776,6 +801,7 @@ commit
 show mpls forwarding prefix 10.0.0.4/32 detail
 ! Outgoing label must return to Pop or 16004 (SR Pfx idx 4); label source = SR Pfx
 ```
+
 </details>
 
 ---
@@ -828,6 +854,7 @@ R3# show running-config segment-routing
 R3# show mpls label table
 ! Look for 16050 — if absent, the SRGB is too small to reach that label
 ```
+
 </details>
 
 <details>
@@ -847,6 +874,7 @@ R3# show isis segment-routing prefix-sid-map active-policy
 R3# show mpls forwarding prefix 192.0.2.0/24
 ! Outgoing label should be 16050 (SRGB base 16000 + index 50)
 ```
+
 </details>
 
 ---
@@ -878,6 +906,7 @@ R1# show running-config router isis CORE
 ! Look for 'segment-routing prefix-sid-map advertise-local' under address-family ipv4 unicast
 ! If missing, R1 has the mapping configured locally but is not flooding the SID binding TLV
 ```
+
 </details>
 
 <details>
@@ -900,6 +929,7 @@ R2# show isis segment-routing prefix-sid-map active-policy
 R2# show mpls forwarding prefix 192.0.2.0/24 detail
 ! Outgoing label should now be 16050 (SR mapping-server), not an LDP label
 ```
+
 </details>
 
 ---
@@ -935,6 +965,7 @@ R4# show isis adjacency
 R4# show interface GigabitEthernet0/0/0/1 brief
 ! IS-IS adjacency to R1 should still be up — confirms only LDP is affected
 ```
+
 </details>
 
 <details>
@@ -955,6 +986,7 @@ show mpls ldp neighbor
 show mpls ldp bindings 10.0.0.1/32
 ! Remote binding from 10.0.0.1 must be present
 ```
+
 </details>
 
 ---
@@ -963,21 +995,21 @@ show mpls ldp bindings 10.0.0.1/32
 
 ### Core Implementation
 
-- [ ] LDP process running on R1, R2, R3, R4 with Loopback0 as router-id
-- [ ] LDP neighbors formed on all five core links (L1-L5)
-- [ ] SR labels (16001-16004) remain active in R2's FIB after LDP is enabled
-- [ ] LDP label for R3's loopback visible in `show mpls ldp bindings` but NOT in the FIB (SR wins)
-- [ ] SR mapping server configured on R1 for 192.0.2.0/24, start index 50, range 100
-- [ ] IS-IS advertisement of mapping server entries enabled on R1
-- [ ] Peers (R2, R3, R4) show 192.0.2.0/24 in `show isis segment-routing prefix-sid-map active-policy`
-- [ ] `segment-routing mpls sr-prefer` configured under IS-IS af on R1, R2, R3, R4
-- [ ] SR disabled/re-enabled on R4 — LDP fallback observed and corrected
+- [x] LDP process running on R1, R2, R3, R4 with Loopback0 as router-id
+- [x] LDP neighbors formed on all five core links (L1-L5)
+- [x] SR labels (16001-16004) remain active in R2's FIB after LDP is enabled
+- [x] LDP label for R3's loopback visible in `show mpls ldp bindings` but NOT in the FIB (SR wins)
+- [x] SR mapping server configured on R1 for 192.0.2.0/24, start index 50, range 100
+- [x] IS-IS advertisement of mapping server entries enabled on R1
+- [x] Peers (R2, R3, R4) show 192.0.2.0/24 in `show isis segment-routing prefix-sid-map active-policy`
+- [x] `segment-routing mpls sr-prefer` configured under IS-IS af on R1, R2, R3, R4
+- [x] SR disabled/re-enabled on R4 — LDP fallback observed and corrected
 
 ### Troubleshooting
 
-- [ ] Ticket 1: R3 SRGB conflict diagnosed via `show running-config segment-routing`; fixed by restoring `global-block 16000 23999`
-- [ ] Ticket 2: R2 sr-prefer missing diagnosed via `show running-config router isis CORE`; fixed by restoring `segment-routing mpls sr-prefer`
-- [ ] Ticket 3: R4 LDP interface missing diagnosed via `show mpls ldp discovery detail`; fixed by re-adding GigabitEthernet0/0/0/1 to `mpls ldp`
+- [x] Ticket 1: R3 SRGB conflict diagnosed via `show running-config segment-routing`; fixed by restoring `global-block 16000 23999`
+- [x] Ticket 2: R2 sr-prefer missing diagnosed via `show running-config router isis CORE`; fixed by restoring `segment-routing mpls sr-prefer`
+- [x] Ticket 3: R4 LDP interface missing diagnosed via `show mpls ldp discovery detail`; fixed by re-adding GigabitEthernet0/0/0/1 to `mpls ldp`
 
 ---
 
