@@ -12,8 +12,9 @@ from pathlib import Path
 SCRIPT_DIR = Path(__file__).resolve().parent
 # Depth: scripts/fault-injection -> scripts -> lab-NN -> <topic> -> labs/
 sys.path.insert(0, str(SCRIPT_DIR.parents[3] / "common" / "tools"))
-from eve_ng import EveNgError, connect_node, discover_ports, find_open_lab, require_host  # noqa: E402
+from eve_ng import EveNgError, connect_node, require_host, resolve_and_discover, save_node_config
 
+DEFAULT_LAB_PATH = ""
 DEVICE_NAME = "[DEVICE_NAME]"
 FAULT_COMMANDS = [
     "[FAULT_COMMAND_1]",
@@ -45,7 +46,7 @@ def preflight(conn) -> bool:
 def main() -> int:
     parser = argparse.ArgumentParser(description="Inject Scenario 03 fault")
     parser.add_argument("--host", default="192.168.x.x",
-                        help="EVE-NG server IP (required)")
+                        help="EVE-NG server IP (or set EVE_HOST env var)")
     parser.add_argument("--lab-path", default=None,
                         help="Lab .unl path in EVE-NG (auto-discovered if omitted)")
     parser.add_argument("--skip-preflight", action="store_true",
@@ -58,18 +59,8 @@ def main() -> int:
     print("Fault Injection: Scenario 03")
     print("=" * 60)
 
-    if args.lab_path:
-        lab_path = args.lab_path
-    else:
-        print("[*] Detecting open lab in EVE-NG...")
-        lab_path = find_open_lab(host, node_names=[DEVICE_NAME])
-        if lab_path is None:
-            print("[!] No running lab found with required devices. Start all nodes first.",
-                  file=sys.stderr)
-            return 3
-
     try:
-        ports = discover_ports(host, lab_path)
+        lab_path, ports = resolve_and_discover(host, args.lab_path or DEFAULT_LAB_PATH, [DEVICE_NAME])
     except EveNgError as exc:
         print(f"[!] {exc}", file=sys.stderr)
         return 3
@@ -81,7 +72,7 @@ def main() -> int:
 
     print(f"[*] Connecting to target device on {host}:{port} ...")
     try:
-        conn = connect_node(host, port)
+        conn, platform = connect_node(host, port, name=DEVICE_NAME)
     except Exception as exc:
         print(f"[!] Connection failed: {exc}", file=sys.stderr)
         return 3
@@ -91,7 +82,7 @@ def main() -> int:
             return 4
         print("[*] Injecting fault configuration ...")
         conn.send_config_set(FAULT_COMMANDS)
-        conn.save_config()
+        save_node_config(conn, platform)
     finally:
         conn.disconnect()
 

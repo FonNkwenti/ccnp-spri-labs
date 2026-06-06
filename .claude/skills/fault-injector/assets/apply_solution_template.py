@@ -27,10 +27,13 @@ from pathlib import Path
 SCRIPT_DIR = Path(__file__).resolve().parent
 # Depth: scripts/fault-injection -> scripts -> lab-NN -> <topic> -> labs/
 sys.path.insert(0, str(SCRIPT_DIR.parents[3] / "common" / "tools"))
-from eve_ng import EveNgError, connect_node, discover_ports, find_open_lab, require_host, soft_reset_device  # noqa: E402
+from eve_ng import EveNgError, connect_node, require_host, resolve_and_discover, save_node_config, soft_reset_device  # noqa: E402
 
 # solutions/ is two levels above this script (lab root)
 SOLUTIONS_DIR = SCRIPT_DIR.parents[1] / "solutions"
+
+# Fast-path lab path used by resolve_and_discover.
+DEFAULT_LAB_PATH = "[PROJECT_FOLDER]/[TOPIC]/[LAB_SLUG].unl"
 
 # All devices affected by the troubleshooting scenarios — restored in order.
 RESTORE_TARGETS = [
@@ -53,16 +56,16 @@ def restore_device(host: str, ports: dict, name: str, *, reset: bool) -> bool:
     print(f"[*] Restoring {name} on {host}:{port} ...")
     try:
         if reset:
-            soft_reset_device(host, port, cfg_file)
+            soft_reset_device(host, port, cfg_file, name=name)
 
-        conn = connect_node(host, port)
+        conn, platform = connect_node(host, port, name=name)
         commands = [
             line.strip()
             for line in cfg_file.read_text().splitlines()
             if line.strip() and not line.startswith("!") and line.strip() != "end"
         ]
         conn.send_config_set(commands, cmd_verify=False)
-        conn.save_config()
+        save_node_config(conn, platform)
         conn.disconnect()
         print(f"[+] {name} restored.")
         return True
@@ -74,7 +77,7 @@ def restore_device(host: str, ports: dict, name: str, *, reset: bool) -> bool:
 def main() -> int:
     parser = argparse.ArgumentParser(description="Restore lab to known-good state")
     parser.add_argument("--host", default="192.168.x.x",
-                        help="EVE-NG server IP (required)")
+                        help="EVE-NG server IP (or set EVE_HOST env var)")
     parser.add_argument("--lab-path", default=None,
                         help="Lab .unl path in EVE-NG (auto-discovered if omitted)")
     parser.add_argument("--reset", action="store_true",
@@ -98,20 +101,13 @@ def main() -> int:
     print("Solution Restoration: Removing All Faults")
     print("=" * 60)
 
-    if args.lab_path:
-        lab_path = args.lab_path
-    else:
-        print("[*] Detecting open lab in EVE-NG...")
-        lab_path = find_open_lab(host, node_names=RESTORE_TARGETS)
-        if lab_path is None:
-            print("[!] No running lab found. Start all nodes in EVE-NG first.", file=sys.stderr)
-            return 3
-
     try:
-        ports = discover_ports(host, lab_path)
+        lab_path, ports = resolve_and_discover(host, args.lab_path or DEFAULT_LAB_PATH, RESTORE_TARGETS)
     except EveNgError as exc:
         print(f"[!] {exc}", file=sys.stderr)
         return 3
+
+    print(f"[*] Lab: {lab_path}")
 
     success, failed = 0, 0
     for name in targets:

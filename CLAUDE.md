@@ -97,6 +97,48 @@ troubleshooting — do all of the following **without waiting to be asked**:
 This rule fires on every command failure, every session. It is not optional and does
 not require a user prompt.
 
+## Platform Authoring Rules
+
+Platform quirks are recorded in `tasks/lessons.md` and
+`.agent/skills/reference-data/ios-compatibility.yaml`.
+Review those files before authoring `.cfg` files — do not
+duplicate platform gotchas here.
+
+**Rule:** Any time a platform-specific behaviour is discovered
+or corrected (wrong command rejected,
+sub-mode surprise, missing feature, automation quirk),
+immediately update both files without waiting
+to be asked:
+- `tasks/lessons.md` — new entry at the top following the
+  existing template (Correction / Rule / Why / Touched)
+- `.agent/skills/reference-data/ios-compatibility.yaml` — new
+  quirk row under the relevant platform
+  with `severity`, `verified`, `rejected_command`, and
+  `accepted_command`
+
+**Cross-project vs exam-specific split:**
+- If the finding would affect *any* future exam project (IOS
+  command rejection, CSR limitation,
+  XR config-model surprise, Netmiko pattern) → write to the
+  submodule files above *and* `tasks/lessons.md`
+- If the finding is specific to this repo (workbook prose, lab
+  config chain fix, this repo's tooling) →
+  `tasks/lessons.md` only
+
+**After writing a cross-project finding, commit it to the
+submodule immediately:**
+```bash
+git -C .agent/skills add reference-data/ios-compatibility.yaml LESSONS_LEARNED.md
+git -C .agent/skills commit -m "feat(reference): add <platform> quirk — <short description>"
+git add .agent/skills
+git commit -m "chore(skills): bump submodule — <short description>"
+```
+
+Prior art: CCNP SPVI promoted 30+ quirks and 18 lessons into
+the submodule on 2026-06-06 —
+see `.agent/skills/LESSONS_LEARNED.md` entries dated 2026-06-06
+for format examples.
+
 ## Common Commands
 
 ```bash

@@ -299,7 +299,14 @@ When automating with `setup_lab.py`, pass `--host <eve-ng-ip>` and the script wi
    /opt/unetlab/wrappers/unl_wrapper -a fixpermissions
    ```
 8. **VPC config files use `.vpc` extension** — never `.cfg`. Place in `initial-configs/`.
-9. **Ship the EVE-NG `.unl` file.** Every lab MUST include a `topology/` directory
+9. **XR node naming convention — mandatory.** Every XR node (xrv, xrv9k) in
+   EVE-NG **MUST** have a node name ending with `-XR` (e.g. `PE2-XR`, `PE-XR`,
+   `P1-XR`). This is required by `eve_ng.infer_platform()` and
+   `eve_ng.connect_node()` for automatic platform detection — without the
+   `-XR` suffix the XR node gets the wrong Netmiko driver (`cisco_ios_telnet`
+   instead of `cisco_xr_telnet`) and `write memory` instead of `commit`.
+   Never name an XR node without the `-XR` suffix.
+10. **Ship the EVE-NG `.unl` file.** Every lab MUST include a `topology/` directory
    containing the exported `.unl` file alongside `topology.drawio` and a
    `README.md` explaining the import process. See Section 7 for the standard.
 
