@@ -1,0 +1,14 @@
+# ios-compatibility.yaml — CCNP SPRI (300-510) exam repo
+#
+# All canonical platform quirks have been promoted to the shared skills submodule:
+#   .agent/skills/reference-data/ios-compatibility.yaml
+#
+# That file is the single source of truth for:
+#   - Platform metadata (IOS version, type, RAM)
+#   - Per-platform quirks (rejected/accepted commands, severity, verified date)
+#   - Cross-platform command compatibility matrix (commands: section)
+#
+# Skills and tooling in this repo should read from the submodule path above.
+# This file is retained as a marker; add only SPRI-specific probe data here.
+#
+# Last promoted: 2026-06-06 — no exam-repo quirk file existed; submodule is authoritative.
